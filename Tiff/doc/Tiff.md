@@ -78,7 +78,7 @@ Although the wordlist ID points to the start of the read-only structure, its fir
 There is a forward linked list for filenames. If a filename exists in the list, its position in the list is its ID number. If it must be appended, the filename is added to the list and the previously blank forward link (located by traversal) is populated.
 
 ### Flash-friendly Wordlist Structure
-![Header Links](https://github.com/bradleyeckert/Mforth/master/Tiff/doc/header.png "Header Lists in Flash")
+![Header Links](Mforth/Tiff/doc/header.png "Header Lists in Flash")
 
 The above illustration shows a header list in flash memory, made with links that are resolved once. The “First GILD” section of the list has its wordlist pointers resolved. The second section may or may not have its wordlist resolved, depending on whether or not GILD has been executed. In a non-hashed list, a wordlist would contain one pointer. Hashing a list is relatively easy. The index into the wordlist pointer array (of several threads) is derived from the name.
 
@@ -86,7 +86,7 @@ The second wordlist is searched first. WID is a ROM address that’s in the sear
 
 A section of lexicon can be removed without wiping out the whole dictionary (of previously defined words) by erasing that section. GILD creates new wordlist pointers for the headers of the next section of lexicon. It could align that to 4KB sector boundaries for SPI flash.
 
-![Header Detail](https://github.com/bradleyeckert/Mforth/master/Tiff/doc/headstruct.png "Header Detail")
+![Header Detail](Mforth/Tiff/doc/headstruct.png "Header Detail")
 
 #### NameLength Word bit fields
 - [31:16] = 16-bit source line number.
