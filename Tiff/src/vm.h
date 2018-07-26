@@ -11,7 +11,8 @@
 
 // Defined in vm.c:
 int32_t VMstep(uint32_t IR, int RunState);  // Execute an instruction group
-uint32_t DebugReg;                               // debugger mailbox for VM
+void SetDbgReg(uint32_t n);                 // write to the debug mailbox
+uint32_t GetDbgReg(void);                   // read from the debug mailbox
 
 // Defined in tiffUser.c:
 int tiffKEYQ (void);                                      // Check for a key press

@@ -5,8 +5,9 @@
 #include <string.h>
 #include <ctype.h>
 
-/// This file accesses the VM to push and pop data, write to ROM, etc.
-/// Stacks, RAM and ROM are inside the VM, accessed through a narrow channel.
+/// Stacks, RAM and ROM are inside the VM, accessed through a narrow channel,
+/// see vm.c. This abstraction allows you to put the VM anywhere, such as in
+/// a DLL or at the end of a JTAG cable.
 /// Access is through executing an instruction group in the VM:
 /// VMstep() and DebugReg.
 
@@ -15,58 +16,54 @@ uint32_t DbgPC; // last PC returned by VMstep
 uint32_t DbgGroup (uint32_t op0, uint32_t op1,
                    uint32_t op2, uint32_t op3, uint32_t op4) {
     DbgPC = VMstep(op0<<26 | op1<<20 | op2<<14 | op3<<8 | op4<<2, 1);
+    return GetDbgReg();
 }
 
 uint32_t FetchSP (void) {   // Pop from the stack
     VMstep(opSP*4, 1); // get stack pointer into A
-    DbgGroup(opA, opPORT, opDROP, opSKIP, opNOOP);
-    return DebugReg;
+    return DbgGroup(opA, opPORT, opDROP, opSKIP, opNOOP);
 }
 uint32_t PopNum (void) {   // Pop from the stack
-    DbgGroup(opPORT, opDROP, opSKIP, opNOOP, opNOOP);
-    return DebugReg;
+    return DbgGroup(opPORT, opDROP, opSKIP, opNOOP, opNOOP);
 }
 void PushNum (uint32_t N) {   // Push to the stack
-    DebugReg = N;
+    SetDbgReg(N);
     DbgGroup(opDUP, opPORT, opSKIP, opNOOP, opNOOP);
 }
 uint32_t FetchCell (uint32_t addr) {  // Read from RAM or ROM
-    DebugReg = addr;
+    SetDbgReg(addr);
     DbgGroup(opDUP, opPORT, opSetA, opSKIP, opNOOP);
-    DbgGroup(opFetchA, opPORT, opDROP, opSKIP, opNOOP);
-    return DebugReg;
+    return DbgGroup(opFetchA, opPORT, opDROP, opSKIP, opNOOP);
 }
 void StoreCell (uint32_t N, uint32_t addr) {  // Write to RAM
-    DebugReg = addr;
+    SetDbgReg(addr);
     DbgGroup(opDUP, opPORT, opSetA, opSKIP, opNOOP);
-    DebugReg = N;
+    SetDbgReg(N);
     DbgGroup(opDUP, opPORT, opStoreA, opSKIP, opNOOP);
 }
 uint8_t FetchByte (uint32_t addr) {  // Read from RAM or ROM
-    DebugReg = addr;
+    SetDbgReg(addr);
     DbgGroup(opDUP, opPORT, opSetA, opSKIP, opNOOP);
-    DbgGroup(opCfetchA, opPORT, opDROP, opSKIP, opNOOP);
-    return (uint8_t) DebugReg;
+    return (uint8_t) DbgGroup(opCfetchA, opPORT, opDROP, opSKIP, opNOOP);;
 }
 uint16_t FetchHalf (uint32_t addr) {  // Read from RAM or ROM
-    DebugReg = addr;
+    SetDbgReg(addr);
     DbgGroup(opDUP, opPORT, opSetA, opSKIP, opNOOP);
-    DbgGroup(opWfetchA, opPORT, opDROP, opSKIP, opNOOP);
-    return (uint16_t) DebugReg;
+    return (uint16_t) DbgGroup(opWfetchA, opPORT, opDROP, opSKIP, opNOOP);
 }
 void StoreByte (uint8_t N, uint32_t addr) {  // Write to RAM
-    DebugReg = addr;
+    SetDbgReg(addr);
     DbgGroup(opDUP, opPORT, opSetA, opSKIP, opNOOP);
-    DebugReg = N;
+    SetDbgReg(N);
     DbgGroup(opDUP, opPORT, opCstoreA, opSKIP, opNOOP);
 }
 void EraseROM (void) {  // Erase internal ROM
     VMstep(opUSER*0x4000L + 10000, 1);
 }
 void StoreROM (uint32_t N, uint32_t addr) {  // Store cell to internal ROM
-    DebugReg = N;
+    SetDbgReg(N);
     DbgGroup(opDUP, opPORT, opSKIP, opNOOP, opNOOP);
-    DebugReg = addr;
+    SetDbgReg(addr);
     DbgGroup(opDUP, opPORT, opSKIP, opNOOP, opNOOP);
     VMstep(opUSER*0x4000L + 10001, 1);
     DbgGroup(opDROP, opDROP, opSKIP, opNOOP, opNOOP);
@@ -86,17 +83,17 @@ void vmRAMstoreStr(char *s, unsigned int address){
 }
 // use the native dump as a sanity check
 void CellDump(int length, int addr) {
-    DebugReg = length;
+    SetDbgReg(length);
     DbgGroup(opDUP, opPORT, opSKIP, opNOOP, opNOOP);
-    DebugReg = addr;
+    SetDbgReg(addr);
     DbgGroup(opDUP, opPORT, opSKIP, opNOOP, opNOOP);
     VMstep(opUSER*0x4000L + 10002, 1);
     DbgGroup(opDROP, opDROP, opSKIP, opNOOP, opNOOP);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Header Structure
-// Begins with a WID block that starts out blank.
+/// Header Structure
+/// Begins with a WID block that starts out blank.
 
 void tiffWORDLIST (void) {  // ( -- wid )
     uint32_t hp = FetchCell(HP);
@@ -232,11 +229,11 @@ void tiffQUIT (char *cmdline) {
     StoreCell(CodePointerOrigin, CP);
     StoreCell(DataPointerOrigin, DP);
     while (1){
-        DebugReg = STATUS;                  // reset USER pointer
+        SetDbgReg(STATUS);                  // reset USER pointer
         DbgGroup(opDUP, opSetUP, opSKIP, opNOOP, opNOOP);
-        DebugReg = TiffRP0;                 // reset return stack
+        SetDbgReg(TiffRP0);                 // reset return stack
         DbgGroup(opDUP, opSetRP, opSKIP, opNOOP, opNOOP);
-        DebugReg = TiffSP0;                 // reset data stack
+        SetDbgReg(TiffSP0);                 // reset data stack
         DbgGroup(opDUP, opSetSP, opSKIP, opNOOP, opNOOP);
         StoreCell(TiffRP0, R0);             // USER vars in terminal task
         StoreCell(TiffSP0, S0);
@@ -246,6 +243,7 @@ void tiffQUIT (char *cmdline) {
         do {
             StoreCell(0, TOIN);				// >IN = 0
             StoreCell(0, TIBS);
+
             source = FetchCell(SOURCEID);
             TIBaddr = FetchCell(TIBB);
             switch (source) {

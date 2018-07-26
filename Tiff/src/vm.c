@@ -16,27 +16,62 @@
 /// group. Writing to ROM is a special case, depending on a USER function
 /// with the restriction that you can't turn '0's into '1's.
 
-/// USER functions pass data in and out using mailbox global DebugReg,
-/// write to ROM and erase ROM. These are implemented here. Others are
-/// external, called by function number starting at 0.
+/// Access to the VM is through three functions:
+///    VMstep       // Execute an instruction group
+///    SetDbgReg    // write to the debug mailbox
+///    GetDbgReg    // read from the debug mailbox
 
 /// AXI I/O is done through external functions.
 
-// Globals: Mailboxes, strobe (set flag to 1) when read/written.
-uint32_t DebugReg;
-
+static uint32_t DebugReg;
 static uint32_t RAM[RAMsize];	// RAM & ROM are arrays of 32-bit cells.
 static uint32_t ROM[ROMsize];
 
+void SetDbgReg(uint32_t n) {    // write to the debug mailbox
+    DebugReg = n;
+}
+uint32_t GetDbgReg(void) {      // read from the debug mailbox
+    return DebugReg;
+}
+
+/// ROM writing functions are used in the VM only by Tiff.
+/// They should be SPI-friendly. Hardware can sandbox them.
+/// 0 = erase a 4K sector at address T, N is an enable key: 0xc0dedead.
+/// 1 = start programming at address T, N is an enable key: 0xc0debabe.
+/// 2 = program the next 32-bit word T to flash.
+/// 3 = end programming sequence.
+/// 10000 etc are old stuff, will be removed.
 // USER function: Lower IR = opUSER<<14 + func#
 static int32_t InternalFn (uint32_t T, uint32_t N, int fn ) {
 	uint32_t i;
+	static uint32_t celladdr = 0xFFFFFFFF;      // address disabled
 	switch (fn) {
+		case 0:  // erase a 4KB "flash sector" at address T
+		    if (N != 0xc0dedead) return -61;
+            if (T >= (ROMsize-1024)*4) return -9;
+		    for (i=0; i<1024; i++)              // erase a 4K sector
+                ROM[i+(T/4)]=0xFFFFFFFF;
+            return 0;
+		case 1:  // start programming at address T
+		    if (N != 0xc0debabe) return -61;
+            if (T >= (ROMsize-1024)*4) return -9;
+            if (T & 3) return -23;              // alignment problem
+            celladdr = T>>2;                    // valid start address
+            return 0;
+		case 2:  // program the next cell
+            if (celladdr >= (ROMsize-1024)*4) return -9;
+            i = ROM[celladdr];			        // ROM address
+            if (~(i&T)) return -60;             // not erased
+            ROM[celladdr++] = i & T;
+            return 0;
+        case 3:  // end programming sequence
+            celladdr = 0xFFFFFFFF;
+            return 0;
 		case 10000: for (i=0; i<ROMsize; i++)
-					    ROM[i]=0xFFFFFFFF;      // erase ROM
-                    memset(RAM, 0, sizeof RAM); // erase RAM
+                        ROM[i]=0xFFFFFFFF;
                     return 0;
-		case 10001: if (T < ROMsize*4) {        // N is byte address
+		case 10001:  //
+                    if (T < ROMsize*4) {        // N is byte address
                         if (T & 3) return -23;  // alignment problem
                         i = ROM[T/4];			// ROM address
                         if (~(i&N)) return -60; // not erased
