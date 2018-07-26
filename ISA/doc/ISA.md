@@ -30,61 +30,61 @@ ALU operations take their operands from registers for minimum input delay. Since
 ### Opcodes (proposed)
 
 ```
-NOP	  skip never						Do nothing
-NO|	  skip always
-NIF|	skip if T<>0
-IF|	  skip if T=0
-+IF|	skip if T<0
--IF|	skip if T>=0
-NEXT|	skip if R<0, R-1 → R
-REPT	if R>=0, 0 → slot | R-1 → R
-SP	  SP+IMM → A						A = {SP+IMM, RP+IMM, UP+IMM, ~IMM, A+k2}
-RP	  RP+IMM → A						B = {T, B+4}
-UP	  UP+IMM → A						IMM is always unsigned.
-LIT+	T+IMM → T
-USER	User defined API or HW function, T = func(IMM, T) or func(IMM, T, N)
-JUMP	IMM → PC
-LIT	  IMM → T → N  → RAM[--SP]	
-CALL	IMM → PC → R → RAM[--RP]
-DUP	         T → N → RAM[--SP]
-R	       R → T → N → RAM[--SP]
-OVER	   N → T → N → RAM[--SP]
-A	       A → T → N → RAM[--SP]	
-COM	  ~T → T
-PORT	Swap T, Debug Register
-U2/	  T>>1 → T
-2/	  T/2 → T
-2*	  T*2 → T
-.*	  cn:W = T+S+1 | if (cn|c) R ← W | c,W,T ← W,T,(c|cn)  Multiply step
-./	  cn:W = T+S+1 | if (cn|c) R ← W | c,W,T ← W,T,(c|cn)  Divide step
-!AS	  ReadData → RAM[A] | A+4 → A, R=length	Stream from AXI bus to RAM
-SWAP	N → T → N						N = {T, N, RAM}
-1+	  T+1 → T
-;	    RAM[RP++] → R → PC
-;|	  RAM[RP++] → R → PC				Early exit: Does not flush the IR.
-R>	  RAM[RP++] → R → T → N → RAM[--SP]
-RDROP	RAM[RP++] → R
-@A	  RAM[A] → T → N → RAM[--SP]
-@AC	  RAM[A] → T → N → RAM[--SP]  			Extract 8-bit from byte lane
-@AW	  RAM[A] → T → N → RAM[--SP]  			Extract 16-bit from byte lanes
-!A	  RAM[SP++] → N → T → RAM[A] | A+4 → A
-C!A	  RAM[SP++] → N → T → RAM[A] | A+1 → A	Shift 8-bit onto the correct byte lane
-W!A	  RAM[SP++] → N → T → RAM[A] | A+2 → A	Shift 16-bit onto the correct byte lanes
-UNIP	RAM[SP++]						( a b c – b c ) = ROT DROP
-@BS	  RAM[B] → WriteData | R=length			Stream from RAM to AXI bus
-@B	  RAM[B] → T → N → RAM[--SP] | B+4 → B
-ROT	  RAM[SP] → T → N → RAM[SP]
-+	    RAM[SP++] → N | (T + N) → T
-AND	  RAM[SP++] → N | (T & N) → T
-XOR	  RAM[SP++] → N | (T ^ N) → T
-A!	  RAM[SP++] → N → T → A				A and B are index registers
-B!	  RAM[SP++] → N → T → B
-RP!	  RAM[SP++] → N → T → RP
+NOP   skip never						Do nothing
+NO|   skip always
+NIF|  skip if T<>0
+IF|   skip if T=0
++IF|  skip if T<0
+-IF|  skip if T>=0
+NEXT| skip if R<0, R-1 → R
+REPT  if R>=0, 0 → slot | R-1 → R
+SP    SP+IMM → A                  A = {SP+IMM, RP+IMM, UP+IMM, ~IMM, A+k2}
+RP    RP+IMM → A                  B = {T, B+4}
+UP    UP+IMM → A                  IMM is always unsigned.
+LIT+  T+IMM → T
+USER  User defined API or HW function, T = func(IMM, T) or func(IMM, T, N)
+JUMP  IMM → PC
+LIT   IMM → T → N  → RAM[--SP]	
+CALL  IMM → PC → R → RAM[--RP]
+DUP          T → N → RAM[--SP]
+R        R → T → N → RAM[--SP]
+OVER     N → T → N → RAM[--SP]
+A        A → T → N → RAM[--SP]	
+COM   ~T → T
+PORT  Swap T, Debug Register
+U2/   T>>1 → T
+2/    T/2 → T
+2*    T*2 → T
+.*    cn:W = T+S+1 | if (cn|c) R ← W | c,W,T ← W,T,(c|cn)  Multiply step
+./    cn:W = T+S+1 | if (cn|c) R ← W | c,W,T ← W,T,(c|cn)  Divide step
+!AS   ReadData → RAM[A] | A+4 → A, R=length	Stream from AXI bus to RAM
+SWAP  N → T → N                         N = {T, N, RAM}
+1+    T+1 → T
+;     RAM[RP++] → R → PC
+;|    RAM[RP++] → R → PC                Early exit: Does not flush the IR.
+R>    RAM[RP++] → R → T → N → RAM[--SP]
+RDROP RAM[RP++] → R
+@A    RAM[A] → T → N → RAM[--SP]
+@AC   RAM[A] → T → N → RAM[--SP]        Extract 8-bit from byte lane
+@AW   RAM[A] → T → N → RAM[--SP]        Extract 16-bit from byte lanes
+!A    RAM[SP++] → N → T → RAM[A] | A+4 → A
+C!A   RAM[SP++] → N → T → RAM[A] | A+1 → A  Shift 8-bit onto the correct byte lane
+W!A   RAM[SP++] → N → T → RAM[A] | A+2 → A  Shift 16-bit onto the correct byte lanes
+UNIP  RAM[SP++]						( a b c – b c ) = ROT DROP
+@BS   RAM[B] → WriteData | R=length     Stream from RAM to AXI bus
+@B    RAM[B] → T → N → RAM[--SP] | B+4 → B
+ROT   RAM[SP] → T → N → RAM[SP]
++     RAM[SP++] → N | (T + N) → T
+AND   RAM[SP++] → N | (T & N) → T
+XOR   RAM[SP++] → N | (T ^ N) → T
+A!    RAM[SP++] → N → T → A             A and B are index registers
+B!    RAM[SP++] → N → T → B
+RP!   RAM[SP++] → N → T → RP
 SP!  	RAM[SP++] → N → T → SP
-UP!	  RAM[SP++] → N → T → UP
-NIP	  RAM[SP++] → N
-DROP	RAM[SP++] → N → T
->R	  RAM[SP++] → N → T → PC → R → RAM[--RP]
+UP!   RAM[SP++] → N → T → UP
+NIP   RAM[SP++] → N
+DROP  RAM[SP++] → N → T
+>R    RAM[SP++] → N → T → PC → R → RAM[--RP]
 
 |	Begin a new opcode group
 ```
