@@ -2,94 +2,9 @@
 #include <stdlib.h>
 #include "vm.h"
 #include "tiff.h"
+#include "vmaccess.h"
 #include <string.h>
 #include <ctype.h>
-
-/// Stacks, RAM and ROM are inside the VM, accessed through a narrow channel,
-/// see vm.c. This abstraction allows you to put the VM anywhere, such as in
-/// a DLL or at the end of a JTAG cable.
-/// Access is through executing an instruction group in the VM:
-/// VMstep() and DebugReg.
-
-uint32_t DbgPC; // last PC returned by VMstep
-
-uint32_t DbgGroup (uint32_t op0, uint32_t op1,
-                   uint32_t op2, uint32_t op3, uint32_t op4) {
-    DbgPC = VMstep(op0<<26 | op1<<20 | op2<<14 | op3<<8 | op4<<2, 1);
-    return GetDbgReg();
-}
-
-uint32_t FetchSP (void) {   // Pop from the stack
-    VMstep(opSP*4, 1); // get stack pointer into A
-    return DbgGroup(opA, opPORT, opDROP, opSKIP, opNOOP);
-}
-uint32_t PopNum (void) {   // Pop from the stack
-    return DbgGroup(opPORT, opDROP, opSKIP, opNOOP, opNOOP);
-}
-void PushNum (uint32_t N) {   // Push to the stack
-    SetDbgReg(N);
-    DbgGroup(opDUP, opPORT, opSKIP, opNOOP, opNOOP);
-}
-uint32_t FetchCell (uint32_t addr) {  // Read from RAM or ROM
-    SetDbgReg(addr);
-    DbgGroup(opDUP, opPORT, opSetA, opSKIP, opNOOP);
-    return DbgGroup(opFetchA, opPORT, opDROP, opSKIP, opNOOP);
-}
-void StoreCell (uint32_t N, uint32_t addr) {  // Write to RAM
-    SetDbgReg(addr);
-    DbgGroup(opDUP, opPORT, opSetA, opSKIP, opNOOP);
-    SetDbgReg(N);
-    DbgGroup(opDUP, opPORT, opStoreA, opSKIP, opNOOP);
-}
-uint8_t FetchByte (uint32_t addr) {  // Read from RAM or ROM
-    SetDbgReg(addr);
-    DbgGroup(opDUP, opPORT, opSetA, opSKIP, opNOOP);
-    return (uint8_t) DbgGroup(opCfetchA, opPORT, opDROP, opSKIP, opNOOP);;
-}
-uint16_t FetchHalf (uint32_t addr) {  // Read from RAM or ROM
-    SetDbgReg(addr);
-    DbgGroup(opDUP, opPORT, opSetA, opSKIP, opNOOP);
-    return (uint16_t) DbgGroup(opWfetchA, opPORT, opDROP, opSKIP, opNOOP);
-}
-void StoreByte (uint8_t N, uint32_t addr) {  // Write to RAM
-    SetDbgReg(addr);
-    DbgGroup(opDUP, opPORT, opSetA, opSKIP, opNOOP);
-    SetDbgReg(N);
-    DbgGroup(opDUP, opPORT, opCstoreA, opSKIP, opNOOP);
-}
-void EraseROM (void) {  // Erase internal ROM
-    VMstep(opUSER*0x4000L + 10000, 1);
-}
-void StoreROM (uint32_t N, uint32_t addr) {  // Store cell to internal ROM
-    SetDbgReg(N);
-    DbgGroup(opDUP, opPORT, opSKIP, opNOOP, opNOOP);
-    SetDbgReg(addr);
-    DbgGroup(opDUP, opPORT, opSKIP, opNOOP, opNOOP);
-    VMstep(opUSER*0x4000L + 10001, 1);
-    DbgGroup(opDROP, opDROP, opSKIP, opNOOP, opNOOP);
-}
-void vmRAMfetchStr(char *s, unsigned int address, uint8_t length){
-    int i;  char c;                         // Get a string from RAM
-    for (i=0; i<length; i++) {
-        c = FetchByte(address++);
-        *s++ = c;
-    }   *s++ = 0;                           // end in trailing zero
-}
-void vmRAMstoreStr(char *s, unsigned int address){
-    char c;                                 // Store a string to RAM,
-    while ((c = *s++)){                     // not including trailing zero
-        StoreByte(c, address++);
-    }
-}
-// use the native dump as a sanity check
-void CellDump(int length, int addr) {
-    SetDbgReg(length);
-    DbgGroup(opDUP, opPORT, opSKIP, opNOOP, opNOOP);
-    SetDbgReg(addr);
-    DbgGroup(opDUP, opPORT, opSKIP, opNOOP, opNOOP);
-    VMstep(opUSER*0x4000L + 10002, 1);
-    DbgGroup(opDROP, opDROP, opSKIP, opNOOP, opNOOP);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Header Structure
@@ -111,45 +26,6 @@ void tiffHEADER (void) {  // ( c-addr len -- )
 }
 
 int tiffIOR = 0;
-
-/// Keyboard input is raw, from tiffEKEY().
-/// To start with, we use single keystrokes to dump various parameters.
-/// Note: CLion cooks keyboard input, you must run from the command line.
-
-uint32_t Param = TIB;     // parameter
-
-void ShowParam(void){
-    printf("\015%08X  ", Param);
-}
-
-void Quick (void) {
-    int c;
-    EraseROM();
-    while (1) {
-        ShowParam();
-        c = tiffEKEY();
-        if (isxdigit(c)) {
-            if (c>'9') c-=('A'-10); else c-='0';
-            Param = Param*16 + (c&0x0F);
-        } else {
-            switch (c) {
-                case 27:           return;                 // ESC = bye
-                case 3:  Param=0;  break;                  // ^C = clear
-                case 4:  CellDump(32, Param);   break;     // ^D = dump
-                case 16: PushNum(Param);    break;         // ^P = Push
-                case 15: Param = PopNum();  break;         // ^O = Pop
-                case 18: Param = FetchCell(Param); break;  // ^R = Read
-                case 23: StoreCell(Param, 1024);   break;  // ^W = Write
-                case 24: StoreByte(Param, 100);    break;  // ^X = Write8
-                case 25: Param = FetchByte(Param); break;  // ^Y = Read
-                case 26: StoreByte(Param, 1024);   break;  // ^Z = Write
-                case 19: Param = FetchSP();        break;  // ^S = Stack Pointer
-                default:
-                    printf("%d", c);
-            }
-        }
-    }
-}
 
 /// tiffWORD gets the next <delimiter> delimited string from TIBB.
 /// Return value: Length of string.

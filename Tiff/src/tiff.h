@@ -13,11 +13,15 @@
 
 #define TiffRP0     255                    /* Initial stack pointers for Tiff */
 #define TiffSP0     240
-#define termTCB(n)  ((256+ROMsize+n)*4) /* Byte address of terminal TCB cell  */
+#define termTCB(n)  ((256+ROMsize+n)*4)  /* Byte address of terminal TCB cell */
 
 // error message handling
 char ErrorString[64];   // String to include in error message
 void ErrorMessage (int error);
+
+// used by main.c, defined in tiff.c
+// might move to vmaccess.c later, with memory and stack access functions.
+void vmTEST(void);
 
 //==============================================================================
 // Definitions of terminal variables addresses.

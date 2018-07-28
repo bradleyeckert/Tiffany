@@ -38,6 +38,13 @@ int main(int argc, char *argv[]) {
             argline[argidx] = 0;		// zero-terminated string
         }
     }
+    if (argc) {
+        if (0==strcmp(argv[1], "-t")) { // enter test mode
+            vmTEST();
+            return 0;
+        }
+    }
+    vmTEST(); // enter test anyway
     tiffQUIT(argline);
     return 0;
 }

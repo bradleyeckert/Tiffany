@@ -1,16 +1,15 @@
 //================================================================================
-// tick.h: Header file for tick.c
-// This is the VM and user variable address definition
+// vm.h
 //================================================================================
 #ifndef __VM_H__
 #define __VM_H__
 #include <stdint.h>
-#include "config.h"
 
 //================================================================================
 
 // Defined in vm.c:
 int32_t VMstep(uint32_t IR, int RunState);  // Execute an instruction group
+void VMpor(void);                           // Reset the VM
 void SetDbgReg(uint32_t n);                 // write to the debug mailbox
 uint32_t GetDbgReg(void);                   // read from the debug mailbox
 
@@ -29,7 +28,7 @@ void tiffQUIT(char *s);                                    // The C-side QUIT lo
 #define opEXIT       (002)
 #define opADD        (003)
 #define opSKIP       (004)
-#define opGETR       (005)
+#define opR          (005)
 #define opEXITE      (006)
 #define opAND        (007)
 #define opSKIPNZ     (010)
@@ -65,18 +64,17 @@ void tiffQUIT(char *s);                                    // The C-side QUIT lo
 #define opUP         (050)
 #define opWstoreA    (052)
 #define opSetUP      (053)
-#define opLITplus    (054)
 #define opCstoreA    (056)
 #define opUSER       (060)
 #define opNIP        (063)
 #define opJUMP       (064)
 #define opFetchAS    (066)
-#define opLIT        (067)
-#define opSWAP       (070)
+#define opLIT        (070)
 #define opDROP       (072)
 #define opROT        (073)
 #define opCALL       (074)
 #define opOnePlus    (075)
 #define opPUSH       (076)
+#define opSWAP       (077)
 
 #endif

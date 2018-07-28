@@ -5,8 +5,9 @@
 #define __CONFIG_H__
 
 // Sizes of internal memories in 32-bit cells
-#define RAMsize 1024
-#define ROMsize 4096
+#define RAMsize   0x400
+#define ROMsize   0x800
+//#define TRACEABLE
 
 #define CodePointerOrigin  0                  /* Kernel definitions start here */
 #define HeadPointerOrigin  (ROMsize*2)       /* Headers start halfway into ROM */
@@ -15,9 +16,19 @@
 // Wordlists can be hashed into a number of different threads
 #define WordlistStrands  3                           /* must be a prime number */
 
-// Sanity check
-#if (ROMsize & 0xFF)
-#error ROMsize must be a multiple of 0x100
+//===============================================================================
+// Sanity checks
+
+#if (RAMsize & (RAMsize-1))
+#error RAMsize must be a power of 2
+#endif
+
+#if (ROMsize & (RAMsize-1)) // VM stack addressing depends on this
+#error ROMsize must be an integer multiple of RAMsize
+#endif
+
+#if (ROMsize & 0x3FF) // To match SPI flash sectors
+#error ROMsize must be a multiple of 1024 (0x400)
 #endif
 
 #endif

@@ -1,14 +1,107 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include "config.h"
 #include "vm.h"
 #include <string.h>
 
-#define SDUP   RAM[--SP] = N;  N = T
-#define SDROP  T = N;  N = RAM[SP++]
-#define SNIP   N = RAM[SP++]
-#define RDUP   RAM[--RP] = R
-#define RDROP  R = RAM[RP++]
 #define IMM    (IR & ~(-1<<slot))
+
+/// Virtual Machine for 32-bit MachineForth.
+
+/// The VM registers are defined here but generally not accessible outside this
+/// module except through VMstep. The VM could be at the end of a cable, so we
+/// don't want direct access to its innards.
+
+/// These functions are always exported: VMpor, VMstep, SetDbgReg, GetDbgReg.
+/// If TRACEABLE, you get more exported: UnTrace, VMreg[],
+/// while importing the Trace function. This offers a way to break the
+/// "no direct access" rule in a PC environment, for testing and VM debugging.
+
+/// The optional Trace function tracks state changes using these parameters:
+/// Type of state change: 0 = unmarked, 1 = new opcode, 2 or 3 = new group;
+/// Register ID: Complement of register number if register, memory if other;
+/// Old value: 32-bit.
+/// New value: 32-bit.
+
+#ifdef TRACEABLE
+    #define T VMreg[0]
+    #define N VMreg[1]
+    #define R VMreg[2]
+    #define A VMreg[3]
+    #define B VMreg[4]
+    #define RP VMreg[5]
+    #define SP VMreg[6]
+    #define UP VMreg[7]
+    #define PC VMreg[8]
+    #define DebugReg VMreg[9]
+    #define RidT  ~0
+    #define RidN  ~1
+    #define RidR  ~2
+    #define RidA  ~3
+    #define RidB  ~4
+    #define RidRP ~5
+    #define RidSP ~6
+    #define RidUP ~7
+    #define RidPC ~8
+    #define RidDebug ~9
+    #define VMregs 10
+
+    uint32_t VMreg[VMregs];
+    static int New;
+
+    // Trace function is external, called by the VM.
+    extern void Trace(uint8_t type, int32_t ID, uint32_t old, uint32_t nu);
+
+    static uint32_t RAM[RAMsize];
+    static uint32_t ROM[ROMsize];
+
+    static void SDUP(void)  {
+        Trace(New,RidSP,SP,SP-1); New=0;
+                     --SP;
+        Trace(0,SP & (RAMsize-1),RAM[SP & (RAMsize-1)],  N);
+                                 RAM[SP & (RAMsize-1)] = N;
+        Trace(0, RidN, N,  T);
+                       N = T; }
+    static void SDROP(void) {
+        Trace(New,RidT,T,  N); New=0;
+                       T = N;
+        Trace(0, RidN, N,  RAM[SP & (RAMsize-1)]);
+                       N = RAM[SP & (RAMsize-1)];
+        Trace(0,RidSP,SP,SP+1);
+                   SP++; }
+    static void SNIP(void)  {
+        Trace(New,RidN,N,  RAM[SP & (RAMsize-1)]);  New=0;
+                       N = RAM[SP & (RAMsize-1)];
+        Trace(0,RidSP, SP,SP+1);
+                       SP++; }
+    static void RDUP(void)  {
+        Trace(New,RidRP,RP,RP-1); New=0;
+                       --RP;
+        Trace(0,RP & (RAMsize-1),RAM[RP & (RAMsize-1)],  R);
+                                 RAM[RP & (RAMsize-1)] = R; }
+    static void RDROP(void) {
+        Trace(New,RidR,R,  RAM[RP & (RAMsize-1)]);  New=0;
+                       R = RAM[RP & (RAMsize-1)];
+        Trace(0,RidRP, RP,RP+1);
+                       RP++; }
+
+#else
+    static uint32_t T;	 static uint32_t RP = 64;
+    static uint32_t N;	 static uint32_t SP = 32;
+    static uint32_t R;	 static uint32_t UP = 64;
+    static uint32_t A;   static uint32_t DebugReg;
+    static uint32_t B;	 static uint32_t PC;
+
+    static uint32_t RAM[RAMsize];
+    static uint32_t ROM[ROMsize];
+
+    static void SDUP(void)  { RAM[--SP & (RAMsize-1)] = N;  N = T; }
+    static void SDROP(void) { T = N;  N = RAM[SP++ & (RAMsize-1)]; }
+    static void SNIP(void)  { N = RAM[SP++ & (RAMsize-1)]; }
+    static void RDUP(void)  { RAM[--RP & (RAMsize-1)] = R; }
+    static void RDROP(void) { R = RAM[RP++ & (RAMsize-1)]; }
+
+#endif // TRACEABLE
 
 /// The VM's RAM and ROM are internal to this module.
 /// They are both little endian regardless of the target machine.
@@ -16,16 +109,309 @@
 /// group. Writing to ROM is a special case, depending on a USER function
 /// with the restriction that you can't turn '0's into '1's.
 
-/// Access to the VM is through three functions:
+static int32_t InternalFn       // VM customization
+    (uint32_t S0, uint32_t S1, int fn );
+
+void SendAXI(void){}
+void ReceiveAXI(void){}
+
+// Generic fetch from ROM or RAM: ROM is at the bottom, RAM wraps.
+static void FetchX (int32_t addr, int shift, int mask) {
+    SDUP();                     // push memory location onto stack
+#ifdef TRACEABLE
+    int32_t temp;
+    if (addr < ROMsize) {
+        temp = (ROM[addr] >> shift) & mask;
+    } else {
+        addr = (addr - ROMsize) & (RAMsize-1);
+        temp = (RAM[addr] >> shift) & mask;
+    }
+    Trace(0, RidT, T, temp);
+    T = temp;
+#else
+    if (addr < ROMsize) {
+        T = (ROM[addr] >> shift) & mask;
+    } else {
+        addr = (addr - ROMsize) & (RAMsize-1);
+        T = (RAM[addr] >> shift) & mask;
+    }
+#endif // TRACEABLE
+}
+
+// Generic store to RAM: ROM is at the bottom, RAM wraps.
+static void StoreX (uint32_t addr, uint32_t data, int shift, int mask) {
+    uint32_t temp;
+    addr = addr & (RAMsize-1);
+    temp = RAM[addr] & (~(mask << shift));
+#ifdef TRACEABLE
+    temp = ((data & mask) << shift) | temp;
+    Trace(New, addr, RAM[addr], temp);  New=0;
+    RAM[addr] = temp;
+#else
+    RAM[addr] = ((data & mask) << shift) | temp;
+#endif // TRACEABLE
+    SDROP();
+}
+
+#ifdef TRACEABLE
+    // Untrace undoes a state change by restoring old data
+    void UnTrace(int32_t ID, uint32_t old) {
+        int idx = ~ID;
+        if (ID<0) {
+            if (idx < VMregs) {
+                VMreg[idx] = old;
+            }
+        } else {
+            StoreX(ID, old, 0, 0xFFFFFFFF);
+        }
+    }
+#endif // TRACEABLE
+
+/// Access to the VM is through four functions:
 ///    VMstep       // Execute an instruction group
+///    VMpor        // Power-on reset
 ///    SetDbgReg    // write to the debug mailbox
 ///    GetDbgReg    // read from the debug mailbox
+/// IR is the instruction group.
+/// RunState is 0 when PC post-increments, other when not.
 
-/// AXI I/O is done through external functions.
+void VMpor(void) {
+    PC = 0;  RP = 64;  SP = 32;  UP = 64;
+    T=0;  N=0;  R=0;  A=0;  B=0;  DebugReg = 0;
+}
 
-static uint32_t DebugReg;
-static uint32_t RAM[RAMsize];	// RAM & ROM are arrays of 32-bit cells.
-static uint32_t ROM[ROMsize];
+int32_t VMstep(uint32_t IR, int RunState) {
+	uint32_t M;  int slot;
+	unsigned int opcode, addr;
+	uint32_t NextPC = PC+1;     // default next PC
+
+	if (RunState) NextPC = PC;  // '1' = don't change the PC
+
+	slot = 26;
+	while (slot>=0) {
+		opcode = (IR >> slot) & 0x3F;	   // slot = 26, 20, 14, 8, 2
+#ifdef TRACEABLE
+        if (slot==26) New=3; else New=1;
+#endif // TRACEABLE
+NextOp: switch (opcode) {
+			case 000:									break;	// NOOP
+			case 001: SDUP();							break;	// DUP
+			case 002:
+#ifdef TRACEABLE
+                Trace(New, RidPC, PC, R);  New=0;
+#endif // TRACEABLE
+                NextPC = R;  RDROP();  slot = 0;        break;	// ;
+			case 003:
+#ifdef TRACEABLE
+                Trace(New, RidT, T, T + N);  New=0;
+#endif // TRACEABLE
+                T = T + N;  SNIP();	                    break;	// +
+			case 004: slot = 0;						    break;	// NO|
+			case 005: SDUP();
+#ifdef TRACEABLE
+                Trace(New, RidT, T, R);  New=0;
+#endif // TRACEABLE
+                T = R;					                break;	// R@
+			case 006:
+#ifdef TRACEABLE
+                Trace(New, RidPC, PC, R);  New=0;
+#endif // TRACEABLE
+                NextPC = R;	 RDROP();      				break;	// ;|
+			case 007:
+#ifdef TRACEABLE
+                Trace(New, RidT, T, T & N);  New=0;
+#endif // TRACEABLE
+                T = T & N;  SNIP();	                    break;	// AND
+			case 010: if (T!=0) slot = 0;				break;	// NIF|
+			case 011: M = N;  SDUP();
+#ifdef TRACEABLE
+                Trace(0, RidT, T, M);
+#endif // TRACEABLE
+                T = M;				                    break;	// OVER
+			case 012: SDUP();
+#ifdef TRACEABLE
+                Trace(0, RidT, T, R);
+#endif // TRACEABLE
+			    T = R;  RDROP();				        break;	// R>
+			case 013:
+#ifdef TRACEABLE
+                Trace(New, RidT, T, T ^ N);  New=0;
+#endif // TRACEABLE
+                T = T ^ N;  SNIP();	                    break;	// XOR
+			case 014: if (T==0) slot = 0;				break;	// IF|
+			case 015: SDUP();
+#ifdef TRACEABLE
+                Trace(0, RidT, T, A);
+#endif // TRACEABLE
+                T = A;						            break;	// A
+			case 016: RDROP();				            break;	// RDROP
+
+			case 020: if (T<0) slot = 0;				break;	// +IF|
+			case 021: SendAXI();
+#ifdef TRACEABLE
+                Trace(New, RidA, A, A+4*R);  New=0;
+#endif // TRACEABLE
+				A += 4*R;							    break;	// !AS
+			case 022: FetchX(A>>2, 0, 0xFFFFFFFF); 		break;  // @A
+			case 023: 									break;
+			case 024: if (T>=0)  slot = 0;				break;	// -IF|
+			case 025:
+#ifdef TRACEABLE
+                Trace(New, RidT, T, T*2);  New=0;
+#endif // TRACEABLE
+                T = T*2;	        				    break;	// 2*
+			case 026: FetchX(A>>2, 0, 0xFFFFFFFF);
+#ifdef TRACEABLE
+                Trace(0, RidA, A, A+4);
+#endif // TRACEABLE
+			    A += 4;                                 break;  // @A+
+
+			case 030: if (R<0) {slot = 0;}
+#ifdef TRACEABLE
+                Trace(New, RidR, R, R-1);  New=0;
+#endif // TRACEABLE
+                R--;		                            break;	// NEXT
+			case 031:
+#ifdef TRACEABLE
+                Trace(New, RidT, T, (unsigned) T / 2);  New=0;
+#endif // TRACEABLE
+			    T = (unsigned) T / 2;                   break;	// U2/
+			case 032: FetchX(A>>2, (A&2) * 8, 0xFFFF);  break;  // W@A
+			case 033:
+#ifdef TRACEABLE
+                Trace(New, RidA, A, T);  New=0;
+#endif // TRACEABLE
+			    A = T;	SDROP();		    			break;	// A!
+			case 034: if (R>=0) {slot = 26;}
+#ifdef TRACEABLE
+                Trace(New, RidR, R, R-1);  New=0;
+#endif // TRACEABLE
+                R--;		                            break;	// REPT
+			case 035:
+#ifdef TRACEABLE
+                Trace(New, RidT, T, T / 2);  New=0;
+#endif // TRACEABLE
+			    T = T / 2;                              break;	// 2/
+			case 036: FetchX(A>>2, (A&3) * 8, 0xFF);    break;  // C@A
+			case 037:
+#ifdef TRACEABLE
+                Trace(New, RidB, B, T);  New=0;
+#endif // TRACEABLE
+			    B = T;	SDROP();		    			break;	// B!
+
+			case 040: M = (IMM + SP + ROMsize)*4;               // SP
+GetPointer:
+#ifdef TRACEABLE
+                Trace(New, RidA, A, M);  New=0;
+#endif // TRACEABLE
+			    A = M;  goto Im;
+			case 041:
+#ifdef TRACEABLE
+                Trace(New, RidT, T, ~T);  New=0;
+#endif // TRACEABLE
+			    T = ~T;                                 break;	// COM
+			case 042: StoreX(A>>2, T, 0, 0xFFFFFFFF);   break;  // !A
+			case 043:
+#ifdef TRACEABLE
+                Trace(New, RidRP, RP, T>>2);  New=0;
+#endif // TRACEABLE
+			    RP = (uint8_t) (T>>2);  SDROP();    	break;	// RP!
+			case 044: M = (IMM + RP + ROMsize)*4;               // RP
+                goto GetPointer;
+			case 045: M = T; T=DebugReg; DebugReg=M;	break;	// PORT
+			case 046: StoreX(B>>2, T, 0, 0xFFFFFFFF); 		    // !B+
+#ifdef TRACEABLE
+                Trace(0, RidB, B, B + 4);
+#endif // TRACEABLE
+				B += 4;                                 break;
+			case 047:
+#ifdef TRACEABLE
+                Trace(New, RidSP, SP, T>>2);  New=0;
+#endif // TRACEABLE
+			    SP = (uint8_t) (T>>2);  SDROP();	    break;	// SP!
+
+			case 050: M = (IMM + UP + ROMsize)*4;  	            // UP
+                goto GetPointer;
+
+			case 052: StoreX(A>>2, T, (A&2)*8, 0xFFFF); break;  // W!A
+			case 053:
+#ifdef TRACEABLE
+                Trace(New, RidUP, UP, T>>2);  New=0;
+#endif // TRACEABLE
+			    UP = (uint8_t) (T>>2);  SDROP();	    break;	// UP!
+            case 054: goto Im; // reserved for future IMM opcode
+			case 056: StoreX(A>>2, T, (A&3)*8, 0xFF);   break;  // C!A
+
+			case 060: M = InternalFn(T, N, IMM);                // USER
+#ifdef TRACEABLE
+                Trace(New, RidT, T, M);  New=0;
+#endif // TRACEABLE
+                T = M;  goto Im;
+
+			case 063: SNIP();							break;	// NIP
+			case 064:
+#ifdef TRACEABLE
+                Trace(New, ~9, PC, IMM);  New=0;
+#endif // TRACEABLE
+			    NextPC = IMM;  goto Im;	                        // JUMP
+
+			case 066: ReceiveAXI();
+#ifdef TRACEABLE
+                Trace(New, RidA, A, A+4*R);  New=0;
+#endif // TRACEABLE
+				A += 4*R;					    		break;	// @AS
+			case 070: SDUP();
+#ifdef TRACEABLE
+                Trace(0, RidT, T, IMM);
+#endif // TRACEABLE
+                T = IMM;  goto Im;	                            // LIT
+
+			case 072: SDROP();					        break;	// DROP
+			case 073: addr = SP & (RAMsize-1);  M = RAM[addr];  // ROT
+#ifdef TRACEABLE
+                Trace(New, addr, RAM[addr], N);  RAM[addr]=N;
+                Trace(0, RidN, N, T);    N = T;
+                Trace(0, RidT, T, M);    T = M;  New=0; break;
+#else
+                RAM[addr]=N;  N=T;  T=M;  break;
+#endif // TRACEABLE
+			case 074: RDUP();   slot=-1;                	    // CALL
+#ifdef TRACEABLE
+                Trace(0, RidR, R, PC);    R = PC;
+                Trace(0, RidPC, PC, IMM);  NextPC = IMM;  goto Im;
+#else
+                R = PC;  NextPC = IMM;  goto Im;
+#endif // TRACEABLE
+			case 075:
+#ifdef TRACEABLE
+                Trace(New, RidT, T, T + 1);  New=0;
+#endif // TRACEABLE
+			    T = T + 1;                              break;	// 1+
+			case 076: RDUP();	                                // R>
+#ifdef TRACEABLE
+                Trace(0, RidR, R, T);
+#endif // TRACEABLE
+                R = T;
+                SDROP();      	                        break;
+			case 077: M = N;  	                                // SWAP
+#ifdef TRACEABLE
+                Trace(New, RidN, N, T);  N = T;  New=0;
+                Trace(0, RidT, T, M);    T = M;         break;
+#else
+                N = T;  T = M;  break;
+#endif // TRACEABLE
+
+			default:                           		    break;	//
+		}
+		slot -= 6;
+	}
+    if (slot == -4) {
+        opcode = IR & 3;
+        goto NextOp;
+    }
+Im: PC = NextPC;
+    return PC;
+}
 
 void SetDbgReg(uint32_t n) {    // write to the debug mailbox
     DebugReg = n;
@@ -42,27 +428,27 @@ uint32_t GetDbgReg(void) {      // read from the debug mailbox
 /// 3 = end programming sequence.
 /// 10000 etc are old stuff, will be removed.
 // USER function: Lower IR = opUSER<<14 + func#
-static int32_t InternalFn (uint32_t T, uint32_t N, int fn ) {
+static int32_t InternalFn (uint32_t S0, uint32_t S1, int fn ) {
 	uint32_t i;
 	static uint32_t celladdr = 0xFFFFFFFF;      // address disabled
 	switch (fn) {
 		case 0:  // erase a 4KB "flash sector" at address T
-		    if (N != 0xc0dedead) return -61;
-            if (T >= (ROMsize-1024)*4) return -9;
+		    if (S1 != 0xc0dedead) return -61;
+            if (S0 >= (ROMsize-1024)*4) return -9;
 		    for (i=0; i<1024; i++)              // erase a 4K sector
-                ROM[i+(T/4)]=0xFFFFFFFF;
+                ROM[i+(S0/4)]=0xFFFFFFFF;
             return 0;
 		case 1:  // start programming at address T
-		    if (N != 0xc0debabe) return -61;
-            if (T >= (ROMsize-1024)*4) return -9;
-            if (T & 3) return -23;              // alignment problem
-            celladdr = T>>2;                    // valid start address
+		    if (S1 != 0xc0debabe) return -61;
+            if (S0 >= (ROMsize-1024)*4) return -9;
+            if (S0 & 3) return -23;              // alignment problem
+            celladdr = S0>>2;                    // valid start address
             return 0;
 		case 2:  // program the next cell
             if (celladdr >= (ROMsize-1024)*4) return -9;
             i = ROM[celladdr];			        // ROM address
-            if (~(i&T)) return -60;             // not erased
-            ROM[celladdr++] = i & T;
+            if (~(i&S0)) return -60;             // not erased
+            ROM[celladdr++] = i & S0;
             return 0;
         case 3:  // end programming sequence
             celladdr = 0xFFFFFFFF;
@@ -71,190 +457,23 @@ static int32_t InternalFn (uint32_t T, uint32_t N, int fn ) {
                         ROM[i]=0xFFFFFFFF;
                     return 0;
 		case 10001:  //
-                    if (T < ROMsize*4) {        // N is byte address
-                        if (T & 3) return -23;  // alignment problem
-                        i = ROM[T/4];			// ROM address
-                        if (~(i&N)) return -60; // not erased
-                        ROM[T/4] = i & N;
+                    if (S0 < ROMsize*4) {        // N is byte address
+                        if (S0 & 3) return -23;  // alignment problem
+                        i = ROM[S0/4];			// ROM address
+                        if (~(i&S1)) return -60; // not erased
+                        ROM[S0/4] = i & S1;
                         return 0;
                     } else {
                         return -9;              // bad range
                     }
 		case 10002:
 //			printf("\nDump[%X], %d words", T, N);
-			N = N & 0xFF;	// limit to 256 words
-			for (i=0; i<N; i++) {
-				if (i%8 == 0) printf("\n%04X: ", (T+i*4));
-				printf("%08X ", RAM[(T/4)+i]);
+			S1 = S1 & 0xFF;	// limit to 256 words
+			for (i=0; i<S1; i++) {
+				if (i%8 == 0) printf("\n%04X: ", (S0+i*4));
+				printf("%08X ", RAM[(S0/4)+i]);
 			}   printf("\n");
 			return 0;
-		default: return UserFunction (T, N, fn);
+		default: return UserFunction (S0, S1, fn);
 	}
-}
-
-/// IR is the instruction group.
-/// RunState is 0 when PC post-increments, other when not.
-
-int32_t VMstep(uint32_t IR, int RunState) {
-
-	static uint32_t T = 0;	 static uint8_t RP = 64;
-	static uint32_t N = 0;	 static uint8_t SP = 32;
-	static uint32_t R = 0;	 static uint8_t UP = 64;
-	static uint32_t A = 0;
-	static uint32_t B = 0;	 static uint32_t PC = 0;
-
-	uint32_t M; // temporary
-	int opcode, slot;
-	unsigned int addr, shift;
-
-	slot = 26;
-	while (slot>=0) {
-		opcode = (IR >> slot) & 0x3F;	   // slot = 26, 20, 14, 8, 2
-		switch (opcode) {
-			case 000:									break;	// NOOP
-			case 001: SDUP;								break;	// DUP
-			case 002: RDROP;  PC = R;	slot = -1;		break;	// ;
-			case 003: T = T + N;	  SNIP;				break;	// +
-			case 004: slot = -1;						break;	// NO|
-			case 005: SDUP;   T = R;					break;	// R
-			case 006: RDROP;  PC = R;					break;	// ;|
-			case 007: T = T & N;	  SNIP;				break;	// AND
-
-			case 010: if (T!=0) slot = -1;				break;	// NIF|
-			case 011: M = N;  SDUP;  T = M;				break;	// OVER
-			case 012: SDUP;  T = R;  RDROP;				break;	// R>
-			case 013: T = T ^ N;	  SNIP;				break;	// XOR
-			case 014: if (T==0) slot = -1;				break;	// IF|
-			case 015: SDUP;  T = A;						break;	// A
-			case 016:				 RDROP;				break;	// RDROP
-			case 017:									break;	//
-
-			case 020: if (T<0)	 slot = -1;				break;	// +IF|
-			case 021: A += 4*R;							break;	// !AS (faked)
-			case 022: SDUP;								        // @A
-                addr = A>>2;
-				if (addr < ROMsize) {
-                    T = ROM[addr];
-                } else {
-                    addr -= ROMsize;
-                    if (addr < RAMsize) {
-                        T = RAM[addr];
-                    } else {
-                        T = 0;
-                    }
-                }									    break;
-			case 023: 									break;
-			case 024: if (T>=0)  slot = -1;				break;	// -IF|
-			case 025: T = T*2;	        				break;	// 2*
-			case 026: SDUP; 									// @A+
-                addr = A>>2;
-				if (addr < ROMsize) {
-                    T = ROM[addr];
-                } else {
-                    addr -= ROMsize;
-                    if (addr < RAMsize) {
-                        T = RAM[addr];
-                    } else {
-                        T = 0;
-                    }
-                }   A += 4;							    break;
-			case 027:									break;	//
-
-			case 030: if (R<0) {slot = -1;}  R--;		break;	// NEXT|
-			case 031: T = (unsigned) T / 2;			break;	// U2/
-			case 032: SDUP; 									// W@A
-                addr = A>>2;  shift = (A&2) * 8;
-				if (addr < ROMsize) {
-                    T = (ROM[addr] >> shift) & 0xFFFF;
-                } else {
-					addr -= ROMsize;
-					if (addr < RAMsize) {
-						T = (RAM[addr] >> shift) & 0xFFFF;
-					} else {
-						T = 0;
-					}
-				}									    break;
-			case 033: A = T;	 SDROP;					break;	// A!
-			case 034: if ((R&0x10000)==0) {slot = 26;}
-			    R--;	                                break;	// REPT|
-			case 035: T = T / 2;			            break;	// 2/
-			case 036: SDUP; 									// C@A
-                addr = A>>2;  shift = (A&3) * 8;
-				if (addr < ROMsize) {
-                    T = (ROM[addr] >> shift) & 0xFF;
-                } else {
-                    addr -= ROMsize;
-                    if (addr < RAMsize) {
-                        T = (RAM[addr] >> shift) & 0xFF;
-                    } else {
-                        T = 0;
-                    }
-                }									    break;
-			case 037: B = T;	 SDROP;					break;	// B!
-
-			case 040: A = (IMM + SP + ROMsize)*4;  	            // SP
-                slot = -1;		                        break;
-			case 041: T = ~T;							break;	// COM
-			case 042: 									        // !A
-				addr = (A>>2) - ROMsize;
-				if (addr < RAMsize) {
-                    RAM[addr] = T;
-                }   SDROP;                              break;
-			case 043: RP = (uint8_t) (T>>2);  SDROP;	break;	// RP!
-			case 044: A = (IMM + RP + ROMsize)*4;  	            // RP
-                slot = -1;		                        break;
-			case 045: M = T; T=DebugReg; DebugReg=M;	break;	// PORT
-			case 046:  									        // !B+
-				addr = (B>>2) - ROMsize;
-				if (addr < RAMsize*4) {
-                    RAM[addr] = T;
-                }   SDROP;  B += 4;                     break;
-			case 047: SP = (uint8_t) (T>>2);  SDROP;	break;	// SP!
-
-			case 050: A = (IMM + UP + ROMsize)*4;  	            // UP
-			    slot = -1;		                        break;
-			case 051:                           		break;	//
-			case 052:  									        // W!A
-                addr = (A>>2) - ROMsize;
-                shift = (A&2) * 8;
-				if (addr < RAMsize) {
-				    M = RAM[addr] & (~(0xFFFF  << shift));
-                    RAM[addr] = ((T & 0xFFFF) << shift) | M;
-                }   SDROP;                              break;
-			case 053: UP = (uint8_t) (T>>2);  SDROP;	break;	// UP!
-
-			case 054: T = T + IMM;   slot = -1;     	break;	// LIT+
-			case 055:               					break;	//
-			case 056:  									        // C!A
-                addr = (A>>2) - ROMsize;
-                shift = (A&3) * 8;
-				if (addr < RAMsize) {
-                    M = RAM[addr] & (~(0xFF  << shift));
-                    M = ((T & 0xFF) << shift) | M;
-					RAM[addr] = M;
-				}   SDROP;                              break;
-			case 057:								    break;	//
-
-			case 060: T=InternalFn(T,N,IMM);  slot=-1;  break;  // USER
-			case 061:                       			break;	//
-			case 062:									break;	//
-			case 063: SNIP;								break;	// NIP
-			case 064: PC = IMM;  slot = -1;			    break;	// JUMP
-			case 065:               					break;	//
-			case 066: A += 4*R;				    		break;	// @AS
-			case 067: SDUP;  T = IMM;	slot = -1;		break;	// LIT
-
-			case 070: M = N;  N = T;  T = M;		    break;	// SWAP
-			case 071:                       			break;	//
-			case 072: SDROP;					        break;	// DROP
-			case 073: M=RAM[SP];  RAM[SP]=N;  N=T; T=M; break;  // ROT
-			case 074: RDUP;  R=PC;  PC=IMM;  slot=-1;   break;	// CALL
-			case 075: T = T + 1;            			break;	// 1+
-			case 076: RDUP; R=T; SDROP;            	    break;	// R>
-			default:                           		    break;	//
-		}
-		slot -= 6;
-	}
-	if (RunState) return PC;
-	return PC+1;
 }
