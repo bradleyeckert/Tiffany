@@ -38,10 +38,17 @@ int main(int argc, char *argv[]) {
             argline[argidx] = 0;		// zero-terminated string
         }
     }
-    if (argc) {
-        if (0==strcmp(argv[1], "-t")) { // enter test mode
-            vmTEST();
-            return 0;
+    if (argc>1) {
+        if (strlen(argv[1]) == 2) {
+            if (argv[1][0] == '-') {    // starts with a "-?" command
+                c = argv[1][1];
+                switch (c) {
+                case 't': vmTEST(); return 0;
+                default:
+                    printf("Unknown native command -%c", c);
+                    return 0;
+                }
+            }
         }
     }
     vmTEST(); // enter test anyway

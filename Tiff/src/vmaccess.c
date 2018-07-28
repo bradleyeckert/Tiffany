@@ -55,10 +55,22 @@ void StoreByte (uint8_t N, uint32_t addr) {  // Write to RAM
     DbgGroup(opDUP, opPORT, opCstoreA, opSetA, opNOOP);
 }
 
-// depreciated, fix up
-void EraseROM (void) {  // Erase internal ROM
-    VMstep(opUSER*0x4000L + 10000, 1);
+void EraseBlock (int address) {  // Erase ROM block at address
+    SetDbgReg(0xc0dedead);
+    DbgGroup(opDUP, opPORT, opSKIP, opNOOP, opNOOP);
+    SetDbgReg(address);
+    DbgGroup(opDUP, opPORT, opNOOP, opNOOP, opUSER);    // user fn 0
+    DbgGroup(opDROP, opDROP, opSKIP, opNOOP, opNOOP);
 }
+void EraseROM (void) {                      // Erase internal ROM
+    int i;
+    for (i=0; i<(ROMsize>>10); i++) {
+        EraseBlock(i*4096);
+    }
+}
+
+// depreciated, fix up
+
 void StoreROM (uint32_t N, uint32_t addr) {  // Store cell to internal ROM
     SetDbgReg(N);
     DbgGroup(opDUP, opPORT, opSKIP, opNOOP, opNOOP);
@@ -80,14 +92,40 @@ void vmRAMstoreStr(char *s, unsigned int address){
         StoreByte(c, address++);
     }
 }
-// use the native dump as a sanity check
-void CellDump(int length, int addr) {
-    SetDbgReg(length);
-    DbgGroup(opDUP, opPORT, opSKIP, opNOOP, opNOOP);
-    SetDbgReg(addr);
-    DbgGroup(opDUP, opPORT, opSKIP, opNOOP, opNOOP);
-    VMstep(opUSER*0x4000L + 10002, 1);
-    DbgGroup(opDROP, opDROP, opSKIP, opNOOP, opNOOP);
+
+void CellDump(int length, uint32_t addr) {
+    uint32_t line[8];                       // buffer for ASCII
+    uint8_t c;  int i, j, pad, len;
+    if (length>4096) length=4096;           // limit to reasonable length
+    addr = (addr+3) & 0xFFFFFFFC;           // align
+    while (length) {
+        printf("\n%04X ", addr);            // address
+        if (length<8) {
+            len = length;  pad = 8 - length;
+        } else {
+            len = 8;  pad = 0;
+        }
+        for (i=0; i<len; i++) {             // data
+            line[i] = FetchCell(addr);
+            addr = addr + 4;
+            printf("%08X ", line[i]);
+        }
+        for (i=0; i<pad; i++) {             // padding
+            printf("         ");
+        }
+        for (i=0; i<len; i++) {             // data
+            for (j=0; j<4; j++) {
+                c = (line[i] >> (j*8)) & 0xFF;
+                if (c < ' ') c = '.';
+                if ((c & 0x7F) == 0x7F) c = '.';
+                printf("%c", c);
+            }
+        }
+        for (i=0; i<pad; i++) {             // padding
+            printf("    ");
+        }
+        length -= len;
+    }
 }
 
 /// Get registers the easy way if TRACEABLE, the hard way if not.
@@ -188,7 +226,7 @@ void DumpIR(uint32_t IR) {
         opcode = (IR >> slot) & 0x3F;
 NextOp: if (opcode>31)
             if ((opcode&3)==0) { // immediate opcode uses prefix format
-                printf("0x%X ", IR & ~(0xFFFFFFFF << opcode));
+                printf("0x%X ", IR & ~(0xFFFFFFFF << slot));
                 slot=0;
             }
         printf("%s ", name[opcode]);
@@ -226,11 +264,9 @@ void DumpRegs(void) {
     DumpROM();
 }
 
-
 /// Keyboard input is raw, from tiffEKEY().
 /// Use single keystrokes to dump various parameters, calculator-style.
 /// Note: IDE may cook keyboard input, you should run from the command line.
-
 
 uint32_t Param = 0;     // parameter
 
@@ -247,8 +283,8 @@ void vmTEST (void) {
     EraseROM();
 Re: DumpRegs();
     SetCursorPosition(0, 15);           // help along the bottom
-    printf("(0..F)=digit, -=Clear, O=Pop, P=Push, S=Step, ");
-    printf("X=Execute, @=Fetch, \\=POR, ESC=Bye\n");
+    printf("(0..F)=digit, -=Clear, O=Pop, P=Push, R=Refresh, S=Step,\n");
+    printf("U = Dump, X=Execute, @=Fetch, \\=POR, ESC=Bye\n");
 
     while (1) {
         ShowParam();
@@ -258,24 +294,21 @@ Re: DumpRegs();
             Param = Param*16 + (c&0x0F);
         } else {
             switch (c) {
-                case 27: SetCursorPosition(0, 16); return; // ESC = bye
+                case 27: SetCursorPosition(0, 19); return; // ESC = bye
                 case '-':  Param=0;  break;                // ^C = clear
-                case 4:  CellDump(32, Param);   break;     // ^D = dump
-
                 case 'p':
                 case 'P': PushNum(Param);   goto Re;       // P = Push
                 case 'o':
                 case 'O': Param = PopNum();  goto Re;      // O = Pop
+                case 'r':
+                case 'R': goto Re;                         // R = Refresh
+                case 'u':
+                case 'U': CellDump(32, Param);   break;    // U = dump
                 case 'x':
                 case 'X': VMstep(Param,0);   goto Re;      // X = Execute
                 case '@': Param = FetchCell(Param); break; // @ = Fetch
-                case 23: StoreCell(Param, 1024);   break;  // ^W = Write
-                case 24: StoreByte(Param, 100);    break;  // ^X = Write8
-                case 25: Param = FetchByte(Param); break;  // ^Y = Read
-                case 26: StoreByte(Param, 1024);   break;  // ^Z = Write
                 case '\\': VMpor();   goto Re;             // \ = Reset
-                default:
-                    printf("%d   ", c);
+                default: printf("%d   ", c);
             }
         }
     }

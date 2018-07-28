@@ -167,6 +167,7 @@ static void StoreX (uint32_t addr, uint32_t data, int shift, int mask) {
     }
 #endif // TRACEABLE
 
+////////////////////////////////////////////////////////////////////////////////
 /// Access to the VM is through four functions:
 ///    VMstep       // Execute an instruction group
 ///    VMpor        // Power-on reset
@@ -183,13 +184,21 @@ void VMpor(void) {
 int32_t VMstep(uint32_t IR, int RunState) {
 	uint32_t M;  int slot;
 	unsigned int opcode, addr;
-	uint32_t NextPC = PC+1;     // default next PC
 
-	if (RunState) NextPC = PC;  // '1' = don't change the PC
+// The PC is incremented at the same time the IR is loaded. Slot0 is next clock.
+// The instruction group returned from memory will be latched in after the final
+// slot executes. In the VM, that is simulated by a return from this function.
+// Some slots may alter the PC. The last slot may alter the PC, so an extra
+// cycle is taken after the instruction group to resolve the instruction flow.
+// If the PC has been steady long enough for the instruction to show up, it's
+// latched into IR. Otherwise, there will be some delay while memory returns the
+// instruction.
+
+	if (!RunState) PC = PC+1;
 
 	slot = 26;
 	while (slot>=0) {
-		opcode = (IR >> slot) & 0x3F;	   // slot = 26, 20, 14, 8, 2
+		opcode = (IR >> slot) & 0x3F;	// slot = 26, 20, 14, 8, 2
 #ifdef TRACEABLE
         if (slot==26) New=3; else New=1;
 #endif // TRACEABLE
@@ -200,7 +209,7 @@ NextOp: switch (opcode) {
 #ifdef TRACEABLE
                 Trace(New, RidPC, PC, R);  New=0;
 #endif // TRACEABLE
-                NextPC = R;  RDROP();  slot = 0;        break;	// ;
+                PC = R;  RDROP();  slot = 0;            break;	// ;
 			case 003:
 #ifdef TRACEABLE
                 Trace(New, RidT, T, T + N);  New=0;
@@ -216,7 +225,7 @@ NextOp: switch (opcode) {
 #ifdef TRACEABLE
                 Trace(New, RidPC, PC, R);  New=0;
 #endif // TRACEABLE
-                NextPC = R;	 RDROP();      				break;	// ;|
+                PC = R;	 RDROP();      				    break;	// ;|
 			case 007:
 #ifdef TRACEABLE
                 Trace(New, RidT, T, T & N);  New=0;
@@ -304,7 +313,7 @@ GetPointer:
 #ifdef TRACEABLE
                 Trace(New, RidA, A, M);  New=0;
 #endif // TRACEABLE
-			    A = M;  goto Im;
+			    A = M;  return PC;
 			case 041:
 #ifdef TRACEABLE
                 Trace(New, RidT, T, ~T);  New=0;
@@ -339,21 +348,21 @@ GetPointer:
                 Trace(New, RidUP, UP, T>>2);  New=0;
 #endif // TRACEABLE
 			    UP = (uint8_t) (T>>2);  SDROP();	    break;	// UP!
-            case 054: goto Im; // reserved for future IMM opcode
+            case 054: return PC; // reserved for future IMM opcode
 			case 056: StoreX(A>>2, T, (A&3)*8, 0xFF);   break;  // C!A
 
 			case 060: M = InternalFn(T, N, IMM);                // USER
 #ifdef TRACEABLE
                 Trace(New, RidT, T, M);  New=0;
 #endif // TRACEABLE
-                T = M;  goto Im;
+                T = M;  return PC;
 
 			case 063: SNIP();							break;	// NIP
 			case 064:
 #ifdef TRACEABLE
                 Trace(New, ~9, PC, IMM);  New=0;
 #endif // TRACEABLE
-			    NextPC = IMM;  goto Im;	                        // JUMP
+			    PC = IMM;  return PC;                           // JUMP
 
 			case 066: ReceiveAXI();
 #ifdef TRACEABLE
@@ -364,7 +373,7 @@ GetPointer:
 #ifdef TRACEABLE
                 Trace(0, RidT, T, IMM);
 #endif // TRACEABLE
-                T = IMM;  goto Im;	                            // LIT
+                T = IMM;  return PC;                            // LIT
 
 			case 072: SDROP();					        break;	// DROP
 			case 073: addr = SP & (RAMsize-1);  M = RAM[addr];  // ROT
@@ -378,9 +387,9 @@ GetPointer:
 			case 074: RDUP();   slot=-1;                	    // CALL
 #ifdef TRACEABLE
                 Trace(0, RidR, R, PC);    R = PC;
-                Trace(0, RidPC, PC, IMM);  NextPC = IMM;  goto Im;
+                Trace(0, RidPC, PC, IMM);  PC = IMM;  return PC;
 #else
-                R = PC;  NextPC = IMM;  goto Im;
+                R = PC;  PC = IMM;  return PC;
 #endif // TRACEABLE
 			case 075:
 #ifdef TRACEABLE
@@ -409,7 +418,6 @@ GetPointer:
         opcode = IR & 3;
         goto NextOp;
     }
-Im: PC = NextPC;
     return PC;
 }
 
@@ -426,54 +434,31 @@ uint32_t GetDbgReg(void) {      // read from the debug mailbox
 /// 1 = start programming at address T, N is an enable key: 0xc0debabe.
 /// 2 = program the next 32-bit word T to flash.
 /// 3 = end programming sequence.
-/// 10000 etc are old stuff, will be removed.
-// USER function: Lower IR = opUSER<<14 + func#
 static int32_t InternalFn (uint32_t S0, uint32_t S1, int fn ) {
 	uint32_t i;
 	static uint32_t celladdr = 0xFFFFFFFF;      // address disabled
 	switch (fn) {
 		case 0:  // erase a 4KB "flash sector" at address T
-		    if (S1 != 0xc0dedead) return -61;
-            if (S0 >= (ROMsize-1024)*4) return -9;
+		    if (S1 != 0xc0dedead) { return -61; }
+            if (S0 > (ROMsize-1024)*4) { return -9; }
 		    for (i=0; i<1024; i++)              // erase a 4K sector
                 ROM[i+(S0/4)]=0xFFFFFFFF;
             return 0;
 		case 1:  // start programming at address T
-		    if (S1 != 0xc0debabe) return -61;
-            if (S0 >= (ROMsize-1024)*4) return -9;
-            if (S0 & 3) return -23;              // alignment problem
+		    if (S1 != 0xc0debabe) { return -61; }
+            if (S0 >= (ROMsize-1024)*4) { return -9; }
+            if (S0 & 3) { return -23; }          // alignment problem
             celladdr = S0>>2;                    // valid start address
             return 0;
 		case 2:  // program the next cell
-            if (celladdr >= (ROMsize-1024)*4) return -9;
+            if (celladdr >= (ROMsize-1024)*4) { return -9; }
             i = ROM[celladdr];			        // ROM address
-            if (~(i&S0)) return -60;             // not erased
+            if (~(i&S0)) { return -60; }        // not erased
             ROM[celladdr++] = i & S0;
             return 0;
         case 3:  // end programming sequence
             celladdr = 0xFFFFFFFF;
             return 0;
-		case 10000: for (i=0; i<ROMsize; i++)
-                        ROM[i]=0xFFFFFFFF;
-                    return 0;
-		case 10001:  //
-                    if (S0 < ROMsize*4) {        // N is byte address
-                        if (S0 & 3) return -23;  // alignment problem
-                        i = ROM[S0/4];			// ROM address
-                        if (~(i&S1)) return -60; // not erased
-                        ROM[S0/4] = i & S1;
-                        return 0;
-                    } else {
-                        return -9;              // bad range
-                    }
-		case 10002:
-//			printf("\nDump[%X], %d words", T, N);
-			S1 = S1 & 0xFF;	// limit to 256 words
-			for (i=0; i<S1; i++) {
-				if (i%8 == 0) printf("\n%04X: ", (S0+i*4));
-				printf("%08X ", RAM[(S0/4)+i]);
-			}   printf("\n");
-			return 0;
 		default: return UserFunction (S0, S1, fn);
 	}
 }

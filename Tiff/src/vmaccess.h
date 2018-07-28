@@ -20,8 +20,5 @@ void StoreROM (uint32_t N, uint32_t addr);         // Store cell to internal ROM
 void vmRAMfetchStr(char *s, unsigned int address, uint8_t length); // get string
 void vmRAMstoreStr(char *s, unsigned int address);     // Store unbounded string
 
-// use the native dump as a sanity check, will remove...
-void CellDump(int length, int addr);
-
 #define dbgSP0  ((ROMsize+32)*4)
 #define dbgRP0  ((ROMsize+64)*4)
