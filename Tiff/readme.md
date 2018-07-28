@@ -16,6 +16,7 @@ The internal ROM is erased to -1. If a filename exists, it loads it into ROM in 
 - `O` Pop P from the data stack.
 - `P` Push P to the data stack.
 - `R` Refresh the screen, useful after a Dump.
+- `S` or `SPACE` Step instruction group in ROM.
 - `U` Dumps 128 bytes starting from address P.
 - `X` Execute the instruction group in P.
 - '@' Fetch the cell at address P, leave it in P.
