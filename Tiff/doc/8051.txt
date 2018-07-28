@@ -1,0 +1,55 @@
+8051 musings
+
+Getting opcode from IR in direct RAM:
+NextSlot is jump offset from Slot0 (initially 0)
+Instruction timings for LB12 with prefetch on (slower jumps)
+
+Next:	mov dptr, #Slot0
+	mov a, NextSlot
+	jmp @a+dptr	;11
+
+Slot0:  mov A, IR0
+	rrc A
+	rrc A
+	mov NextSlot, #Slot1-Slot0
+	sjmp dispatch	;15
+Slot1:  mov A, IR1
+	swap A
+	anl A, #0Fh
+	mov R0, A
+	mov A, IR0
+	swap A
+	anl A, #30h
+	orl A, R0
+	mov NextSlot, #Slot2-Slot0
+	sjmp dispatch	;21
+Slot2:  mov A, IR1
+	rlc A
+	rlc A
+	anl A, #3Ch
+	mov R0, A
+	mov A, IR2
+	rrc A
+	rrc A
+	swap A
+	anl A, #3
+	orl A, R0
+	mov NextSlot, #Slot3-Slot0
+	sjmp dispatch	;24
+Slot3:	mov A, IR2	
+	mov NextSlot, #Slot4-Slot0
+	sjmp dispatch	;10
+Slot4:	mov A, IR3	
+	rrc A
+	rrc A
+	mov NextSlot, #Slot5-Slot0
+	sjmp dispatch	;12
+Slot5:  mov A, IR3
+	anl A, #3
+	mov NextSlot, #Slot6-Slot0
+	sjmp dispatch	;12	
+Slot6:  ;code to end the group...
+
+Average of 17 clocks to jump to the code of interest, another 6 to jump back to Next.
+So, 72/21 peak MIPs (NOOPs), maybe 15 cycles average. For example, a 32-bit 2* with T
+in R4-R7 is 12 cycles. Should be 2 MIPs average.
