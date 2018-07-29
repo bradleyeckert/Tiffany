@@ -30,6 +30,8 @@ The command line is formed by concatenating any remaining argv[] strings from th
 
 As of 7/28/18, the interpreter recognizes some keywords (using cheap C tricks) in the absence of a Forth dictionary structure. That will be next.
 
+These keywords are: `bye`, `\`, `.`, `+cpu`, and `-cpu`. The latter two enable and disable the raw CPU display used in low level debugging.
+
 ## To Do
 Stack reporting, color change for Forth output.
 
