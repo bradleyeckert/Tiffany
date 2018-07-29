@@ -267,6 +267,7 @@ void InitializeTIB(void) {
     StoreCell(STATUS, FOLLOWER);  	    // only one task
     StoreCell(TiffRP0, R0);             // USER vars in terminal task
     StoreCell(TiffSP0, S0);
+    StoreCell(TIB, TIBB);               // point to TIB
     StoreCell(0, STATE);
 }
 
@@ -516,7 +517,7 @@ Re: DumpRegs();
     SetCursorPosition(0, 15);           // help along the bottom
     printf("(0..F)=digit, Enter=Clear, O=pOp, P=Push, R=Refresh, X=eXecute, \\=POR, ESC=Bye\n");
     #ifdef TRACEABLE
-    printf("G=Goto, S=Step, @=Fetch, U=dUmp, H=History, W=WipeHistory, Y=Redo, Z=Undo \n");
+    printf("G=Goto, S=Step, @=Fetch, U=dUmp, W=WipeHistory, Y=Redo, Z=Undo \n");
     #else
     printf("G=Goto, S=Step, @=Fetch, U=dUmp\n");
     #endif

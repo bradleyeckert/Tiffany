@@ -73,8 +73,6 @@ int main(int argc, char *argv[]) {
             }
         }
     }
-    BinaryLoad("foo.bin");
-    vmTEST(); // test anyway in IDE
     tiffQUIT(argline);
 bye:
 #ifdef TRACEABLE
