@@ -41,7 +41,6 @@ REPT  if R>=0, 0 → slot | R-1 → R
 SP    SP+IMM → A                  A = {SP+IMM, RP+IMM, UP+IMM, ~IMM, A+k2}
 RP    RP+IMM → A                  B = {T, B+4}
 UP    UP+IMM → A                  IMM is always unsigned.
-LIT+  T+IMM → T
 USER  User defined API or HW function, T = func(IMM, T) or func(IMM, T, N)
 JUMP  IMM → PC
 LIT   IMM → T → N  → RAM[--SP]	
@@ -95,7 +94,7 @@ DROP  RAM[SP++] → N → T
 - User variable store:  Lit_Uservar UP !A
 - ABS: -IF| COM 1+ |
 
-Conditional skip instructions skip the rest of the instruction group, which could be up to 5 slots. This eliminates the branch overhead for short IF THEN statements and allows for more complex combinations of conditional branches and calls. The syntax of the skip instructions uses vertical bars to delineate the opcodes that are intended to fit in one instruction group. The compiler will skip to the next group if there are insufficient slots to fit it, or complain if it’s too big.
+Conditional skip instructions skip the remainder of the instruction group, which could be up to 5 slots. This eliminates the branch overhead for short IF THEN statements and allows for more complex combinations of conditional branches and calls. The syntax of the skip instructions uses vertical bars to delineate the opcodes that are intended to fit in one instruction group. The compiler will skip to the next group if there are insufficient slots to fit it, or complain if it’s too big.
 
 The SP, RP, and UP instructions are used to address PICK, Local, and USER variables respectively. After loading the address into A using one of these, you can use any word/halfword/byte fetch or store opcode.
 
@@ -103,7 +102,7 @@ Jumps and calls use unsigned absolute addresses of width 2, 8, 14, 20, or 26 bit
 
 The RAM used by the CPU core is relatively small. To access more memory, you would connect the AXI4 bus to other memory types such as single-port SRAM or a DRAM controller. Burst transfers use a !AS or @BS instruction to issue the address (with burst length=R) and stream that many words to/from external memory. Code is fetched from the AXI4 bus when outside of the internal ROM space. Depending on the implementation, AXI has excess latency to contend with. This doesn’t matter if most time is spent in internal ROM.
 
-In a hardware implementation, ; performs return chaining if an interrupt is pending. The PC is loaded with an interrupt vector rather than being popped off the return stack. The ISR’s ; will resume normal operation. There is only one priority level. A priority encoder determines the interrupt vector taken. When the tail-chain occurs, an ACK is sent to the corresponding interrupt source. This takes care of critical sections, relieves the ISR of the need to save registers, and avoids the verification headaches associated with asynchronous interrupts. It’s the hardware equivalent of PAUSE.
+In a hardware implementation, the instruction group provides natural protection of atomic operations from interrupts, since the ISR is held off until the group is finished. A nice way of handling interrupts in a Forth system, since calls and returns are so frequent, is to redirect return instructions to take an interrupt-hardware-generated address instead of popping the PC from the return stack. This is a great benefit in hardware verification, as verifying asynchronous interrupts is much more involved. As a case in point, the RTX2000 had an interrupt bug.
 
 A typical Forth kernel will have a number of sequential calls, which take four bytes per call. This is a little bulky, especially if the equivalent macro can fit in a group. The call and return overhead is eight clock cycles, so it’s also slow. Using the macro sequence should replace the call when possible. Code that’s inlineable is copied directly except for its ;, leaving that slot open for the next instruction.
 
