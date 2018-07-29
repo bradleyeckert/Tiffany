@@ -143,6 +143,12 @@ void tiffINTERPRET(void) {
                 PushNum((uint32_t)x);
             }
         }
+        if (Sdepth()<0) {
+            tiffIOR = -4;  tiffCOMMENT();
+        }
+        if (Rdepth()<0) {
+            tiffIOR = -6;  tiffCOMMENT();
+        }
     }
     PopNum();  PopNum();                // keyword is an empty string
 }
@@ -160,7 +166,7 @@ void tiffQUIT (char *cmdline) {
         InitializeTIB();
         StoreCell(0, SOURCEID);     	    // input is keyboard
         StoreCell(0, STATE);     	        // interpret
-        do {
+        while (1) {
             StoreCell(0, TOIN);				// >IN = 0
             StoreCell(0, TIBS);
             source = FetchCell(SOURCEID);
@@ -185,15 +191,20 @@ void tiffQUIT (char *cmdline) {
                 default:	// unexpected
                     StoreCell(0, SOURCEID);
             }
-            tiffINTERPRET(); // interpret the TIBB until it?s exhausted
+            tiffINTERPRET(); // interpret the TIBB until it's exhausted
+            if (tiffIOR) break;
             switch (FetchCell(SOURCEID)) {
-                case 0: printf(" ok\n"); break;
-                case 1: StoreCell(0, SOURCEID); break; // next input is keyboard
-                default: break;
+                case 0:
+                    printf(" ok\n");
+                    break;
+                case 1:
+                    StoreCell(0, SOURCEID);
+                    break; // next input is keyboard
+                default:
+                    break;
             }
-        } while (tiffIOR == 0);
-        // display error type
-        if (tiffIOR == -99999) break;       // produced by BYE
+        }
+        if (tiffIOR == -99999) return;       // produced by BYE
         ErrorMessage(tiffIOR);
         tiffIOR = 0;
     }

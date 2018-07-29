@@ -19,6 +19,8 @@ void EraseROM (void);                                      // Erase internal ROM
 void StoreROM (uint32_t N, uint32_t addr);         // Store cell to internal ROM
 void vmRAMfetchStr(char *s, unsigned int address, uint8_t length); // get string
 void vmRAMstoreStr(char *s, unsigned int address);     // Store unbounded string
+int Rdepth(void);                                          // return stack depth
+int Sdepth(void);                                            // data stack depth
 
 void CreateTrace(void);                  // allocate memory for the trace buffer
 void DestroyTrace(void);                     // free memory for the trace buffer

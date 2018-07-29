@@ -213,7 +213,7 @@ int RedoTrace(void) {
 }
 
 
-
+//---------------------------------------------------------
 /// will be removing this soon
 
 void TraceHist(void) {                  // dump trace history
@@ -240,6 +240,7 @@ void TraceHist(void) {                  // dump trace history
     }
     uHead = uTail; // clear the buffer (for test)
 }
+//---------------------------------------------------------
 
 //==============================================================================
  #endif
@@ -282,10 +283,19 @@ void InitializeTermTCB(void) {
     InitializeTIB();
 }
 
-char* LoadedFilename;
+int Rdepth(void) {                      // return stack depth
+    return (int)(FetchCell(R0) - RegRead(5)) / 4;
+}
+int Sdepth(void) {                      // data stack depth
+    return (int)(FetchCell(S0) - RegRead(6)) / 4;
+}
+
+// Load a ROM image file
+
+char* LoadedFilename;                   // saved filename and format
 int LoadedFileType;
 
-int BinaryLoad(char* filename) {   // Load ROM from binary file
+int BinaryLoad(char* filename) {        // Load ROM from binary file
     FILE *fp;
     uint8_t data[4];
     int length, i;
@@ -354,7 +364,7 @@ void CellDump(int length, uint32_t addr) {
         }
         for (i=0; i<len; i++) {             // data
             for (j=0; j<4; j++) {
-                c = (line[i] >> (j*8)) & 0xFF;
+                c = (uint8_t)((line[i] >> (j*8)) & 0xFF);
                 if (c < ' ') c = '.';
                 if ((c & 0x7F) == 0x7F) c = '.';
                 printf("%c", c);
@@ -370,8 +380,7 @@ void CellDump(int length, uint32_t addr) {
 void DumpDataStack(void){
     int i;  int row = 2;
     int SP0 = FetchCell(S0);
-    int SP = RegRead(6);
-    int depth = (SP0 - SP)/4;
+    int depth = Sdepth();
     if (depth<0) {
         SetCursorPosition(DataStackCol, row++);
         printf("Underflow");
@@ -391,8 +400,7 @@ void DumpDataStack(void){
 void DumpReturnStack(void){
     int i;   int row = 2;
     int SP0 = FetchCell(R0);
-    int SP = RegRead(5);
-    int depth = (SP0 - SP)/4;
+    int depth = Rdepth();
     if (depth<0) {
         SetCursorPosition(ReturnStackCol, row++);
         printf("Underflow");
