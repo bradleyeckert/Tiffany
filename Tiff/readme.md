@@ -33,8 +33,5 @@ As of 7/28/18, the interpreter recognizes some keywords (using cheap C tricks) i
 These keywords are: `bye`, `\`, `.`, `+cpu`, and `-cpu`. The latter two enable and disable the raw CPU display used in low level debugging.
 
 ## To Do
-Stack reporting, color change for Forth output.
-
 Real headers in ROM space, and Mforth compilation.
 
-Split screen allowing scrolling Forth on the bottom and the detailed register and stack dump on top.
