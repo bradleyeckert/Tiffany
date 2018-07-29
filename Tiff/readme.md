@@ -31,7 +31,7 @@ The command line is formed by concatenating any remaining argv[] strings from th
 As of 7/28/18, the interpreter recognizes some keywords (using cheap C tricks) in the absence of a Forth dictionary structure. That will be next.
 
 ## To Do
-Stack depth checking, stack reporting, color change for Forth output.
+Stack reporting, color change for Forth output.
 
 Real headers in ROM space, and Mforth compilation.
 
