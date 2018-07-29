@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "vm.h"
-// #include "tiff.h"
+#include "tiff.h"
 #include "vmaccess.h"
 #include <string.h>
 #include <ctype.h>
@@ -54,6 +54,61 @@ void StoreByte (uint8_t N, uint32_t addr) {  // Write to RAM
     SetDbgReg(N);
     DbgGroup(opDUP, opPORT, opCstoreA, opSetA, opNOOP);
 }
+void SetPCreg (uint32_t PC) {  // Set new PC
+    SetDbgReg(PC);
+    DbgGroup(opDUP, opPORT, opPUSH, opEXIT, opNOOP);
+}
+
+void vmRAMfetchStr(char *s, unsigned int address, uint8_t length){
+    int i;  char c;                         // Get a string from RAM
+    for (i=0; i<length; i++) {
+        c = FetchByte(address++);
+        *s++ = c;
+    }   *s++ = 0;                           // end in trailing zero
+}
+void vmRAMstoreStr(char *s, unsigned int address){
+    char c;                                 // Store a string to RAM,
+    while ((c = *s++)){                     // not including trailing zero
+        StoreByte(c, address++);
+    }
+}
+
+/// Get registers the easy way if TRACEABLE, the hard way if not.
+/// Note: The B register is not readable by the debugger (there's no opcode for it)
+#ifdef TRACEABLE
+extern uint32_t VMreg[10];
+    uint32_t RegRead(int ID) {
+        switch(ID) {
+            case 0:
+            case 1:
+            case 2:
+            case 3: return VMreg[ID];
+            case 5:
+            case 6:
+            case 7: return 4*(VMreg[ID] + ROMsize);
+            case 8: return 4*VMreg[ID];
+            default: return 0;
+        }
+    }
+#else
+uint32_t RegRead(int ID) {
+    switch(ID) {
+        case 0: return DbgGroup(opDUP, opPORT, opDROP, opSKIP, opNOOP); // T
+        case 1: return DbgGroup(opOVER, opPORT, opDROP, opSKIP, opNOOP);// N
+        case 2: return DbgGroup(opR, opPORT, opDROP, opSKIP, opNOOP);   // R
+        case 3: return DbgGroup(opA, opPORT, opDROP, opSKIP, opNOOP);   // A
+        case 5: VMstep((opA<<8) + opRP*4, 1);                           // RP
+            return DbgGroup(opA, opPORT, opDROP, opSetA, opNOOP);
+        case 6: VMstep((opA<<8) + opSP*4, 1);                           // SP
+            return (DbgGroup(opA, opPORT, opDROP, opSetA, opNOOP) + 4);
+            // The SP is offset due to saving A on the stack
+        case 7: VMstep((opA<<8) + opUP*4, 1);                           // UP
+            return DbgGroup(opA, opPORT, opDROP, opSetA, opNOOP);
+        case 8: return (DbgPC*4); // Don't make this the first RegRead  // PC
+        default: return 0;
+    }
+}
+#endif // TRACEABLE
 
 void EraseBlock (int address) {  // Erase ROM block at address
     SetDbgReg(0xc0dedead);
@@ -69,6 +124,85 @@ void EraseROM (void) {                      // Erase internal ROM
     }
 }
 
+#ifdef TRACEABLE
+//==============================================================================
+// The trace buffer is a power-of-2 sized array of state change structures.
+// Size is set in config.h
+
+static uint32_t uHead;
+static uint32_t uTail;
+static uint32_t uMask;
+
+struct StateChange {
+    uint32_t ID;                // packed type and ID
+    uint32_t Old;               // previous value
+    uint32_t New;               // next value
+};
+
+// Let the compiler manage large static arrays instead of malloc etc.
+struct StateChange StateChanges[1<<TraceDepth];
+
+void CreateTrace(void) {    // allocate memory for the trace buffer
+    uMask = (1<<TraceDepth) - 1;               // AND with indices
+    uHead = 0;  uTail = 0;
+}
+
+void DestroyTrace(void) {       // free memory for the trace buffer
+}
+/// The Trace function tracks VM state changes using these parameters:
+/// Type of state change: 0 = unmarked, 1 = new opcode, 2 or 3 = new group;
+/// Register ID: Complement of register number if register, memory if other;
+/// Old value: 32-bit.
+/// New value: 32-bit.
+
+int Tracing;
+
+unsigned int TraceElements (void) {     // How many elements are in the trace history?
+    return ((uHead - uTail) & uMask);
+}
+void Trace(unsigned int Type, int32_t ID, uint32_t Old, uint32_t New){
+    uint32_t packedID, idx;
+    if (Tracing) {
+        if (TraceElements() == uMask) { // is it topped out?
+            uTail = (uTail+1) & uMask;  // drop the oldest point
+        }
+        packedID = ((unsigned)ID & 0xFFFFFFF) | ((Type & 0x0F) << 28);
+        idx = uHead & uMask;
+        StateChanges[idx].ID = packedID;
+        StateChanges[idx].Old = Old;
+        StateChanges[idx].New = New;
+        uHead = (uHead + 1) & uMask;
+    }
+}
+void TraceHist(void) {                  // dump trace history
+    uint32_t size = TraceElements();
+    uint32_t ptr = uHead;
+    uint32_t packedID, ID;  int Type;
+    int col = 0;
+    if (size>31) size=32;               // limit the size
+    printf("Tail=%d, Head=%d, Mask=%X\n", uTail, uHead, uMask);
+    while (size--) {
+        packedID = StateChanges[ptr].ID;
+        Type = packedID >> 28;
+        ID = packedID & 0xFFFFFFF;
+        printf("%d ", Type);
+        if (ID & 0x8000000) {           // negative is register
+            printf("R[%X] ", (~ID & 0xFF));
+        } else {
+            printf("%04X ", ID);
+        }
+        printf("%08X %08X ", StateChanges[ptr].Old, StateChanges[ptr].New);
+        ptr = (ptr-1) & uMask;
+        col++;
+        if (col==3) {
+            col=0;  printf("\n");
+        }
+    }
+}
+
+//==============================================================================
+ #endif
+
 // depreciated, fix up
 
 void StoreROM (uint32_t N, uint32_t addr) {  // Store cell to internal ROM
@@ -79,18 +213,81 @@ void StoreROM (uint32_t N, uint32_t addr) {  // Store cell to internal ROM
     VMstep(opUSER*0x4000L + 10001, 1);
     DbgGroup(opDROP, opDROP, opSKIP, opNOOP, opNOOP);
 }
-void vmRAMfetchStr(char *s, unsigned int address, uint8_t length){
-    int i;  char c;                         // Get a string from RAM
-    for (i=0; i<length; i++) {
-        c = FetchByte(address++);
-        *s++ = c;
-    }   *s++ = 0;                           // end in trailing zero
+
+// Initialize useful variables in the terminal task
+void InitializeTIB(void) {
+    SetDbgReg(STATUS);                  // reset USER pointer
+    DbgGroup(opDUP, opPORT, opSetUP, opSKIP, opNOOP);
+    SetDbgReg(TiffRP0);                 // reset return stack
+    DbgGroup(opDUP, opPORT, opSetRP, opSKIP, opNOOP);
+    SetDbgReg(TiffSP0);                 // reset data stack
+    // T ends nonzero after this, so we clear it with XOR.
+    DbgGroup(opDUP, opPORT, opSetSP, opDUP, opXOR);
+    StoreCell(STATUS, FOLLOWER);  	    // only one task
+    StoreCell(TiffRP0, R0);             // USER vars in terminal task
+    StoreCell(TiffSP0, S0);
+    StoreCell(0, STATE);
 }
-void vmRAMstoreStr(char *s, unsigned int address){
-    char c;                                 // Store a string to RAM,
-    while ((c = *s++)){                     // not including trailing zero
-        StoreByte(c, address++);
+
+// Initialize useful variables in the terminal task
+void InitializeTermTCB(void) {
+    VMpor();
+    EraseROM();
+    StoreCell(HeadPointerOrigin, HP);
+    StoreCell(CodePointerOrigin, CP);
+    StoreCell(DataPointerOrigin, DP);
+    StoreCell(10, BASE);
+    InitializeTIB();
+}
+
+char* LoadedFilename;
+int LoadedFileType;
+
+int BinaryLoad(char* filename) {   // Load ROM from binary file
+    FILE *fp;
+    uint8_t data[4];
+    int length, i;
+    uint32_t n;
+    fp = fopen(filename, "rb");
+    if (!fp) { return -1; }             // bad filename
+    LoadedFilename = filename;          // save in case we want to reload the file
+    LoadedFileType = 1;
+    SetDbgReg(0xc0debabe);              // ( 0xc0debabe 0 )
+    DbgGroup(opDUP, opPORT, opDUP, opDUP, opXOR);
+    VMstep(opUSER*0x4000L + 1, 1);      // start flash write sequence at address 0
+    do {
+        memset(data, 255, 4);
+        length = fread(data, 1, 4, fp); // get 4 bytes of data
+        n = 0;
+        for (i = 0; i < 4; i++) {       // make little endian word
+            n += data[i] << (8 * i);
+        }
+        SetDbgReg(n);                   // write to flash
+        VMstep((opPORT<<8) + (opUSER<<2) + 2, 1);
+    } while (length == 4);
+    // end flash write sequence
+    VMstep((opDROP<<14) + (opDROP<<8) + (opUSER<<2) + 3, 1);
+    fclose(fp);
+    return 0;
+}
+
+void ReloadFile(void) {                 // Reload known ROM image file
+    switch(LoadedFileType) {
+        case 1: BinaryLoad(LoadedFilename);
+        default: break;
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// Debugger Display uses full screen with VT100 commands
+/// It does not work with the old Windows CMD console.
+/// Use a real terminal like ConEmu or Linux.
+/// Starting from Windows 10 TH2 (v1511), conhost.exe and cmd.exe support ANSI
+/// and VT100 Escape Sequences out of the box (although they have to be enabled).
+////////////////////////////////////////////////////////////////////////////////
+
+void SetCursorPosition(int X, int Y){
+    printf("\033[%d;%df", Y, X);
 }
 
 void CellDump(int length, uint32_t addr) {
@@ -128,85 +325,44 @@ void CellDump(int length, uint32_t addr) {
     }
 }
 
-/// Get registers the easy way if TRACEABLE, the hard way if not.
-/// Note: The B register is not readable by the debugger (there's no opcode for it)
-#ifdef TRACEABLE
-    extern uint32_t VMreg[10];
-    uint32_t RegRead(int ID) {
-        switch(ID) {
-            case 0:
-            case 1:
-            case 2:
-            case 3: return VMreg[ID];
-            case 5:
-            case 6:
-            case 7: return 4*(VMreg[ID] + ROMsize);
-            case 8: return 4*VMreg[ID];
-            default: return 0;
-        }
-    }
-#else
-    uint32_t RegRead(int ID) {
-        switch(ID) {
-            case 0: return DbgGroup(opDUP, opPORT, opDROP, opSKIP, opNOOP); // T
-            case 1: return DbgGroup(opOVER, opPORT, opDROP, opSKIP, opNOOP);// N
-            case 2: return DbgGroup(opR, opPORT, opDROP, opSKIP, opNOOP);   // R
-            case 3: return DbgGroup(opA, opPORT, opDROP, opSKIP, opNOOP);   // A
-            case 5: VMstep((opA<<8) + opRP*4, 1);                           // RP
-                return DbgGroup(opA, opPORT, opDROP, opSetA, opNOOP);
-            case 6: VMstep((opA<<8) + opSP*4, 1);                           // SP
-                return (DbgGroup(opA, opPORT, opDROP, opSetA, opNOOP) + 4);
-                // The SP is offset due to saving A on the stack
-            case 7: VMstep((opA<<8) + opUP*4, 1);                           // UP
-                return DbgGroup(opA, opPORT, opDROP, opSetA, opNOOP);
-            case 8: return (DbgPC*4); // Don't make this the first RegRead  // PC
-            default: return 0;
-        }
-    }
-#endif // TRACEABLE
-
-// Debugger Display uses full screen with VT100 commands
-
-void SetCursorPosition(int X, int Y){
-    printf("\033[%d;%df", Y, X);
-}
-
 void DumpDataStack(void){
-    int i;
-    int row = 2;
-    int depth = (dbgSP0 - RegRead(6))/4;
+    int i;  int row = 2;
+    int SP0 = FetchCell(S0);
+    int SP = RegRead(6);
+    int depth = (SP0 - SP)/4;
     if (depth<0) {
-        SetCursorPosition(0, row++);
+        SetCursorPosition(DataStackCol, row++);
         printf("Underflow");
     } else {
         if (depth>7) depth=7;         // limit displayable
         for (i=depth-1; i>=0; i--) {
-            SetCursorPosition(0, row++);
-            printf("    %08X", FetchCell(dbgSP0 - 4*depth + i*4));
+            SetCursorPosition(DataStackCol, row++);
+            printf("  %08X", FetchCell(SP0 - 4*depth + i*4));
         }
     }
-    SetCursorPosition(0, row++);
-    printf("N = %d", RegRead(1));
-    SetCursorPosition(0, row++);
-    printf("T = %d", RegRead(0));
+    SetCursorPosition(DataStackCol, row++);
+    printf("N %d", RegRead(1));
+    SetCursorPosition(DataStackCol, row++);
+    printf("T %d", RegRead(0));
 }
 
 void DumpReturnStack(void){
-    int i;
-    int row = 2;
-    int depth = (dbgRP0 - RegRead(5))/4;
+    int i;   int row = 2;
+    int SP0 = FetchCell(R0);
+    int SP = RegRead(5);
+    int depth = (SP0 - SP)/4;
     if (depth<0) {
-        SetCursorPosition(15, row++);
+        SetCursorPosition(ReturnStackCol, row++);
         printf("Underflow");
     } else {
         if (depth>8) depth=8;
         for (i=depth-1; i>=0; i--) {
-            SetCursorPosition(15, row++);
-            printf("    %08X", FetchCell(dbgRP0 - 4*depth + i*4));
+            SetCursorPosition(ReturnStackCol, row++);
+            printf("  %08X", FetchCell(SP0 - 4*depth + i*4));
         }
     }
-    SetCursorPosition(15, row++);
-    printf("R = %d", RegRead(2));
+    SetCursorPosition(ReturnStackCol, row++);
+    printf("R %d", RegRead(2));
 }
 
 void DumpIR(uint32_t IR) {
@@ -240,11 +396,26 @@ NextOp: if (opcode>31)
 
 void DumpROM(void) {
     int row = 2;  int i;
-    uint32_t addr = RegRead(8); // PC
+    static uint32_t ROMorigin;          // first ROM address
+    uint32_t PC = RegRead(8);
+    uint32_t addr = ROMorigin;          // start here unless...
+    if (PC < ROMorigin) {               // move backward to show PC
+        addr = PC;
+        ROMorigin = PC;
+    } else {
+        if (PC > (ROMorigin+24)) {      // move forward to show PC
+            addr = PC-24;
+            ROMorigin = PC-24;
+        }
+    }
     for (i=0; i<9; i++) {
-        SetCursorPosition(41, row++);
+        SetCursorPosition(ROMdumpCol, row++);
+        if (PC == (addr)) {
+            printf("\033[4m");          // hilight
+        }
         printf("%04X %08X ", addr, FetchCell(addr));
         DumpIR(FetchCell(addr));
+        printf("\033[0m");              // default FG/BG
         addr += 4;
     }
 }
@@ -252,14 +423,31 @@ void DumpROM(void) {
 void DumpRegs(void) {
     int row = 2;
     char name[9][4] = {" T", " N", " R", " A", " B", "RP", "SP", "UP", "PC"};
-    int i;
+    char term[9][10] = {"STATUS", "FOLLOWER", "S0", "R0", "HANDLER", "BASE",
+                        "Head: HP", "Code: CP", "Data: DP"};
+    uint32_t i;
     printf("\033[2J");                  // clear screen
-    printf("Data Stack    Return Stack  Registers   ROM at PC     Disassembly");
+    printf("\033[4m");                  // hilight header
+    printf("Data Stack  ReturnStack Registers  Terminal Vars  ");
+    printf("ROM at PC     Instruction Disassembly"); // ESC [ <n> m
+    printf("\033[0m");                  // default FG/BG
+
     DumpDataStack();
     DumpReturnStack();
+    for (i=3; i<9; i++) {
+#ifndef TRACEABLE
+        if (i != 4) {  // can't read B so skip it
+#endif
+            SetCursorPosition(RegistersCol, row++);
+            printf("%s %X", name[i], RegRead(i));
+#ifndef TRACEABLE
+        }
+#endif
+    }
+    row = 2;
     for (i=0; i<9; i++) {
-        SetCursorPosition(29, row++);
-        printf("%s = %Xh", name[i], RegRead(i));
+        SetCursorPosition(RAMdumpCol + 5 - strlen(term[i]), row++);
+        printf("%s %X", term[i], FetchCell(STATUS + i*4));
     }
     DumpROM();
 }
@@ -279,13 +467,14 @@ void ShowParam(void){
 
 void vmTEST (void) {
     int c;
-    VMpor();
-    EraseROM();
 Re: DumpRegs();
     SetCursorPosition(0, 15);           // help along the bottom
-    printf("(0..F)=digit, -=Clear, O=Pop, P=Push, R=Refresh, S=Step,\n");
-    printf("U = Dump, X=Execute, @=Fetch, \\=POR, ESC=Bye\n");
-
+    printf("(0..F)=digit, Enter=Clear, O=pOp, P=Push, R=Refresh, \\=POR, ESC=Bye\n");
+    #ifdef TRACEABLE
+    printf("G=Goto, X=eXecute, S=Step, @=Fetch, U=dUmp, H=History\n");
+    #else
+    printf("G=Goto, X=eXecute, S=Step, @=Fetch, U=dUmp\n");
+    #endif
     while (1) {
         ShowParam();
         c = tiffEKEY();
@@ -294,8 +483,8 @@ Re: DumpRegs();
             Param = Param*16 + (c&0x0F);
         } else {
             switch (c) {
-                case 27: SetCursorPosition(0, 19); return; // ESC = bye
-                case '-':  Param=0;  break;                // ^C = clear
+                case 27: SetCursorPosition(0, 17); return; // ESC = bye
+                case 13:  Param=0;  break;                 // ENTER = clear
                 case 'p':
                 case 'P': PushNum(Param);   goto Re;       // P = Push
                 case 'o':
@@ -304,10 +493,22 @@ Re: DumpRegs();
                 case 'R': goto Re;                         // R = Refresh
                 case 'u':
                 case 'U': CellDump(32, Param);   break;    // U = dump
-                case 'x':
-                case 'X': VMstep(Param,0);   goto Re;      // X = Execute
+                case 'g':
+                case 'G': SetPCreg(Param);   goto Re;      // G = goto
+                case ' ':
+                case 's': // execute instruction from ROM  // S = Step
+                case 'S': Tracing=1;  VMstep(FetchCell(RegRead(8)),0);
+                          Tracing=0;  goto Re;
+                case 'x': // execute instruction from Param (doesn't step PC)
+                case 'X': Tracing=1;  VMstep(Param,1);     // X = Execute
+                          Tracing=0;  goto Re;
                 case '@': Param = FetchCell(Param); break; // @ = Fetch
-                case '\\': VMpor();   goto Re;             // \ = Reset
+                case '\\': InitializeTermTCB();
+                          ReloadFile();  goto Re;          // \ = Reset
+#ifdef TRACEABLE
+                case 'h':
+                case 'H': TraceHist();   break;            // H = history
+#endif
                 default: printf("%d   ", c);
             }
         }

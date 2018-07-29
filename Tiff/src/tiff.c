@@ -100,21 +100,10 @@ void tiffQUIT (char *cmdline) {
     char argline[MaxTIBsize+1];
     size_t bufsize = MaxTIBsize;  char *buf;
     int length, source, TIBaddr;
-    EraseROM();
-    StoreCell(HeadPointerOrigin, HP);
-    StoreCell(CodePointerOrigin, CP);
-    StoreCell(DataPointerOrigin, DP);
+    InitializeTermTCB();
     while (1){
-        SetDbgReg(STATUS);                  // reset USER pointer
-        DbgGroup(opDUP, opSetUP, opSKIP, opNOOP, opNOOP);
-        SetDbgReg(TiffRP0);                 // reset return stack
-        DbgGroup(opDUP, opSetRP, opSKIP, opNOOP, opNOOP);
-        SetDbgReg(TiffSP0);                 // reset data stack
-        DbgGroup(opDUP, opSetSP, opSKIP, opNOOP, opNOOP);
-        StoreCell(TiffRP0, R0);             // USER vars in terminal task
-        StoreCell(TiffSP0, S0);
+        InitializeTIB();
         StoreCell(0, SOURCEID);     	    // input is keyboard
-        StoreCell(TIB, TIBB);     	        // use TIB
         StoreCell(0, STATE);     	        // interpret
         do {
             StoreCell(0, TOIN);				// >IN = 0

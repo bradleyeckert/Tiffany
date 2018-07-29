@@ -34,24 +34,23 @@
     #define UP VMreg[7]
     #define PC VMreg[8]
     #define DebugReg VMreg[9]
-    #define RidT  ~0
-    #define RidN  ~1
-    #define RidR  ~2
-    #define RidA  ~3
-    #define RidB  ~4
-    #define RidRP ~5
-    #define RidSP ~6
-    #define RidUP ~7
-    #define RidPC ~8
-    #define RidDebug ~9
+    #define RidT  (-1)
+    #define RidN  (-2)
+    #define RidR  (-3)
+    #define RidA  (-4)
+    #define RidB  (-5)
+    #define RidRP (-6)
+    #define RidSP (-7)
+    #define RidUP (-8)
+    #define RidPC (-9)
+    #define RidDebug (-10)
     #define VMregs 10
 
-    uint32_t VMreg[VMregs];
-    static int New;
+    uint32_t VMreg[VMregs];     // registers with undo capability
+    uint32_t OpCounter[64];     // opcode counter
 
-    // Trace function is external, called by the VM.
-    extern void Trace(uint8_t type, int32_t ID, uint32_t old, uint32_t nu);
-
+    static int New; // New trace type, used to mark new sections of trace
+    static int SS;  // Single Step, tell Trace not to log
     static uint32_t RAM[RAMsize];
     static uint32_t ROM[ROMsize];
 
@@ -177,6 +176,9 @@ static void StoreX (uint32_t addr, uint32_t data, int shift, int mask) {
 /// RunState is 0 when PC post-increments, other when not.
 
 void VMpor(void) {
+#ifdef TRACEABLE
+    memset(OpCounter, 0, 64);   // clear opcode profile counters
+#endif // TRACEABLE
     PC = 0;  RP = 64;  SP = 32;  UP = 64;
     T=0;  N=0;  R=0;  A=0;  B=0;  DebugReg = 0;
 }
@@ -184,15 +186,14 @@ void VMpor(void) {
 int32_t VMstep(uint32_t IR, int RunState) {
 	uint32_t M;  int slot;
 	unsigned int opcode, addr;
-
 // The PC is incremented at the same time the IR is loaded. Slot0 is next clock.
 // The instruction group returned from memory will be latched in after the final
 // slot executes. In the VM, that is simulated by a return from this function.
-// Some slots may alter the PC. The last slot may alter the PC, so an extra
-// cycle is taken after the instruction group to resolve the instruction flow.
-// If the PC has been steady long enough for the instruction to show up, it's
-// latched into IR. Otherwise, there will be some delay while memory returns the
-// instruction.
+// Some slots may alter the PC. The last slot may alter the PC, so if it modifies
+// the PC extra cycles are taken after the instruction group to resolve the
+// instruction flow. If the PC has been steady long enough for the instruction
+// to show up, it's latched into IR. Otherwise, there will be some delay while
+// memory returns the instruction.
 
 	if (!RunState) PC = PC+1;
 
@@ -200,6 +201,7 @@ int32_t VMstep(uint32_t IR, int RunState) {
 	while (slot>=0) {
 		opcode = (IR >> slot) & 0x3F;	// slot = 26, 20, 14, 8, 2
 #ifdef TRACEABLE
+        if (OpCounter[opcode] != 0xFFFFFFFF) OpCounter[opcode]++;
         if (slot==26) New=3; else New=1;
 #endif // TRACEABLE
 NextOp: switch (opcode) {
@@ -207,9 +209,10 @@ NextOp: switch (opcode) {
 			case 001: SDUP();							break;	// DUP
 			case 002:
 #ifdef TRACEABLE
-                Trace(New, RidPC, PC, R);  New=0;
+                Trace(New, RidPC, PC, R>>2);  New=0;
 #endif // TRACEABLE
-                PC = R;  RDROP();  slot = 0;            break;	// ;
+                // PC is a cell address. The return stack works in bytes.
+                PC = R>>2;  RDROP();  slot = 0;         break;	// ;
 			case 003:
 #ifdef TRACEABLE
                 Trace(New, RidT, T, T + N);  New=0;
@@ -225,7 +228,7 @@ NextOp: switch (opcode) {
 #ifdef TRACEABLE
                 Trace(New, RidPC, PC, R);  New=0;
 #endif // TRACEABLE
-                PC = R;	 RDROP();      				    break;	// ;|
+                PC = R>>2;	 RDROP();      			    break;	// ;|
 			case 007:
 #ifdef TRACEABLE
                 Trace(New, RidT, T, T & N);  New=0;
@@ -337,7 +340,8 @@ GetPointer:
 #ifdef TRACEABLE
                 Trace(New, RidSP, SP, T>>2);  New=0;
 #endif // TRACEABLE
-			    SP = (uint8_t) (T>>2);  SDROP();	    break;	// SP!
+                // SP! does not post-drop
+			    SP = (uint8_t) (T>>2);          	    break;	// SP!
 
 			case 050: M = (IMM + UP + ROMsize)*4;  	            // UP
                 goto GetPointer;
@@ -362,6 +366,7 @@ GetPointer:
 #ifdef TRACEABLE
                 Trace(New, ~9, PC, IMM);  New=0;
 #endif // TRACEABLE
+                // Jumps and calls use cell addressing
 			    PC = IMM;  return PC;                           // JUMP
 
 			case 066: ReceiveAXI();
@@ -389,7 +394,7 @@ GetPointer:
                 Trace(0, RidR, R, PC);    R = PC;
                 Trace(0, RidPC, PC, IMM);  PC = IMM;  return PC;
 #else
-                R = PC;  PC = IMM;  return PC;
+                R = PC<<2;  PC = IMM;  return PC;
 #endif // TRACEABLE
 			case 075:
 #ifdef TRACEABLE
@@ -409,7 +414,6 @@ GetPointer:
 #else
                 N = T;  T = M;  break;
 #endif // TRACEABLE
-
 			default:                           		    break;	//
 		}
 		slot -= 6;
@@ -452,8 +456,8 @@ static int32_t InternalFn (uint32_t S0, uint32_t S1, int fn ) {
             return 0;
 		case 2:  // program the next cell
             if (celladdr >= (ROMsize-1024)*4) { return -9; }
-            i = ROM[celladdr];			        // ROM address
-            if (~(i&S0)) { return -60; }        // not erased
+            i = ROM[celladdr];			        // existing ROM data
+            if (~(i|S0)) { return -60; }        // not erased
             ROM[celladdr++] = i & S0;
             return 0;
         case 3:  // end programming sequence

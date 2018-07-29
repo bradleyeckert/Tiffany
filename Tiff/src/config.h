@@ -7,7 +7,8 @@
 // Sizes of internal memories in 32-bit cells
 #define RAMsize   0x400
 #define ROMsize   0x800
-//#define TRACEABLE
+#define TRACEABLE
+#define TraceDepth 8  /* Log2 of the trace buffer size, 12 bytes per element. */
 
 #define CodePointerOrigin  0                  /* Kernel definitions start here */
 #define HeadPointerOrigin  (ROMsize*2)       /* Headers start halfway into ROM */

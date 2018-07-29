@@ -11,9 +11,9 @@
 /* ROMsize to (ROMsize+RAMsize-1)   Internal RAM                              */
 /* The VM restricts the stacks to the bottom 1K bytes of vmRAM.               */
 
-#define TiffRP0     255                    /* Initial stack pointers for Tiff */
-#define TiffSP0     240
-#define termTCB(n)  ((256+ROMsize+n)*4)  /* Byte address of terminal TCB cell */
+#define TiffRP0     ((ROMsize + 255)*4)             /* Initial stack pointers */
+#define TiffSP0     ((ROMsize + 240)*4)                    /* Byte addressing */
+#define termTCB(n)  ((ROMsize + 256 + n)*4)        /* Terminal USER variables */
 
 // error message handling
 char ErrorString[64];   // String to include in error message
@@ -32,18 +32,18 @@ void vmTEST(void);
 #define FOLLOWER    termTCB(1)   /* -> next header in task list               */
 #define S0          termTCB(2)   /* initial stack pointer                     */
 #define R0          termTCB(3)   /* initial return stack pointer              */
-#define CATCHER     termTCB(4)   /* exception stack frame pointer             */
+#define HANDLER     termTCB(4)   /* exception stack frame pointer             */
 
 /* Terminal task only, located at a fixed location in RAM.                    */
 #define BASE        termTCB(5)   /* numeric conversion base                   */
-#define TIBS        termTCB(6)   /* number of chars in TIB                    */
-#define TIBB        termTCB(7)   /* pointer to tib (paired with TIBS)         */
-#define TOIN        termTCB(8)   /* offset into TIB                           */
-#define SOURCEID    termTCB(9)   /* input source, 0(keybd) +(file) -(blk)     */
-#define STATE       termTCB(10)  /* compiler state                            */
-#define HP          termTCB(11)  /* head space pointer                        */
-#define CP          termTCB(12)  /* code space pointer                        */
-#define DP          termTCB(13)  /* data space pointer                        */
+#define HP          termTCB(6)   /* head space pointer                        */
+#define CP          termTCB(7)   /* code space pointer                        */
+#define DP          termTCB(8)   /* data space pointer                        */
+#define TIBS        termTCB(9)   /* number of chars in TIB                    */
+#define TIBB        termTCB(10)  /* pointer to tib (paired with TIBS)         */
+#define TOIN        termTCB(11)  /* offset into TIB                           */
+#define SOURCEID    termTCB(12)  /* input source, 0(keybd) +(file) -(blk)     */
+#define STATE       termTCB(13)  /* compiler state                            */
 #define HEAD        termTCB(14)  /* current definition's header address       */
 #define CURRENT     termTCB(15)  /* the wid which is compiled into            */
 #define PERSONALITY termTCB(16)  /* address of personality array              */

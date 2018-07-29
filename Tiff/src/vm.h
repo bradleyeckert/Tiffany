@@ -12,6 +12,8 @@ int32_t VMstep(uint32_t IR, int RunState);  // Execute an instruction group
 void VMpor(void);                           // Reset the VM
 void SetDbgReg(uint32_t n);                 // write to the debug mailbox
 uint32_t GetDbgReg(void);                   // read from the debug mailbox
+void Trace(unsigned int Type, int32_t ID, uint32_t Old, uint32_t New);
+void UnTrace(int32_t ID, uint32_t old);
 
 // Defined in tiffUser.c:
 int tiffKEYQ (void);                                      // Check for a key press
