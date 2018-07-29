@@ -8,7 +8,7 @@
 //================================================================================
 
 // Defined in vm.c:
-int32_t VMstep(uint32_t IR, int RunState);  // Execute an instruction group
+int32_t VMstep(uint32_t IR, int Paused);    // Execute an instruction group
 void VMpor(void);                           // Reset the VM
 void SetDbgReg(uint32_t n);                 // write to the debug mailbox
 uint32_t GetDbgReg(void);                   // read from the debug mailbox

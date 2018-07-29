@@ -129,22 +129,24 @@ void EraseROM (void) {                      // Erase internal ROM
 // The trace buffer is a power-of-2 sized array of state change structures.
 // Size is set in config.h
 
-static uint32_t uHead;
-static uint32_t uTail;
-static uint32_t uMask;
+static uint32_t uHead;          // next free element in state change history
+static uint32_t uTail;          // first element in state change history
+static uint32_t uHere;          // current position in history, =uHead if latest
+static uint32_t uMask;          // bit mask for indices
 
 struct StateChange {
-    uint32_t ID;                // packed type and ID
-    uint32_t Old;               // previous value
-    uint32_t New;               // next value
+    uint8_t Type;
+    int32_t ID;
+    uint32_t Old;
+    uint32_t New;
 };
 
 // Let the compiler manage large static arrays instead of malloc etc.
 struct StateChange StateChanges[1<<TraceDepth];
 
-void CreateTrace(void) {    // allocate memory for the trace buffer
+void CreateTrace(void) {        // allocate memory for the trace buffer
     uMask = (1<<TraceDepth) - 1;               // AND with indices
-    uHead = 0;  uTail = 0;
+    uHead = 0;  uTail = 0;  uHere = 0;
 }
 
 void DestroyTrace(void) {       // free memory for the trace buffer
@@ -155,49 +157,88 @@ void DestroyTrace(void) {       // free memory for the trace buffer
 /// Old value: 32-bit.
 /// New value: 32-bit.
 
-int Tracing;
+int Tracing;                    // TRUE if recording trace history
 
 unsigned int TraceElements (void) {     // How many elements are in the trace history?
     return ((uHead - uTail) & uMask);
 }
 void Trace(unsigned int Type, int32_t ID, uint32_t Old, uint32_t New){
-    uint32_t packedID, idx;
+    uint32_t idx;
     if (Tracing) {
-        if (TraceElements() == uMask) { // is it topped out?
-            uTail = (uTail+1) & uMask;  // drop the oldest point
+        if ((Old != New) || (Type)){    // skip states that didn't actually change
+            uHead = uHere;
+            if (TraceElements() == uMask) { // is it topped out?
+                uTail = (uTail+1) & uMask;  // drop the oldest point
+            }
+            idx = uHead & uMask;
+            StateChanges[idx].Type = (uint8_t) Type;
+            StateChanges[idx].ID = ID;
+            StateChanges[idx].Old = Old;
+            StateChanges[idx].New = New;
+            uHead = (uHead + 1) & uMask;
+            uHere = uHead;              // keep the pointer current
         }
-        packedID = ((unsigned)ID & 0xFFFFFFF) | ((Type & 0x0F) << 28);
-        idx = uHead & uMask;
-        StateChanges[idx].ID = packedID;
-        StateChanges[idx].Old = Old;
-        StateChanges[idx].New = New;
-        uHead = (uHead + 1) & uMask;
     }
 }
+
+// There are two kinds of Undo and two kinds of Redo:
+// Undo reverses instruction groups without moving head.
+// Redo restores instruction groups without moving head.
+// If you execute a group, any history forward of uHere is discarded.
+
+// Undo one instruction, ior=0 if okay, 1 if end reached.
+int UndoTrace(void) {
+    int32_t ID;  int Type;
+    while (1) {
+        if (uHere == uTail) return 1;   // already at the beginning
+        uHere = (uHere-1) & uMask;      // step backward
+        ID = StateChanges[uHere].ID;
+        Type = StateChanges[uHere].Type;
+        UnTrace(ID, StateChanges[uHere].Old);
+        if (Type>1) return 0;           // instruction is undone
+    }
+}
+
+// Redo one instruction, ior=0 if okay, 1 if end reached.
+int RedoTrace(void) {
+    int32_t ID;  int Type;
+    while (1) {
+        if (uHere == uHead) return 1;   // already at the beginning
+        ID = StateChanges[uHere].ID;
+        Type = StateChanges[uHere].Type;
+        UnTrace(ID, StateChanges[uHere].New);
+        uHere = (uHere+1) & uMask;      // step forward
+        if (Type>1) return 0;           // instruction is redone
+    }
+}
+
+
+
+/// will be removing this soon
+
 void TraceHist(void) {                  // dump trace history
     uint32_t size = TraceElements();
     uint32_t ptr = uHead;
-    uint32_t packedID, ID;  int Type;
+    int32_t ID;
     int col = 0;
     if (size>31) size=32;               // limit the size
     printf("Tail=%d, Head=%d, Mask=%X\n", uTail, uHead, uMask);
     while (size--) {
-        packedID = StateChanges[ptr].ID;
-        Type = packedID >> 28;
-        ID = packedID & 0xFFFFFFF;
-        printf("%d ", Type);
-        if (ID & 0x8000000) {           // negative is register
+        ptr = (ptr-1) & uMask;          // pre-decrement from head (newest first)
+        ID = StateChanges[ptr].ID;
+        printf("%d ", StateChanges[ptr].Type);
+        if (ID < 0) {                  // negative is register
             printf("R[%X] ", (~ID & 0xFF));
         } else {
             printf("%04X ", ID);
         }
-        printf("%08X %08X ", StateChanges[ptr].Old, StateChanges[ptr].New);
-        ptr = (ptr-1) & uMask;
+        printf("%X %X, ", StateChanges[ptr].Old, StateChanges[ptr].New);
         col++;
-        if (col==3) {
+        if (col==4) {
             col=0;  printf("\n");
         }
     }
+    uHead = uTail; // clear the buffer (for test)
 }
 
 //==============================================================================
@@ -456,6 +497,10 @@ void DumpRegs(void) {
 /// Use single keystrokes to dump various parameters, calculator-style.
 /// Note: IDE may cook keyboard input, you should run from the command line.
 
+void Bell(int flag) {
+    if (flag) printf("\a");
+}
+
 uint32_t Param = 0;     // parameter
 
 void ShowParam(void){
@@ -469,11 +514,11 @@ void vmTEST (void) {
     int c;
 Re: DumpRegs();
     SetCursorPosition(0, 15);           // help along the bottom
-    printf("(0..F)=digit, Enter=Clear, O=pOp, P=Push, R=Refresh, \\=POR, ESC=Bye\n");
+    printf("(0..F)=digit, Enter=Clear, O=pOp, P=Push, R=Refresh, X=eXecute, \\=POR, ESC=Bye\n");
     #ifdef TRACEABLE
-    printf("G=Goto, X=eXecute, S=Step, @=Fetch, U=dUmp, H=History\n");
+    printf("G=Goto, S=Step, @=Fetch, U=dUmp, H=History, W=WipeHistory, Y=Redo, Z=Undo \n");
     #else
-    printf("G=Goto, X=eXecute, S=Step, @=Fetch, U=dUmp\n");
+    printf("G=Goto, S=Step, @=Fetch, U=dUmp\n");
     #endif
     while (1) {
         ShowParam();
@@ -508,6 +553,12 @@ Re: DumpRegs();
 #ifdef TRACEABLE
                 case 'h':
                 case 'H': TraceHist();   break;            // H = history
+                case 'w':
+                case 'W': uHead=0; uTail=0; uHere=0; break; // W = wipe history
+                case 'y':
+                case 'Y': Bell(RedoTrace());   goto Re;    // Y = Redo
+                case 'z':
+                case 'Z': Bell(UndoTrace());   goto Re;    // Z = Undo
 #endif
                 default: printf("%d   ", c);
             }

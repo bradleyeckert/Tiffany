@@ -50,7 +50,6 @@
     uint32_t OpCounter[64];     // opcode counter
 
     static int New; // New trace type, used to mark new sections of trace
-    static int SS;  // Single Step, tell Trace not to log
     static uint32_t RAM[RAMsize];
     static uint32_t ROM[ROMsize];
 
@@ -173,7 +172,7 @@ static void StoreX (uint32_t addr, uint32_t data, int shift, int mask) {
 ///    SetDbgReg    // write to the debug mailbox
 ///    GetDbgReg    // read from the debug mailbox
 /// IR is the instruction group.
-/// RunState is 0 when PC post-increments, other when not.
+/// Paused is 0 when PC post-increments, other when not.
 
 void VMpor(void) {
 #ifdef TRACEABLE
@@ -183,7 +182,7 @@ void VMpor(void) {
     T=0;  N=0;  R=0;  A=0;  B=0;  DebugReg = 0;
 }
 
-int32_t VMstep(uint32_t IR, int RunState) {
+int32_t VMstep(uint32_t IR, int Paused) {
 	uint32_t M;  int slot;
 	unsigned int opcode, addr;
 // The PC is incremented at the same time the IR is loaded. Slot0 is next clock.
@@ -195,16 +194,23 @@ int32_t VMstep(uint32_t IR, int RunState) {
 // to show up, it's latched into IR. Otherwise, there will be some delay while
 // memory returns the instruction.
 
-	if (!RunState) PC = PC+1;
+    if (!Paused) {
+#ifdef TRACEABLE
+        Trace(3, RidPC, PC, PC + 1);
+#endif // TRACEABLE
+        PC = PC + 1;
+    }
 
 	slot = 26;
 	while (slot>=0) {
 		opcode = (IR >> slot) & 0x3F;	// slot = 26, 20, 14, 8, 2
 #ifdef TRACEABLE
-        if (OpCounter[opcode] != 0xFFFFFFFF) OpCounter[opcode]++;
-        if (slot==26) New=3; else New=1;
+LastOp: if (OpCounter[opcode] != 0xFFFFFFFF) OpCounter[opcode]++;
+        New = 1;  // first state change in an opcode
+#else
+LastOp:
 #endif // TRACEABLE
-NextOp: switch (opcode) {
+        switch (opcode) {
 			case 000:									break;	// NOOP
 			case 001: SDUP();							break;	// DUP
 			case 002:
@@ -420,7 +426,7 @@ GetPointer:
 	}
     if (slot == -4) {
         opcode = IR & 3;
-        goto NextOp;
+        goto LastOp;
     }
     return PC;
 }
