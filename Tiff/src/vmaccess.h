@@ -28,10 +28,11 @@ void DestroyTrace(void);                     // free memory for the trace buffer
 void InitializeTermTCB(void);                           // Initialize everything
 void InitializeTIB(void);             // Initialize just the terminal task input
 int BinaryLoad(char* filename);                     // Load ROM from binary file
+void DumpRegs(void);            // clear screen and dump register and stack data
 
-#define DataStackCol     0
+#define DataStackCol     1
 #define ReturnStackCol  13
 #define RegistersCol    25
 #define RAMdumpCol      38
 #define ROMdumpCol      51
-
+#define DumpRows         9

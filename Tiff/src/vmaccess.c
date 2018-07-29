@@ -238,7 +238,6 @@ void TraceHist(void) {                  // dump trace history
             col=0;  printf("\n");
         }
     }
-    uHead = uTail; // clear the buffer (for test)
 }
 //---------------------------------------------------------
 
@@ -342,7 +341,7 @@ void SetCursorPosition(int X, int Y){
     printf("\033[%d;%df", Y, X);
 }
 
-void CellDump(int length, uint32_t addr) {
+void CellDump(int length, uint32_t addr) {  // DUMP
     uint32_t line[8];                       // buffer for ASCII
     uint8_t c;  int i, j, pad, len;
     if (length>4096) length=4096;           // limit to reasonable length
@@ -381,11 +380,15 @@ void DumpDataStack(void){
     int i;  int row = 2;
     int SP0 = FetchCell(S0);
     int depth = Sdepth();
+    int overflow = depth + 2 - DumpRows;
     if (depth<0) {
         SetCursorPosition(DataStackCol, row++);
         printf("Underflow");
     } else {
-        if (depth>7) depth=7;         // limit displayable
+        if (overflow >= 0) {            // limit depth
+            SP0 -= overflow * 4;
+            depth -= overflow;
+        }
         for (i=depth-1; i>=0; i--) {
             SetCursorPosition(DataStackCol, row++);
             printf("  %08X", FetchCell(SP0 - 4*depth + i*4));
@@ -399,23 +402,27 @@ void DumpDataStack(void){
 
 void DumpReturnStack(void){
     int i;   int row = 2;
-    int SP0 = FetchCell(R0);
+    int RP0 = FetchCell(R0);
     int depth = Rdepth();
+    int overflow = depth + 1 - DumpRows;
     if (depth<0) {
         SetCursorPosition(ReturnStackCol, row++);
         printf("Underflow");
     } else {
-        if (depth>8) depth=8;
+        if (overflow >= 0) {            // limit depth
+            RP0 -= overflow * 4;
+            depth -= overflow;
+        }
         for (i=depth-1; i>=0; i--) {
             SetCursorPosition(ReturnStackCol, row++);
-            printf("  %08X", FetchCell(SP0 - 4*depth + i*4));
+            printf("  %08X", FetchCell(RP0 - 4*depth + i*4));
         }
     }
     SetCursorPosition(ReturnStackCol, row++);
     printf("R %d", RegRead(2));
 }
 
-void DumpIR(uint32_t IR) {
+void DisassembleIR(uint32_t IR) {
     int slot = 26;  // 26 20 14 8 2
     int opcode;
     char name[64][6] = {
@@ -458,13 +465,13 @@ void DumpROM(void) {
             ROMorigin = PC-24;
         }
     }
-    for (i=0; i<9; i++) {
+    for (i=0; i<DumpRows; i++) {
         SetCursorPosition(ROMdumpCol, row++);
         if (PC == (addr)) {
             printf("\033[4m");          // hilight
         }
         printf("%04X %08X ", addr, FetchCell(addr));
-        DumpIR(FetchCell(addr));
+        DisassembleIR(FetchCell(addr));
         printf("\033[0m");              // default FG/BG
         addr += 4;
     }
@@ -476,7 +483,9 @@ void DumpRegs(void) {
     char term[9][10] = {"STATUS", "FOLLOWER", "S0", "R0", "HANDLER", "BASE",
                         "Head: HP", "Code: CP", "Data: DP"};
     uint32_t i;
-    printf("\033[2J");                  // clear screen
+    printf("\033[s");                   // save cursor
+    printf("\033[%d;0H", DumpRows+2);
+    printf("\033[1J\033[H");            // erase to top of screen, home cursor
     printf("\033[4m");                  // hilight header
     printf("Data Stack  ReturnStack Registers  Terminal Vars  ");
     printf("ROM at PC     Instruction Disassembly"); // ESC [ <n> m
@@ -484,7 +493,7 @@ void DumpRegs(void) {
 
     DumpDataStack();
     DumpReturnStack();
-    for (i=3; i<9; i++) {
+    for (i=3; i<9; i++) {               // internal VM registers
 #ifndef TRACEABLE
         if (i != 4) {  // can't read B so skip it
 #endif
@@ -495,11 +504,12 @@ void DumpRegs(void) {
 #endif
     }
     row = 2;
-    for (i=0; i<9; i++) {
+    for (i=0; i<9; i++) {               // terminal task USER variables
         SetCursorPosition(RAMdumpCol + 5 - strlen(term[i]), row++);
         printf("%s %X", term[i], FetchCell(STATUS + i*4));
     }
     DumpROM();
+    printf("\033[u");                   // restore cursor
 }
 
 /// Keyboard input is raw, from tiffEKEY().
@@ -513,9 +523,9 @@ void Bell(int flag) {
 uint32_t Param = 0;     // parameter
 
 void ShowParam(void){
-    SetCursorPosition(0, 11);
+    SetCursorPosition(0, DumpRows+2);
     printf("%08X\n", Param);
-    DumpIR(Param);
+    DisassembleIR(Param);
     printf("\033[K\n");  // erase to end of line
 }
 

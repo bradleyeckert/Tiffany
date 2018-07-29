@@ -9,6 +9,7 @@
 #define MaxKeywords 50
 
 int tiffIOR = 0;                        // Interpret error detection when not 0
+int ShowCPU = 0;                        // Enable CPU status display
 
 /// Primordial brain keyword support for host functions.
 /// These are interpreted after the word is not found in the Forth dictionary.
@@ -21,11 +22,14 @@ void tiffBYE (void) {
     tiffIOR = -99999;                   // exit Forth
     tiffCOMMENT();
 }
-void Hello (void) {                     // test for "hi"
-    printf("\nHello World");
-}
 void tiffDOT (void) {                   // pop and print
     printf("%d ", PopNum());
+}
+void tiffCPUon (void) {                 // enable CPU display mode
+    ShowCPU = 1;
+}
+void tiffCPUoff (void) {                // disable CPU display mode
+    ShowCPU = 0;
 }
 // void tiffHEX (void) {                   // base 16
 //     StoreCell(16, BASE);
@@ -55,9 +59,10 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("bye", tiffBYE);
     AddKeyword("\\", tiffCOMMENT);
     AddKeyword(".", tiffDOT);
+    AddKeyword("+cpu", tiffCPUon);
+    AddKeyword("-cpu", tiffCPUoff);
 //    AddKeyword("hex", tiffHEX);
 //    AddKeyword("decimal", tiffDECIMAL);
-    AddKeyword("hi", Hello);
 }
 
 int NotKeyword (char *key) {            // do a command, return 0 if found
@@ -137,9 +142,10 @@ void tiffINTERPRET(void) {
         if (NotKeyword(token)) {        // try to convert to number
             x = (int32_t) strtol(token, &eptr, 0); // automatic base (C format)
             if ((x == 0) && ((errno == EINVAL) || (errno == ERANGE))) {
-                strcpy(ErrorString, token); // not a number
+                bogus: strcpy(ErrorString, token); // not a number
                 tiffIOR = -13;  tiffCOMMENT();
             } else {
+                if (*eptr) goto bogus;  // points at zero terminator if number
                 PushNum((uint32_t)x);
             }
         }
@@ -203,8 +209,11 @@ void tiffQUIT (char *cmdline) {
                 default:
                     break;
             }
+            if (ShowCPU) {
+                DumpRegs();
+            }
         }
-        if (tiffIOR == -99999) return;       // produced by BYE
+        if (tiffIOR == -99999) return;  // produced by BYE
         ErrorMessage(tiffIOR);
         tiffIOR = 0;
     }
