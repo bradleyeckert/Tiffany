@@ -31,8 +31,6 @@ The command line is formed by concatenating any remaining argv[] strings from th
 As of 7/28/18, the interpreter recognizes some keywords (using cheap C tricks) in the absence of a Forth dictionary structure. That will be next.
 
 ## To Do
-The C function `getline` is convenient for line input, but it outputs a newline. Cursor commands can probably undo that. A custom ACCEPT using raw keystrokes is probably not worth doing because it gives up the console's built-in line functions such as keyboard history and mouse and clipboard integration. Hopefully, the Forth version of ACCEPT will have some nice functionality.
-
 Stack depth checking, stack reporting, color change for Forth output.
 
 Real headers in ROM space, and Mforth compilation.
