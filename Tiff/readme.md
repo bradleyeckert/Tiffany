@@ -23,8 +23,18 @@ The internal ROM is erased to -1. If a filename exists, it loads it into ROM in 
 - `ESC` Quits the tester.
 - `\` Resets the VM.
 
+Undo and Redo are supported if TRACEABLE is defined. This keeps a log of all state changes so that execution can be stepped backward and forward. It's definitely cute. Not tested much, though.
+
 ## The Forth Interpreter
 The command line is formed by concatenating any remaining argv[] strings from the C command line, separating them with blanks. This trick is necessary because C doesn't give you the raw command line. Since C strips out quotes, it looks for other quotation characters (like open-quote and close-quote) and replaces them with a normal quote.
 
-As of 7/28/18, the interpreter doesn't work. It parses blabk delimited words and prints them to the screen. Temporarily broken.
+As of 7/28/18, the interpreter recognizes some keywords (using cheap C tricks) in the absence of a Forth dictionary structure. That will be next.
 
+## To Do
+The C function `getline` is convenient for line input, but it outputs a newline. Cursor commands can probably undo that. A custom ACCEPT using raw keystrokes is probably not worth doing because it gives up the console's built-in line functions such as keyboard history and mouse and clipboard integration. Hopefully, the Forth version of ACCEPT will have some nice functionality.
+
+Stack depth checking, stack reporting, color change for Forth output.
+
+Real headers in ROM space, and Mforth compilation.
+
+Split screen allowing scrolling Forth on the bottom and the detailed register and stack dump on top.
