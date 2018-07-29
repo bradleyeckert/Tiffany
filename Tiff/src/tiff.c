@@ -173,7 +173,8 @@ void tiffQUIT (char *cmdline) {
                         cmdline = NULL;     // clear cmdline
                     } else {
                         buf = argline;
-                        length = getline(&buf, &bufsize, stdin);
+                        length = getline(&buf, &bufsize, stdin);   // get input line
+                        printf("\033[A\033[%dC", strlen(argline)); // undo the newline
                         if (length > 0) length--;   // remove LF or CR
                     }
                     StoreCell((uint32_t)length, TIBS);
