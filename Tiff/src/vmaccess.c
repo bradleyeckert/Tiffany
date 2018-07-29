@@ -20,14 +20,14 @@ uint32_t DbgGroup (uint32_t op0, uint32_t op1,
     DbgPC = VMstep(op0<<26 | op1<<20 | op2<<14 | op3<<8 | op4<<2, 1);
     return GetDbgReg();
 }
-uint32_t PopNum (void) {   // Pop from the stack
+uint32_t PopNum (void) {                // Pop from the stack
     return DbgGroup(opPORT, opDROP, opSKIP, opNOOP, opNOOP);
 }
-void PushNum (uint32_t N) {   // Push to the stack
+void PushNum (uint32_t N) {             // Push to the stack
     SetDbgReg(N);
     DbgGroup(opDUP, opPORT, opSKIP, opNOOP, opNOOP);
 }
-uint32_t FetchCell (uint32_t addr) {  // Read from RAM or ROM
+uint32_t FetchCell (uint32_t addr) {    // Read from RAM or ROM
     SetDbgReg(addr);
     DbgGroup(opA, opDUP, opPORT, opSetA, opNOOP);
     return DbgGroup(opFetchA, opPORT, opDROP, opSetA, opNOOP);
@@ -38,12 +38,12 @@ void StoreCell (uint32_t N, uint32_t addr) {  // Write to RAM
     SetDbgReg(N);
     DbgGroup(opDUP, opPORT, opStoreA, opSetA, opNOOP);
 }
-uint8_t FetchByte (uint32_t addr) {  // Read from RAM or ROM
+uint8_t FetchByte (uint32_t addr) {     // Read from RAM or ROM
     SetDbgReg(addr);
     DbgGroup(opA, opDUP, opPORT, opSetA, opNOOP);
     return (uint8_t) DbgGroup(opCfetchA, opPORT, opDROP, opSetA, opNOOP);;
 }
-uint16_t FetchHalf (uint32_t addr) {  // Read from RAM or ROM
+uint16_t FetchHalf (uint32_t addr) {    // Read from RAM or ROM
     SetDbgReg(addr);
     DbgGroup(opA, opDUP, opPORT, opSetA, opNOOP);
     return (uint16_t) DbgGroup(opWfetchA, opPORT, opDROP, opSetA, opNOOP);
@@ -54,21 +54,21 @@ void StoreByte (uint8_t N, uint32_t addr) {  // Write to RAM
     SetDbgReg(N);
     DbgGroup(opDUP, opPORT, opCstoreA, opSetA, opNOOP);
 }
-void SetPCreg (uint32_t PC) {  // Set new PC
+void SetPCreg (uint32_t PC) {           // Set new PC
     SetDbgReg(PC);
     DbgGroup(opDUP, opPORT, opPUSH, opEXIT, opNOOP);
 }
 
 void vmRAMfetchStr(char *s, unsigned int address, uint8_t length){
-    int i;  char c;                         // Get a string from RAM
+    int i;  char c;                     // Get a string from RAM
     for (i=0; i<length; i++) {
         c = FetchByte(address++);
         *s++ = c;
-    }   *s++ = 0;                           // end in trailing zero
+    }   *s++ = 0;                       // end in trailing zero
 }
 void vmRAMstoreStr(char *s, unsigned int address){
-    char c;                                 // Store a string to RAM,
-    while ((c = *s++)){                     // not including trailing zero
+    char c;                             // Store a string to RAM,
+    while ((c = *s++)){                 // not including trailing zero
         StoreByte(c, address++);
     }
 }
@@ -82,7 +82,8 @@ extern uint32_t VMreg[10];
             case 0:
             case 1:
             case 2:
-            case 3: return VMreg[ID];
+            case 3:
+            case 4: return VMreg[ID];   // T N R A B
             case 5:
             case 6:
             case 7: return 4*(VMreg[ID] + ROMsize);
@@ -123,6 +124,20 @@ void EraseROM (void) {                      // Erase internal ROM
         EraseBlock(i*4096);
     }
 }
+
+void StoreROM (uint32_t N, uint32_t addr) {  // Store cell to internal ROM
+    SetDbgReg(0xc0debabe);
+    DbgGroup(opDUP, opPORT, opDUP, opSKIP, opNOOP);
+    SetDbgReg(addr);
+    VMstep(opPORT*0x100 + opUSER*4 + 1, 1);   // set start address ( code addr -- code ior )
+    DbgGroup(opPORT, opSKIP, opNOOP, opNOOP, opNOOP);
+    tiffIOR = GetDbgReg();
+    SetDbgReg(N);
+    VMstep(opPORT*0x100 + opUSER*4 + 2, 1);   // program the word
+    VMstep(opPORT*0x100000 + opDROP*0x4000 + opDROP*0x100 + opUSER*4 + 3, 1);
+    if (!tiffIOR) tiffIOR = GetDbgReg();
+}
+
 
 #ifdef TRACEABLE
 //==============================================================================
@@ -243,17 +258,6 @@ void TraceHist(void) {                  // dump trace history
 
 //==============================================================================
  #endif
-
-// depreciated, fix up
-
-void StoreROM (uint32_t N, uint32_t addr) {  // Store cell to internal ROM
-    SetDbgReg(N);
-    DbgGroup(opDUP, opPORT, opSKIP, opNOOP, opNOOP);
-    SetDbgReg(addr);
-    DbgGroup(opDUP, opPORT, opSKIP, opNOOP, opNOOP);
-    VMstep(opUSER*0x4000L + 10001, 1);
-    DbgGroup(opDROP, opDROP, opSKIP, opNOOP, opNOOP);
-}
 
 // Initialize useful variables in the terminal task
 void InitializeTIB(void) {
@@ -531,8 +535,9 @@ void ShowParam(void){
 
 void vmTEST (void) {
     int c;
+    printf("\033[2J");                  // CLS
 Re: DumpRegs();
-    SetCursorPosition(0, 15);           // help along the bottom
+    SetCursorPosition(0, DumpRows+6);   // help along the bottom
     printf("(0..F)=digit, Enter=Clear, O=pOp, P=Push, R=Refresh, X=eXecute, \\=POR, ESC=Bye\n");
     #ifdef TRACEABLE
     printf("G=Goto, S=Step, @=Fetch, U=dUmp, W=WipeHistory, Y=Redo, Z=Undo \n");

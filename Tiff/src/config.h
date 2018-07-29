@@ -5,11 +5,16 @@
 #define __CONFIG_H__
 
 // Sizes of internal memories in 32-bit cells
-#define RAMsize   0x400
-#define ROMsize   0x800
+#define RAMsize   0x400                         /* must be an exact power of 2 */
+#define ROMsize   0x800                         /* must be a multiple of 0x400 */
 
+// Instruments the VM to allow Undo and Redo
 #define TRACEABLE
 #define TraceDepth 12           /* Log2 of the trace buffer size, 13*2^N bytes */
+
+// Console color scheme, comment out if no colors
+#define InterpretColor  "\033[1;33m"
+#define ErrorColor      "\033[1;31m"
 
 #define CodePointerOrigin  0                  /* Kernel definitions start here */
 #define HeadPointerOrigin  (ROMsize*2)       /* Headers start halfway into ROM */

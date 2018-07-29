@@ -176,7 +176,7 @@ static void StoreX (uint32_t addr, uint32_t data, int shift, int mask) {
 
 void VMpor(void) {
 #ifdef TRACEABLE
-    memset(OpCounter, 0, 64);   // clear opcode profile counters
+    memset(OpCounter, 0, 64);           // clear opcode profile counters
 #endif // TRACEABLE
     PC = 0;  RP = 64;  SP = 32;  UP = 64;
     T=0;  N=0;  R=0;  A=0;  B=0;  DebugReg = 0;

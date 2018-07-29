@@ -31,6 +31,13 @@ void tiffCPUon (void) {                 // enable CPU display mode
 void tiffCPUoff (void) {                // disable CPU display mode
     ShowCPU = 0;
 }
+void tiffROMstore (void) {
+    uint32_t a = PopNum();
+    uint32_t n = PopNum();
+    StoreROM (n, a);
+}
+
+
 // void tiffHEX (void) {                   // base 16
 //     StoreCell(16, BASE);
 // }
@@ -61,6 +68,8 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword(".", tiffDOT);
     AddKeyword("+cpu", tiffCPUon);
     AddKeyword("-cpu", tiffCPUoff);
+    AddKeyword("rom!", tiffROMstore);
+
 //    AddKeyword("hex", tiffHEX);
 //    AddKeyword("decimal", tiffDECIMAL);
 }
@@ -132,6 +141,9 @@ void tiffINTERPRET(void) {
     char token[33];  char *eptr;
     uint32_t address, length;
     long int x;
+#ifdef InterpretColor
+    printf(InterpretColor);
+#endif
     while (tiffPARSENAME()) {           // get the next blank delimited keyword
         // dictionary search using ROM head space not implemented yet.
         // Assume it falls through with ( c-addr len ) on the stack.
@@ -209,12 +221,21 @@ void tiffQUIT (char *cmdline) {
                 default:
                     break;
             }
+#ifdef InterpretColor
+            printf("\033[0m");                  // reset colors
+#endif
             if (ShowCPU) {
                 DumpRegs();
             }
         }
         if (tiffIOR == -99999) return;  // produced by BYE
+#ifdef ErrorColor
+        printf(ErrorColor);
+#endif
         ErrorMessage(tiffIOR);
+#ifdef ErrorColor
+        printf("\033[0m");                  // reset colors
+#endif
         tiffIOR = 0;
     }
 }
