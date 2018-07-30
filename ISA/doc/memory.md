@@ -2,38 +2,40 @@
 
 The memory model uses 32-bit byte addresses in little endian format. Physical memory consists of:
 
-- Internal single-port RAM for code
+- Internal ROM for code
 - Internal dual-port RAM for data
 - External AXI space
 
-Code RAM is single-port synchronous RAM. Data RAM is dual-port synchronous RAM. In an ASIC, single-port is half the die area of dual-port, so a decent amount of area is available for code. In an FPGA, you typically have 18Kb blocks of DPRAM, so 512-word chunks. Both RAMs need byte lane enables.
+Code ROM is synchronous-read ROM. Data RAM is dual-port synchronous RAM. In an ASIC, masked ROM is 1/10th to 1/20th the die area of dual-port RAM (per bit), so a decent amount of area is available for code. In an FPGA, you typically have 18Kb blocks of DPRAM, so 512-word chunks. The RAM needs byte lane enables.
 
-AXI is a streaming-style system interface where data is best transferred in bursts due to long latency times. It's the standard industry interface. Rather than abstracting it away, the ISA gives direct control to the programmer. Several opcodes are multi-cycle instructions that stream RAM data to and from the AXI bus. Coming out of reset, the IR contains instructions to load the code RAM from AXI.
+AXI is a streaming-style system interface where data is best transferred in bursts due to long latency times. It's the standard industry interface. Rather than abstracting it away, the ISA gives direct control to the programmer. Several opcodes are multi-cycle instructions that stream RAM data to and from the AXI bus.
 
 ## Word Size
 
-A 4KB (1K word) ROM will hold quite a bit of kernel. That would make the minimum PC width 10 bits. With 6-bit opcodes, the minimum instruction width is 16 bits. However, a much wider word is needed to address AXI space. For that, we allow 32 bits to make for convenient data storage in SPI flash. The biggest SPI NOR flash Digikey has in stock as of mid 2018 is 128M bytes, so a 27-bit address range.
+Cells should have enough bits to address a SPI flash using byte addressing. The biggest SPI NOR flash Digikey has in stock as of mid 2018 is 128M bytes, so a 27-bit address range. 32-bit memory words are then a no-brainer. That's compatible with commercial Forth systems, which are also 32-bit. Byte order is little-endian.
 
 ## Address Ranges
 
 In Tiff, #defines in config.h specify the sizes (in 32-bit words) of RAM and ROM as `RAMsize` and `ROMsize` respectively.
 
-| Type  | Range                        |
-| ------|:----------------------------:|
-| Code  | 0 to ROMsize-1               |
-| Data  | ROMsize to ROMsize+RAMsize-1 |
-| Code  | > Data: Read-only from AXI   |     
+| Type | Range                        | AXI Read   | AXI Write  |
+| -----|:----------------------------:|-----------:|-----------:|
+| ROM  | 0 to ROMsize-1               | -          | -          |
+| RAM  | ROMsize to ROMsize+RAMsize-1 | Burst In   | Burst Out  |
+| AXI  | Other: Read-only from AXI    | Code fetch | -          |  
 
-AXI space starts at address 0. Tiff treats this as SPI flash. It's up to the implementation to write-protect the bottom of SPI flash so as to not be able to brick itself. The AXI address range of \[ROMsize to ROMsize+RAMsize-1\] is a section of SPI flash that's unreachable by normal memory opcodes. However, it can be streamed into RAM.
+AXI space starts at address 0. Tiff treats this as SPI flash. It's up to the implementation to write-protect the bottom of SPI flash so as to not be able to wipe out header space. The AXI address range of \[0 to ROMsize+RAMsize-1\] is a section of SPI flash that's unreachable by the PC, so you can't run code from it or read it with the normal fetch opcodes. However, it can be streamed into RAM. Two opcodes are reserved for transferring bursts of RAM data to and from AXI space.
 
-Tiff simulates a blank flash in AXI space and applies the rule of never writing a '0' bit twice to the same bit without erasing it first. Such activity may over-charge the floating gate (if the architecture doesn't prevent it), leading to reliability problems. 
+An application could keep data in the \[0 to ROMsize+RAMsize-1\] range, or an FPGA version could load code RAM with a ROM image from SPI flash at power-up.
+
+Tiff simulates a blank flash in AXI space and applies the rule of never writing a '0' bit twice to the same bit without erasing it first. Such activity may over-charge the floating gate (if the architecture doesn't prevent it), leading to reliability problems. Tiff writes ROM data to both AXI space and internal ROM when simulating the "Load code RAM from SPI flash" boot method.
 
 ## Streaming Operations
 
 Read channel of AXI:
 
 - AXI\[PC\] to the IR, one word, for extended code space fetch (not an opcode)
-- AXI\[A\] to Code RAM for streaming in a code/data segment or initializing code space
+- AXI\[A\] to RAM for streaming in a working buffer
 
 Write channel of AXI:
 
