@@ -22,7 +22,7 @@ In Tiff, #defines in config.h specify the sizes (in 32-bit words) of RAM and ROM
 | -----|:----------------------------:|-----------:|-----------:|
 | ROM  | 0 to ROMsize-1               | -          | -          |
 | RAM  | ROMsize to ROMsize+RAMsize-1 | Burst In   | Burst Out  |
-| AXI  | Other: Read-only from AXI    | Code fetch | -          |  
+| AXI  | Other                        | Code fetch | -          |  
 
 AXI space starts at address 0. Tiff treats this as SPI flash. It's up to the implementation to write-protect the bottom of SPI flash so as to not be able to wipe out header space. The AXI address range of \[0 to ROMsize+RAMsize-1\] is a section of SPI flash that's unreachable by the PC, so you can't run code from it or read it with the normal fetch opcodes. However, it can be streamed into RAM. Two opcodes are reserved for transferring bursts of RAM data to and from AXI space.
 
