@@ -34,7 +34,7 @@ void tiffCPUoff (void) {                // disable CPU display mode
 void tiffROMstore (void) {
     uint32_t a = PopNum();
     uint32_t n = PopNum();
-    StoreROM (n, a);
+    WriteROM (n, a);
 }
 
 

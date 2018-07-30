@@ -56,6 +56,7 @@
     static int New; // New trace type, used to mark new sections of trace
     static uint32_t RAM[RAMsize];
     static uint32_t ROM[ROMsize];
+    static uint32_t AXI[AXIsize];
 
     static void SDUP(void)  {
         Trace(New,RidSP,SP,SP-1); New=0;

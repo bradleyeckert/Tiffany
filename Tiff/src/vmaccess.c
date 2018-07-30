@@ -111,33 +111,12 @@ uint32_t RegRead(int ID) {
 }
 #endif // TRACEABLE
 
-void EraseBlock (int address) {  // Erase ROM block at address
-    SetDbgReg(0xc0dedead);
-    DbgGroup(opDUP, opPORT, opSKIP, opNOOP, opNOOP);
-    SetDbgReg(address);
-    DbgGroup(opDUP, opPORT, opNOOP, opNOOP, opUSER);    // user fn 0
-    DbgGroup(opDROP, opDROP, opSKIP, opNOOP, opNOOP);
-}
-void EraseROM (void) {                      // Erase internal ROM
+void EraseSPIimage (void) {  // Erase SPI flash image
     int i;
-    for (i=0; i<(ROMsize>>10); i++) {
-        EraseBlock(i*4096);
+    for (i=0; i < (AXIsize/1024); i++) {
+        EraseAXI4K(i * 1024);
     }
 }
-
-void StoreROM (uint32_t N, uint32_t addr) {  // Store cell to internal ROM
-    SetDbgReg(0xc0debabe);
-    DbgGroup(opDUP, opPORT, opDUP, opSKIP, opNOOP);
-    SetDbgReg(addr);
-    VMstep(opPORT*0x100 + opUSER*4 + 1, 1);   // set start address ( code addr -- code ior )
-    DbgGroup(opPORT, opSKIP, opNOOP, opNOOP, opNOOP);
-    tiffIOR = GetDbgReg();
-    SetDbgReg(N);
-    VMstep(opPORT*0x100 + opUSER*4 + 2, 1);   // program the word
-    VMstep(opPORT*0x100000 + opDROP*0x4000 + opDROP*0x100 + opUSER*4 + 3, 1);
-    if (!tiffIOR) tiffIOR = GetDbgReg();
-}
-
 
 #ifdef TRACEABLE
 //==============================================================================
@@ -278,7 +257,7 @@ void InitializeTIB(void) {
 // Initialize useful variables in the terminal task
 void InitializeTermTCB(void) {
     VMpor();
-    EraseROM();
+    EraseSPIimage();
     StoreCell(HeadPointerOrigin, HP);
     StoreCell(CodePointerOrigin, CP);
     StoreCell(DataPointerOrigin, DP);
@@ -303,25 +282,21 @@ int BinaryLoad(char* filename) {        // Load ROM from binary file
     uint8_t data[4];
     int length, i;
     uint32_t n;
+    uint32_t addr = 0;
     fp = fopen(filename, "rb");
     if (!fp) { return -1; }             // bad filename
     LoadedFilename = filename;          // save in case we want to reload the file
     LoadedFileType = 1;
-    SetDbgReg(0xc0debabe);              // ( 0xc0debabe 0 )
-    DbgGroup(opDUP, opPORT, opDUP, opDUP, opXOR);
-    VMstep(opUSER*0x4000L + 1, 1);      // start flash write sequence at address 0
     do {
         memset(data, 255, 4);
         length = fread(data, 1, 4, fp); // get 4 bytes of data
         n = 0;
-        for (i = 0; i < 4; i++) {       // make little endian word
+        for (i = 0; i < 4; i++) {       // make little-endian word
             n += data[i] << (8 * i);
         }
-        SetDbgReg(n);                   // write to flash
-        VMstep((opPORT<<8) + (opUSER<<2) + 2, 1);
+        WriteROM(n, addr);
+        addr += 4;
     } while (length == 4);
-    // end flash write sequence
-    VMstep((opDROP<<14) + (opDROP<<8) + (opUSER<<2) + 3, 1);
     fclose(fp);
     return 0;
 }
