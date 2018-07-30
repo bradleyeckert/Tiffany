@@ -31,6 +31,10 @@ void tiffCPUon (void) {                 // enable CPU display mode
 void tiffCPUoff (void) {                // disable CPU display mode
     ShowCPU = 0;
 }
+void tiffCPUgo (void) {                 // Enter the single stepper
+    ShowCPU = 1;
+    vmTEST();
+}
 void tiffROMstore (void) {
     uint32_t a = PopNum();
     uint32_t n = PopNum();
@@ -63,11 +67,12 @@ void AddKeyword(char *name, void (*func)()) {
 
 void LoadKeywords(void) {               // populate the list of gator brain functions
     keywords = 0;                       // start empty
-    AddKeyword("bye", tiffBYE);
-    AddKeyword("\\", tiffCOMMENT);
-    AddKeyword(".", tiffDOT);
+    AddKeyword("bye",  tiffBYE);
+    AddKeyword("\\",   tiffCOMMENT);
+    AddKeyword(".",    tiffDOT);
     AddKeyword("+cpu", tiffCPUon);
     AddKeyword("-cpu", tiffCPUoff);
+    AddKeyword("cpu",  tiffCPUgo);
     AddKeyword("rom!", tiffROMstore);
 
 //    AddKeyword("hex", tiffHEX);
