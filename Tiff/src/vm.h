@@ -7,11 +7,15 @@
 
 //================================================================================
 
-// Defined in vm.c:
+// Defined in vm.c, the basic debug and simulation interface.
 int32_t VMstep(uint32_t IR, int Paused);    // Execute an instruction group
 void VMpor(void);                           // Reset the VM
 void SetDbgReg(uint32_t n);                 // write to the debug mailbox
 uint32_t GetDbgReg(void);                   // read from the debug mailbox
+
+// Defined in vm.c, used for development only. Not on the target system.
+int WriteROM(uint32_t data, uint32_t address);
+int EraseAXI4K(uint32_t address);         // Erase a 4KB sector in SPI flash image
 void Trace(unsigned int Type, int32_t ID, uint32_t Old, uint32_t New);
 void UnTrace(int32_t ID, uint32_t old);
 

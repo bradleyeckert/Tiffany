@@ -17,6 +17,10 @@
 /// while importing the Trace function. This offers a way to break the
 /// "no direct access" rule in a PC environment, for testing and VM debugging.
 
+/// Flash writing is handled by streaming data to AXI space, through VMstep and
+/// friends. ROM writing uses a WriteROM function exported to Tiff but not used
+/// in a target system.
+
 /// The optional Trace function tracks state changes using these parameters:
 /// Type of state change: 0 = unmarked, 1 = new opcode, 2 or 3 = new group;
 /// Register ID: Complement of register number if register, memory if other;
@@ -92,6 +96,7 @@
 
     static uint32_t RAM[RAMsize];
     static uint32_t ROM[ROMsize];
+    static uint32_t AXI[AXIsize];
 
     static void SDUP(void)  { RAM[--SP & (RAMsize-1)] = N;  N = T; }
     static void SDROP(void) { T = N;  N = RAM[SP++ & (RAMsize-1)]; }
@@ -100,6 +105,39 @@
     static void RDROP(void) { R = RAM[RP++ & (RAMsize-1)]; }
 
 #endif // TRACEABLE
+
+/// Tiff's ROM write functions for populating internal ROM.
+/// A copy may be stored to SPI flash for targets that boot from SPI.
+/// An MCU-based system will have ROM in actual ROM.
+
+int WriteROM(uint32_t data, uint32_t address) { // EXPORTED
+    uint32_t addr = address / 4;
+    uint32_t old;
+    if (address & 3) return -23;        // alignment problem
+    if (addr < ROMsize) {
+        ROM[addr] = data;
+    }
+#ifdef BootFromSPI
+    if (addr >= AXIsize) return 0;      // copy to SPI image
+#else
+    if (addr < ROMsize) return 0;
+#endif
+    old = AXI[addr];		            // existing flash data
+    if (~(old|data)) return -60;        // not erased
+    AXI[addr] = old & data;
+    return 0;
+}
+
+int EraseAXI4K(uint32_t address) { // EXPORTED
+    uint32_t addr = address / 4;
+    int i;
+    if (address & 3) return -23;        // alignment problem
+    if (addr >= (AXIsize-1024)) return -9;   // out of range
+    for (i=0; i<1024; i++) {            // erase 4KB sector
+        AXI[addr+i] = 0xFFFFFFFF;
+    }
+    return 0;
+}
 
 /// The VM's RAM and ROM are internal to this module.
 /// They are both little endian regardless of the target machine.
@@ -160,7 +198,7 @@ static void StoreX (uint32_t addr, uint32_t data, int shift, int mask) {
 
 #ifdef TRACEABLE
     // Untrace undoes a state change by restoring old data
-    void UnTrace(int32_t ID, uint32_t old) {
+    void UnTrace(int32_t ID, uint32_t old) {  // EXPORTED
         int idx = ~ID;
         if (ID<0) {
             if (idx < VMregs) {
@@ -181,7 +219,7 @@ static void StoreX (uint32_t addr, uint32_t data, int shift, int mask) {
 /// IR is the instruction group.
 /// Paused is 0 when PC post-increments, other when not.
 
-void VMpor(void) {
+void VMpor(void) {  // EXPORTED
 #ifdef TRACEABLE
     memset(OpCounter, 0, 64);           // clear opcode profile counters
 #endif // TRACEABLE
@@ -189,7 +227,7 @@ void VMpor(void) {
     T=0;  N=0;  R=0;  A=0;  B=0;  DebugReg = 0;
 }
 
-int32_t VMstep(uint32_t IR, int Paused) {
+int32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 	uint32_t M;  int slot;
 	unsigned int opcode, addr;
 // The PC is incremented at the same time the IR is loaded. Slot0 is next clock.
@@ -438,10 +476,13 @@ GetPointer:
     return PC;
 }
 
-void SetDbgReg(uint32_t n) {    // write to the debug mailbox
+// write to the debug mailbox
+void SetDbgReg(uint32_t n) {  // EXPORTED
     DebugReg = n;
 }
-uint32_t GetDbgReg(void) {      // read from the debug mailbox
+
+// read from the debug mailbox
+uint32_t GetDbgReg(void) {  // EXPORTED
     return DebugReg;
 }
 
