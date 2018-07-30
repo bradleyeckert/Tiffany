@@ -59,6 +59,19 @@ void SetPCreg (uint32_t PC) {           // Set new PC
     DbgGroup(opDUP, opPORT, opPUSH, opEXIT, opNOOP);
 }
 
+// to do: write to AXI through SetDbgReg and DbgGroup.
+// accessing this way allows target hardware to write
+// to SPI flash through the debug interface when brain dead
+// Store data to a temporary cell at the top of RAM, which gets trashed.
+static void WriteAXI(uint32_t data, uint32_t address) {
+    SetDbgReg(data);
+    VMstep((uint32_t)opLIT*0x100000 + ((ROMsize+RAMsize-1)*4), 1);
+    DbgGroup(opSetA, opDUP, opPORT, opStoreA, opNOOP); // save in temp
+    SetDbgReg(address);
+    DbgGroup(opDUP, opXOR, opDUP, opPORT, opStoreAS); // 1 word to AXI
+    DbgGroup(opDROP, opDROP, opSKIP, opNOOP, opNOOP);
+}
+
 void vmRAMfetchStr(char *s, unsigned int address, uint8_t length){
     int i;  char c;                     // Get a string from RAM
     for (i=0; i<length; i++) {
@@ -125,8 +138,11 @@ void StoreROM (uint32_t data, uint32_t address) {
         ior = WriteROM(data, address);
     }
 #ifdef BootFromSPI
-// to do: also write to AXI through SetDbgReg and DbgGroup.
-
+    WriteAXI(data, address);
+#else
+    if (address >= (ROMsize*4)){
+        WriteAXI(data, address);
+    }
 #endif // BootFromSPI
     if (!tiffIOR) tiffIOR = ior;
 }

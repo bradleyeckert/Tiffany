@@ -148,8 +148,8 @@ static void SendAXI(unsigned int address, unsigned int length) {
         tiffIOR = -23;                  // alignment problem
         return;
     }
-    if ((dest >= (AXIsize - length - 1))
-      || (src >= (RAMsize - length - 1))) {
+    if ((dest >= (AXIsize - length))
+      || (src >= (RAMsize - length))) {
         tiffIOR = -9;                   // out of range
         return;
     }
@@ -190,8 +190,11 @@ static void FetchX (int32_t addr, int shift, int mask) {
     if (addr < ROMsize) {
         temp = (ROM[addr] >> shift) & mask;
     } else {
-        addr = (addr - ROMsize) & (RAMsize-1);
-        temp = (RAM[addr] >> shift) & mask;
+        if (addr < (ROMsize + RAMsize)) {
+            temp = (RAM[addr-ROMsize] >> shift) & mask;
+        } else if (addr < AXIsize) {
+            temp = (AXI[addr] >> shift) & mask;
+        } else temp = 0;
     }
     Trace(0, RidT, T, temp);
     T = temp;
@@ -199,8 +202,11 @@ static void FetchX (int32_t addr, int shift, int mask) {
     if (addr < ROMsize) {
         T = (ROM[addr] >> shift) & mask;
     } else {
-        addr = (addr - ROMsize) & (RAMsize-1);
-        T = (RAM[addr] >> shift) & mask;
+        if (addr < (ROMsize + RAMsize)) {
+            T = (RAM[addr-ROMsize] >> shift) & mask;
+        } else if (addr < AXIsize) {
+            T = (AXI[addr] >> shift) & mask;
+        } else T = 0;
     }
 #endif // TRACEABLE
 }

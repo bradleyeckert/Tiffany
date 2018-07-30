@@ -6,7 +6,7 @@
 
 // Sizes of internal memories in 32-bit cells
 #define RAMsize   0x400                         /* must be an exact power of 2 */
-#define ROMsize   0x800                         /* must be a multiple of 0x400 */
+#define ROMsize   0x800                         /* must be an exact power of 2 */
 #define AXIsize   0x4000             /* SPI flash, must be a multiple of 0x400 */
 
 // Instruments the VM to allow Undo and Redo
@@ -34,12 +34,12 @@
 #error RAMsize must be a power of 2
 #endif
 
-#if (ROMsize & (RAMsize-1)) // VM stack addressing depends on this
-#error ROMsize must be an integer multiple of RAMsize
+#if (ROMsize & (ROMsize-1))
+#error ROMsize must be a power of 2
 #endif
 
-#if (ROMsize & 0x3FF) // To match SPI flash sectors
-#error ROMsize must be a multiple of 1024 (0x400)
+#if (AXIsize & 0x3FF) // To match SPI flash sectors
+#error AXIsize must be a multiple of 1024 (0x400)
 #endif
 
 #endif
