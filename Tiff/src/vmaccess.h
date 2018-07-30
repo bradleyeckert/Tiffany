@@ -29,7 +29,6 @@ void InitializeTermTCB(void);                           // Initialize everything
 void InitializeTIB(void);             // Initialize just the terminal task input
 int BinaryLoad(char* filename);                     // Load ROM from binary file
 void DumpRegs(void);            // clear screen and dump register and stack data
-extern int tiffIOR;                      // Interpret error detection when not 0
 
 
 #define DataStackCol     1
