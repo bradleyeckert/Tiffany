@@ -37,7 +37,8 @@ Read channel of AXI:
 
 Write channel of AXI:
 
-- AXI\[PC\] to the IR for extended code space fetch
 - Code RAM to AXI\[A\] for streaming out a working buffer
 
-Getting single words from the AXI read channel could take tens of cycles. However, since almost all time is spent in internal code space it doesn't matter. A little prefetch buffering would help things along.
+Getting single words from the AXI read channel could take tens of cycles. However, since almost all time is spent in internal code space it doesn't matter. A little prefetch buffering would help things along. 
+
+The AXI4 protocol allows for a burst size between 1 and 256 words. Bursts use 32-bit words.
