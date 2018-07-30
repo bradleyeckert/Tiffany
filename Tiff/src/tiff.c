@@ -38,7 +38,7 @@ void tiffCPUgo (void) {                 // Enter the single stepper
 void tiffROMstore (void) {
     uint32_t a = PopNum();
     uint32_t n = PopNum();
-    WriteROM (n, a);
+    StoreROM (n, a);
 }
 
 

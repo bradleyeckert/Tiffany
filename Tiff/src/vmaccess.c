@@ -112,10 +112,23 @@ uint32_t RegRead(int ID) {
 #endif // TRACEABLE
 
 void EraseSPIimage (void) {  // Erase SPI flash image
-    int i;
+    int i, ior;
     for (i=0; i < (AXIsize/1024); i++) {
-        EraseAXI4K(i * 1024);
+        ior = EraseAXI4K(i * 1024);
+        if (!tiffIOR) tiffIOR = ior;
     }
+}
+
+void StoreROM (uint32_t data, uint32_t address) {
+    int ior = 0;
+    if (address < (ROMsize*4)){
+        ior = WriteROM(data, address);
+    }
+#ifdef BootFromSPI
+// to do: also write to AXI through SetDbgReg and DbgGroup.
+
+#endif // BootFromSPI
+    if (!tiffIOR) tiffIOR = ior;
 }
 
 #ifdef TRACEABLE
@@ -294,7 +307,7 @@ int BinaryLoad(char* filename) {        // Load ROM from binary file
         for (i = 0; i < 4; i++) {       // make little-endian word
             n += data[i] << (8 * i);
         }
-        WriteROM(n, addr);
+        WriteROM(n, addr);              // ignore ior
         addr += 4;
     } while (length == 4);
     fclose(fp);

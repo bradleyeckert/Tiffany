@@ -18,6 +18,7 @@ int WriteROM(uint32_t data, uint32_t address);
 int EraseAXI4K(uint32_t address);         // Erase a 4KB sector in SPI flash image
 void Trace(unsigned int Type, int32_t ID, uint32_t Old, uint32_t New);
 void UnTrace(int32_t ID, uint32_t old);
+extern int tiffIOR;
 
 // Defined in tiffUser.c:
 int tiffKEYQ (void);                                      // Check for a key press

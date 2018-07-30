@@ -113,19 +113,9 @@
 
 int WriteROM(uint32_t data, uint32_t address) { // EXPORTED
     uint32_t addr = address / 4;
-    uint32_t old;
     if (address & 3) return -23;        // alignment problem
-    if (addr < ROMsize) {
-        ROM[addr] = data;
-    }
-#ifdef BootFromSPI
-    if (addr >= AXIsize) return 0;      // copy to SPI image
-#else
-    if (addr < ROMsize) return 0;
-#endif
-    old = AXI[addr];		            // existing flash data
-    if (~(old|data)) return -60;        // not erased
-    AXI[addr] = old & data;
+    if (addr >= ROMsize) return -9;     // out of range
+    ROM[addr] = data;
     return 0;
 }
 
@@ -146,17 +136,50 @@ int EraseAXI4K(uint32_t address) { // EXPORTED
 /// group. Writing to ROM is a special case, depending on a USER function
 /// with the restriction that you can't turn '0's into '1's.
 
-static int32_t InternalFn       // VM customization
-    (uint32_t S0, uint32_t S1, int fn );
 
 // Send a stream of RAM words to the AXI bus.
-// This would call an external function to simulate writing to the AXI.
+// The only thing on the AXI bus here is SPI flash.
+// An external function could be added in the future for other stuff.
 static void SendAXI(unsigned int address, unsigned int length) {
+    uint32_t dest = address / 4;
+    uint32_t src = A / 4;
+    uint32_t old, data;     int i;
+    if ((address & 3) || (A & 3)) {
+        tiffIOR = -23;                  // alignment problem
+        return;
+    }
+    if ((dest >= (AXIsize - length - 1))
+      || (src >= (RAMsize - length - 1))) {
+        tiffIOR = -9;                   // out of range
+        return;
+    }
+    for (i=0; i<=length; i++) {
+        old = AXI[dest];		        // existing flash data
+        data = RAM[src++];
+        if (~(old|data)) {
+            tiffIOR = -60;              // not erased
+            return;
+        }
+        AXI[dest++] = old & data;
+    }
 }
 
 // Receive a stream of RAM words from the AXI bus.
-// This would call an external function to simulate reading from the AXI.
+// The only thing on the AXI bus here is SPI flash.
+// An external function could be added in the future for other stuff.
 static void ReceiveAXI(unsigned int address, unsigned int length) {
+    uint32_t src = address / 4;
+    uint32_t dest = A / 4;
+    if ((address & 3) || (A & 3)) {
+        tiffIOR = -23;                  // alignment problem
+        return;
+    }
+    if ((src >= (AXIsize - length - 1))
+    || (dest >= (RAMsize - length - 1))) {
+        tiffIOR = -9;                   // out of range
+        return;
+    }
+    memmove(&RAM[src], &AXI[dest], length+1);
 }
 
 // Generic fetch from ROM or RAM: ROM is at the bottom, RAM wraps.
@@ -311,11 +334,14 @@ LastOp:
 			case 016: RDROP();				            break;	// RDROP
 
 			case 020: if (T<0) slot = 0;				break;	// +IF|
-			case 021: SendAXI(A/4, R & 0xFFFF);
+			case 021: M = N & 0xFF;
+                SendAXI(T/4, M);
 #ifdef TRACEABLE
-                Trace(New, RidA, A, A+4*R);  New=0;
+                Trace(New, RidA, A, A + 4 * (M + 1));  New=0;
+                Trace(0, RidA, T, T + 4 * (M + 1));
 #endif // TRACEABLE
-				A += 4 * R;							    break;	// !AS
+				A += 4 * (M + 1);
+				T += 4 * (M + 1);			    		break;	// !AS
 			case 022: FetchX(A>>2, 0, 0xFFFFFFFF); 		break;  // @A
 			case 023: 									break;
 			case 024: if (T>=0)  slot = 0;				break;	// -IF|
@@ -407,7 +433,7 @@ GetPointer:
             case 054: return PC; // reserved for future IMM opcode
 			case 056: StoreX(A>>2, T, (A&3)*8, 0xFF);   break;  // C!A
 
-			case 060: M = InternalFn(T, N, IMM);                // USER
+			case 060: M = UserFunction (T, N, IMM);             // USER
 #ifdef TRACEABLE
                 Trace(New, RidT, T, M);  New=0;
 #endif // TRACEABLE
@@ -421,11 +447,14 @@ GetPointer:
                 // Jumps and calls use cell addressing
 			    PC = IMM;  return PC;                           // JUMP
 
-			case 066: ReceiveAXI(A/4, R & 0xFFFF);
+			case 066: M = N & 0xFF;
+                ReceiveAXI(T/4, M);
 #ifdef TRACEABLE
-                Trace(New, RidA, A, A+4*R);  New=0;
+                Trace(New, RidA, A, A + 4 * (M + 1));  New=0;
+                Trace(0, RidA, T, T + 4 * (M + 1));
 #endif // TRACEABLE
-				A += 4 * R;					    		break;	// @AS
+				A += 4 * (M + 1);
+				T += 4 * (M + 1);			    		break;	// @AS
 			case 070: SDUP();
 #ifdef TRACEABLE
                 Trace(0, RidT, T, IMM);
@@ -485,39 +514,4 @@ void SetDbgReg(uint32_t n) {  // EXPORTED
 // read from the debug mailbox
 uint32_t GetDbgReg(void) {  // EXPORTED
     return DebugReg;
-}
-
-/// ROM writing functions are used in the VM only by Tiff.
-/// They should be SPI-friendly. Hardware can sandbox them.
-/// 0 = erase a 4K sector at address T, N is an enable key: 0xc0dedead.
-/// 1 = start programming at address T, N is an enable key: 0xc0debabe.
-/// 2 = program the next 32-bit word T to flash.
-/// 3 = end programming sequence.
-static int32_t InternalFn (uint32_t S0, uint32_t S1, int fn ) {
-	uint32_t i;
-	static uint32_t celladdr = 0xFFFFFFFF;      // address disabled
-	switch (fn) {
-		case 0:  // erase a 4KB "flash sector" at address T
-		    if (S1 != 0xc0dedead) { return -61; }
-            if (S0 > (ROMsize-1024)*4) { return -9; }
-		    for (i=0; i<1024; i++)              // erase a 4K sector
-                ROM[i+(S0/4)]=0xFFFFFFFF;
-            return 0;
-		case 1:  // start programming at address T
-		    if (S1 != 0xc0debabe) { return -61; }
-            if (S0 >= (ROMsize-1024)*4) { return -9; }
-            if (S0 & 3) { return -23; }          // alignment problem
-            celladdr = S0>>2;                    // valid start address
-            return 0;
-		case 2:  // program the next cell
-            if (celladdr >= (ROMsize-1024)*4) { return -9; }
-            i = ROM[celladdr];			        // existing ROM data
-            if (~(i|S0)) { return -60; }        // not erased
-            ROM[celladdr++] = i & S0;
-            return 0;
-        case 3:  // end programming sequence
-            celladdr = 0xFFFFFFFF;
-            return 0;
-		default: return UserFunction (S0, S1, fn);
-	}
 }
