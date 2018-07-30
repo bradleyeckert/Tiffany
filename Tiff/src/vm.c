@@ -140,16 +140,12 @@ int EraseAXI4K(uint32_t address) { // EXPORTED
 // Send a stream of RAM words to the AXI bus.
 // The only thing on the AXI bus here is SPI flash.
 // An external function could be added in the future for other stuff.
-static void SendAXI(unsigned int address, unsigned int length) {
-    uint32_t dest = address / 4;
+// dest is a cell address, length is 0 to 255 meaning 1 to 256 words.
+static void SendAXI(unsigned int dest, unsigned int length) {
     uint32_t src = A / 4;
     uint32_t old, data;     int i;
-    if ((address & 3) || (A & 3)) {
-        tiffIOR = -23;                  // alignment problem
-        return;
-    }
-    if ((dest >= (AXIsize - length))
-      || (src >= (RAMsize - length))) {
+    if ((dest >= (AXIsize - 1 - length))
+      || (src >= (RAMsize - 1 - length))) {
         tiffIOR = -9;                   // out of range
         return;
     }
@@ -167,15 +163,11 @@ static void SendAXI(unsigned int address, unsigned int length) {
 // Receive a stream of RAM words from the AXI bus.
 // The only thing on the AXI bus here is SPI flash.
 // An external function could be added in the future for other stuff.
-static void ReceiveAXI(unsigned int address, unsigned int length) {
-    uint32_t src = address / 4;
+// src is a cell address, length is 0 to 255 meaning 1 to 256 words.
+static void ReceiveAXI(unsigned int src, unsigned int length) {
     uint32_t dest = A / 4;
-    if ((address & 3) || (A & 3)) {
-        tiffIOR = -23;                  // alignment problem
-        return;
-    }
-    if ((src >= (AXIsize - length - 1))
-    || (dest >= (RAMsize - length - 1))) {
+    if ((src >= (AXIsize - 1 - length))
+    || (dest >= (RAMsize - 1 - length))) {
         tiffIOR = -9;                   // out of range
         return;
     }
@@ -341,7 +333,7 @@ LastOp:
 
 			case 020: if (T<0) slot = 0;				break;	// +IF|
 			case 021: M = N & 0xFF;
-                SendAXI(T/4, M);
+                SendAXI(T/4, M);    // T is address, N is length-1
 #ifdef TRACEABLE
                 Trace(New, RidA, A, A + 4 * (M + 1));  New=0;
                 Trace(0, RidA, T, T + 4 * (M + 1));

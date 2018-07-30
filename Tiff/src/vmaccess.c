@@ -66,7 +66,7 @@ void SetPCreg (uint32_t PC) {           // Set new PC
 static void WriteAXI(uint32_t data, uint32_t address) {
     SetDbgReg(data);
     VMstep((uint32_t)opLIT*0x100000 + ((ROMsize+RAMsize-1)*4), 1);
-    DbgGroup(opSetA, opDUP, opPORT, opStoreA, opNOOP); // save in temp
+    DbgGroup(opSetA, opDUP, opPORT, opStoreA, opDUP); // save in temp
     SetDbgReg(address);
     DbgGroup(opDUP, opXOR, opDUP, opPORT, opStoreAS); // 1 word to AXI
     DbgGroup(opDROP, opDROP, opSKIP, opNOOP, opNOOP);

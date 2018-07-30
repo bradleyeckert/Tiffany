@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
 #ifdef TRACEABLE
     CreateTrace();                      // reset the trace buffer
 #endif
-    StoreROM(10000, 0x2000); // test write (debug)
+//    StoreROM(10000, 0x4000); // test write (debug)
     InitializeTermTCB();
     argline[0] = 0;                     // default is empty line
     argidx = 0;							// capture commandline string:

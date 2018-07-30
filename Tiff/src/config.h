@@ -14,7 +14,7 @@
 #define TraceDepth 12           /* Log2 of the trace buffer size, 13*2^N bytes */
 
 // Tell TIF to copy ROM writes to SPI flash (not used yet)
-#define BootFromSPI             /* Defined if SPI gets a copy of the ROM image */
+//#define BootFromSPI             /* Defined if SPI gets a copy of the ROM image */
 
 // Console color scheme, comment out if no colors
 #define InterpretColor  "\033[1;33m"
