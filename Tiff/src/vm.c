@@ -110,8 +110,15 @@
 static int32_t InternalFn       // VM customization
     (uint32_t S0, uint32_t S1, int fn );
 
-void SendAXI(void){}
-void ReceiveAXI(void){}
+// Send a stream of RAM words to the AXI bus.
+// This would call an external function to simulate writing to the AXI.
+static void SendAXI(unsigned int address, unsigned int length) {
+}
+
+// Receive a stream of RAM words from the AXI bus.
+// This would call an external function to simulate reading from the AXI.
+static void ReceiveAXI(unsigned int address, unsigned int length) {
+}
 
 // Generic fetch from ROM or RAM: ROM is at the bottom, RAM wraps.
 static void FetchX (int32_t addr, int shift, int mask) {
@@ -265,11 +272,11 @@ LastOp:
 			case 016: RDROP();				            break;	// RDROP
 
 			case 020: if (T<0) slot = 0;				break;	// +IF|
-			case 021: SendAXI();
+			case 021: SendAXI(A/4, R & 0xFFFF);
 #ifdef TRACEABLE
                 Trace(New, RidA, A, A+4*R);  New=0;
 #endif // TRACEABLE
-				A += 4*R;							    break;	// !AS
+				A += 4 * R;							    break;	// !AS
 			case 022: FetchX(A>>2, 0, 0xFFFFFFFF); 		break;  // @A
 			case 023: 									break;
 			case 024: if (T>=0)  slot = 0;				break;	// -IF|
@@ -375,11 +382,11 @@ GetPointer:
                 // Jumps and calls use cell addressing
 			    PC = IMM;  return PC;                           // JUMP
 
-			case 066: ReceiveAXI();
+			case 066: ReceiveAXI(A/4, R & 0xFFFF);
 #ifdef TRACEABLE
                 Trace(New, RidA, A, A+4*R);  New=0;
 #endif // TRACEABLE
-				A += 4*R;					    		break;	// @AS
+				A += 4 * R;					    		break;	// @AS
 			case 070: SDUP();
 #ifdef TRACEABLE
                 Trace(0, RidT, T, IMM);

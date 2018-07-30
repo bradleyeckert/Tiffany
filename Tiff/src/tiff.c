@@ -141,9 +141,6 @@ void tiffINTERPRET(void) {
     char token[33];  char *eptr;
     uint32_t address, length;
     long int x;
-#ifdef InterpretColor
-    printf(InterpretColor);
-#endif
     while (tiffPARSENAME()) {           // get the next blank delimited keyword
         // dictionary search using ROM head space not implemented yet.
         // Assume it falls through with ( c-addr len ) on the stack.
@@ -185,6 +182,12 @@ void tiffQUIT (char *cmdline) {
         StoreCell(0, SOURCEID);     	    // input is keyboard
         StoreCell(0, STATE);     	        // interpret
         while (1) {
+#ifdef InterpretColor
+            printf("\033[0m");              // reset colors
+#endif
+            if (ShowCPU) {
+                DumpRegs();
+            }
             StoreCell(0, TOIN);				// >IN = 0
             StoreCell(0, TIBS);
             source = FetchCell(SOURCEID);
@@ -209,6 +212,9 @@ void tiffQUIT (char *cmdline) {
                 default:	// unexpected
                     StoreCell(0, SOURCEID);
             }
+#ifdef InterpretColor
+            printf(InterpretColor);
+#endif
             tiffINTERPRET(); // interpret the TIBB until it's exhausted
             if (tiffIOR) break;
             switch (FetchCell(SOURCEID)) {
@@ -220,12 +226,6 @@ void tiffQUIT (char *cmdline) {
                     break; // next input is keyboard
                 default:
                     break;
-            }
-#ifdef InterpretColor
-            printf("\033[0m");                  // reset colors
-#endif
-            if (ShowCPU) {
-                DumpRegs();
             }
         }
         if (tiffIOR == -99999) return;  // produced by BYE
