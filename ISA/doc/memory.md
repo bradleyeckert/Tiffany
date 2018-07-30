@@ -18,22 +18,26 @@ A 4KB (1K word) ROM will hold quite a bit of kernel. That would make the minimum
 
 In Tiff, #defines in config.h specify the sizes (in 32-bit words) of RAM and ROM as `RAMsize` and `ROMsize` respectively.
 
-| Type | Range                        |
-| -----|:----------------------------:|
-| ROM  | 0 to ROMsize-1               |
-| RAM  | ROMsize to ROMsize+RAMsize-1 |
+| Type  | Range                        |
+| ------|:----------------------------:|
+| Code  | 0 to ROMsize-1               |
+| Data  | ROMsize to ROMsize+RAMsize-1 |
+| Code  | > Data: Read-only from AXI   |     
 
-AXI space starts at address 0. Tiff treats this as SPI flash. It's up to the implementation to write-protect the bottom of SPI flash so as to not be able to brick itself. Tiff simulates a blank flash and applies the rule of never writing a '0' bit twice to the same bit without erasing it first. Such activity may over-charge the floating gate (if the architecture doesn't prevent it), leading to reliability problems.
+AXI space starts at address 0. Tiff treats this as SPI flash. It's up to the implementation to write-protect the bottom of SPI flash so as to not be able to brick itself. The AXI address range of \[ROMsize to ROMsize+RAMsize-1\] is a section of SPI flash that's unreachable by normal memory opcodes. However, it can be streamed into RAM.
 
-## External Code
+Tiff simulates a blank flash in AXI space and applies the rule of never writing a '0' bit twice to the same bit without erasing it first. Such activity may over-charge the floating gate (if the architecture doesn't prevent it), leading to reliability problems. 
 
-When executing code from an external source, it's first streamed into the top of code RAM from AXI. Then, it's executed.
+## Streaming Operations
 
+Read channel of AXI:
 
-TBD: Handling address offsets to allow code compiled for large model to be moved and executed. Possibly apply the offset when PC is in the cache range. Then when the cache misses, what?
+- AXI\[PC\] to the IR, one word, for extended code space fetch (not an opcode)
+- AXI\[A\] to Code RAM for streaming in a code/data segment or initializing code space
 
+Write channel of AXI:
 
+- AXI\[PC\] to the IR for extended code space fetch
+- Code RAM to AXI\[A\] for streaming out a working buffer
 
-
-
-
+Getting single words from the AXI read channel could take tens of cycles. However, since almost all time is spent in internal code space it doesn't matter. A little prefetch buffering would help things along.
