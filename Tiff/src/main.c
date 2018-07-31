@@ -2,6 +2,7 @@
 #include "vm.h"
 #include "tiff.h"
 #include "vmaccess.h"
+#include "fileio.h"
 #include <string.h>
 
 #ifdef __linux__
