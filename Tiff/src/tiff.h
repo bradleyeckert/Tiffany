@@ -30,8 +30,8 @@ void vmTEST(void);
 /* Common to all tasks.                                                       */
 #define STATUS      termTCB(0)   /* -> multitasker status function            */
 #define FOLLOWER    termTCB(1)   /* -> next header in task list               */
-#define S0          termTCB(2)   /* initial stack pointer                     */
-#define R0          termTCB(3)   /* initial return stack pointer              */
+#define SP0         termTCB(2)   /* initial stack pointer                     */
+#define RP0         termTCB(3)   /* initial return stack pointer              */
 #define HANDLER     termTCB(4)   /* exception stack frame pointer             */
 
 /* Terminal task only, located at a fixed location in RAM.                    */

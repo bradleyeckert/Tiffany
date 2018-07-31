@@ -178,31 +178,32 @@ void tiffINTERPRET(void) {
 
 void tiffQUIT (char *cmdline) {
     char argline[MaxTIBsize+1];
-    size_t bufsize = MaxTIBsize;            // for getline
-    char *buf;                              // text from stdin (keyboard)
+    size_t bufsize = MaxTIBsize;        // for getline
+    char *buf;                          // text from stdin (keyboard)
     int length, source, TIBaddr;
     LoadKeywords();
     while (1){
+        tiffIOR = 0;
         InitializeTIB();
-        StoreCell(0, SOURCEID);     	    // input is keyboard
-        StoreCell(0, STATE);     	        // interpret
+        StoreCell(0, SOURCEID);     	// input is keyboard
+        StoreCell(0, STATE);     	    // interpret
         while (1) {
 #ifdef InterpretColor
-            printf("\033[0m");              // reset colors
+            printf("\033[0m");          // reset colors
 #endif
             if (ShowCPU) {
                 DumpRegs();
             }
-            StoreCell(0, TOIN);				// >IN = 0
+            StoreCell(0, TOIN);		    // >IN = 0
             StoreCell(0, TIBS);
             source = FetchCell(SOURCEID);
             TIBaddr = FetchCell(TIBB);
             switch (source) {
-                case 0:                     // load TIBB from keyboard
-                    if (*cmdline) {         // first time through use command line
+                case 0:                 // load TIBB from keyboard
+                    if (cmdline) {      // first time through use command line
                         strcpy (argline, cmdline);
                         length = strlen(cmdline);
-                        cmdline = NULL;     // clear cmdline
+                        cmdline = NULL; // clear cmdline
                     } else {
                         buf = argline;
                         length = getline(&buf, &bufsize, stdin);   // get input line
@@ -220,15 +221,12 @@ void tiffQUIT (char *cmdline) {
 #ifdef InterpretColor
             printf(InterpretColor);
 #endif
-            tiffINTERPRET(); // interpret the TIBB until it's exhausted
+            tiffINTERPRET();            // interpret the TIBB until it's exhausted
             if (tiffIOR) break;
             switch (FetchCell(SOURCEID)) {
                 case 0:
                     printf(" ok\n");
                     break;
-                case 1:
-                    StoreCell(0, SOURCEID);
-                    break; // next input is keyboard
                 default:
                     break;
             }
@@ -239,8 +237,7 @@ void tiffQUIT (char *cmdline) {
 #endif
         ErrorMessage(tiffIOR);
 #ifdef ErrorColor
-        printf("\033[0m");                  // reset colors
+        printf("\033[0m");              // reset colors
 #endif
-        tiffIOR = 0;
     }
 }

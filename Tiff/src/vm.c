@@ -142,13 +142,11 @@ int EraseAXI4K(uint32_t address) { // EXPORTED
 // An external function could be added in the future for other stuff.
 // dest is a cell address, length is 0 to 255 meaning 1 to 256 words.
 static void SendAXI(unsigned int dest, unsigned int length) {
-    uint32_t src = A / 4;
+    int32_t src = (A / 4) - ROMsize;
     uint32_t old, data;     int i;
-    if ((dest >= (AXIsize - 1 - length))
-      || (src >= (RAMsize - 1 - length))) {
-        tiffIOR = -9;                   // out of range
-        return;
-    }
+    if (src < 0) goto bogus;            // below RAM address
+    if (src >= (RAMsize-length)) goto bogus;
+    if (dest >= (AXIsize-length)) goto bogus;
     for (i=0; i<=length; i++) {
         old = AXI[dest];		        // existing flash data
         data = RAM[src++];
@@ -157,7 +155,8 @@ static void SendAXI(unsigned int dest, unsigned int length) {
             return;
         }
         AXI[dest++] = old & data;
-    }
+    } return;
+bogus: tiffIOR = -9;                    // out of range
 }
 
 // Receive a stream of RAM words from the AXI bus.
@@ -165,13 +164,13 @@ static void SendAXI(unsigned int dest, unsigned int length) {
 // An external function could be added in the future for other stuff.
 // src is a cell address, length is 0 to 255 meaning 1 to 256 words.
 static void ReceiveAXI(unsigned int src, unsigned int length) {
-    uint32_t dest = A / 4;
-    if ((src >= (AXIsize - 1 - length))
-    || (dest >= (RAMsize - 1 - length))) {
-        tiffIOR = -9;                   // out of range
-        return;
-    }
+    int32_t dest = (A / 4) - ROMsize;
+    if (dest < 0) goto bogus;            // below RAM address
+    if (dest >= (RAMsize-length)) goto bogus;
+    if (src >= (AXIsize-length)) goto bogus;
     memmove(&RAM[src], &AXI[dest], length+1);
+    return;
+bogus: tiffIOR = -9;                    // out of range
 }
 
 // Generic fetch from ROM or RAM: ROM is at the bottom, RAM wraps.

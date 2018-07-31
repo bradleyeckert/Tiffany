@@ -277,8 +277,8 @@ void InitializeTIB(void) {
     // T ends nonzero after this, so we clear it with XOR.
     DbgGroup(opDUP, opPORT, opSetSP, opDUP, opXOR);
     StoreCell(STATUS, FOLLOWER);  	    // only one task
-    StoreCell(TiffRP0, R0);             // USER vars in terminal task
-    StoreCell(TiffSP0, S0);
+    StoreCell(TiffRP0, RP0);            // USER vars in terminal task
+    StoreCell(TiffSP0, SP0);
     StoreCell(TIB, TIBB);               // point to TIB
     StoreCell(0, STATE);
 }
@@ -295,10 +295,10 @@ void InitializeTermTCB(void) {
 }
 
 int Rdepth(void) {                      // return stack depth
-    return (int)(FetchCell(R0) - RegRead(5)) / 4;
+    return (int)(FetchCell(RP0) - RegRead(5)) / 4;
 }
 int Sdepth(void) {                      // data stack depth
-    return (int)(FetchCell(S0) - RegRead(6)) / 4;
+    return (int)(FetchCell(SP0) - RegRead(6)) / 4;
 }
 
 // Load a ROM image file
@@ -386,7 +386,7 @@ void CellDump(int length, uint32_t addr) {  // DUMP
 
 void DumpDataStack(void){
     int i;  int row = 2;
-    int SP0 = FetchCell(S0);
+    int sp0 = FetchCell(SP0);
     int depth = Sdepth();
     int overflow = depth + 2 - DumpRows;
     if (depth<0) {
@@ -394,12 +394,12 @@ void DumpDataStack(void){
         printf("Underflow");
     } else {
         if (overflow >= 0) {            // limit depth
-            SP0 -= overflow * 4;
+            sp0 -= overflow * 4;
             depth -= overflow;
         }
         for (i=depth-1; i>=0; i--) {
             SetCursorPosition(DataStackCol, row++);
-            printf("  %08X", FetchCell(SP0 - 4*depth + i*4));
+            printf("  %08X", FetchCell(sp0 - 4*depth + i*4));
         }
     }
     SetCursorPosition(DataStackCol, row++);
@@ -410,7 +410,7 @@ void DumpDataStack(void){
 
 void DumpReturnStack(void){
     int i;   int row = 2;
-    int RP0 = FetchCell(R0);
+    int rp0 = FetchCell(RP0);
     int depth = Rdepth();
     int overflow = depth + 1 - DumpRows;
     if (depth<0) {
@@ -418,12 +418,12 @@ void DumpReturnStack(void){
         printf("Underflow");
     } else {
         if (overflow >= 0) {            // limit depth
-            RP0 -= overflow * 4;
+            rp0 -= overflow * 4;
             depth -= overflow;
         }
         for (i=depth-1; i>=0; i--) {
             SetCursorPosition(ReturnStackCol, row++);
-            printf("  %08X", FetchCell(RP0 - 4*depth + i*4));
+            printf("  %08X", FetchCell(rp0 - 4*depth + i*4));
         }
     }
     SetCursorPosition(ReturnStackCol, row++);
@@ -488,7 +488,7 @@ void DumpROM(void) {
 void DumpRegs(void) {
     int row = 2;
     char name[9][4] = {" T", " N", " R", " A", " B", "RP", "SP", "UP", "PC"};
-    char term[9][10] = {"STATUS", "FOLLOWER", "S0", "R0", "HANDLER", "BASE",
+    char term[9][10] = {"STATUS", "FOLLOWER", "SP0", "RP0", "HANDLER", "BASE",
                         "Head: HP", "Code: CP", "Data: DP"};
     uint32_t i;
     printf("\033[s");                   // save cursor
