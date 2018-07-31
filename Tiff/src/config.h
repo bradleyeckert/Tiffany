@@ -16,7 +16,7 @@
 // Tell TIF to copy ROM writes to SPI flash (not used yet)
 //#define BootFromSPI             /* Defined if SPI gets a copy of the ROM image */
 
-#define MONOCHROME
+//#define MONOCHROME
 // Console color scheme, comment out if no colors
 #ifndef MONOCHROME
 #define InterpretColor  "\033[1;33m"
@@ -25,7 +25,7 @@
 #define FileLineColor   "\033[1;32m"
 #endif
 
-#define OKstyle  4     /* Style of OK prompt: 0=classic, 1/2=pre-CR, 3/4=no-CR */
+#define OKstyle  1     /* Style of OK prompt: 0=classic, 1=openboot, 2=depth */
 
 #define CodePointerOrigin  0                  /* Kernel definitions start here */
 #define HeadPointerOrigin  (ROMsize*2)       /* Headers start halfway into ROM */

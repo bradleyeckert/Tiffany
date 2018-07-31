@@ -13,6 +13,7 @@
 
 int tiffIOR = 0;                        // Interpret error detection when not 0
 int ShowCPU = 0;                        // Enable CPU status display
+int printed = 0;                         // flag, T if text was printed on console
 
 /// Primordial brain keyword support for host functions.
 /// These are interpreted after the word is not found in the Forth dictionary.
@@ -26,7 +27,7 @@ void tiffBYE (void) {
     tiffCOMMENT();
 }
 void tiffDOT (void) {                   // pop and print
-    printf("%d ", PopNum());
+    printf("%d ", PopNum());  printed = 1;
 }
 void tiffCPUon (void) {                 // enable CPU display mode
     ShowCPU = 1;
@@ -281,16 +282,20 @@ void tiffQUIT (char *cmdline) {
             if (tiffIOR) break;
             switch (FetchCell(SOURCEID)) {
                 case 0:
-#if (OKstyle == 0)
+#if (OKstyle == 0)      // FORTH Inc style
                     printf(" ok\n");
-#elsif (OKstyle == 1)
-                    printf("\nok>");
-#elsif (OKstyle == 2)
-                    printf("\n<%d>", Sdepth());
-#elsif (OKstyle == 3)
-                    printf("ok>");
+#elsif (OKstyle == 1)   // openboot style
+                    if (printed) {
+                        printf("\n");
+                        printed = 0;
+                    }
+                    printf("ok ");    // should only newline of some text has been output
 #else
-                    printf("<%d>", Sdepth());
+                    if (printed) {
+                        printf("\n");
+                        printed = 0;
+                    }
+                    printf("%d:ok ", Sdepth());
 #endif
                     break;
                 default:
@@ -302,6 +307,7 @@ void tiffQUIT (char *cmdline) {
         printf(ErrorColor);
 #endif
         ErrorMessage(tiffIOR);
+        printed = 1;
         while (filedepth) {
 #ifdef FilePathColor
             printf(FilePathColor);
