@@ -243,7 +243,9 @@ void tiffQUIT (char *cmdline) {
                     } else {
                         buf = File.Line;
                         length = getline(&buf, &bufsize, stdin);   // get input line
+#if (OKstyle==0)        // undo the newline that getline generated
                         printf("\033[A\033[%dC", (int)strlen(File.Line));
+#endif
                         if (length > 0) length--;   // remove LF or CR
                         File.Line[length] = 0;
                     }
@@ -279,7 +281,17 @@ void tiffQUIT (char *cmdline) {
             if (tiffIOR) break;
             switch (FetchCell(SOURCEID)) {
                 case 0:
+#if (OKstyle == 0)
                     printf(" ok\n");
+#elsif (OKstyle == 1)
+                    printf("\nok>");
+#elsif (OKstyle == 2)
+                    printf("\n<%d>", Sdepth());
+#elsif (OKstyle == 3)
+                    printf("ok>");
+#else
+                    printf("<%d>", Sdepth());
+#endif
                     break;
                 default:
                     break;
