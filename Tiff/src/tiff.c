@@ -106,7 +106,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("-cpu", tiffCPUoff);
     AddKeyword("cpu",  tiffCPUgo);
     AddKeyword("cls",  tiffCLS);
-    AddKeyword("load", tiffINCLUDE);
+    AddKeyword("include", tiffINCLUDE);
     AddKeyword("rom!", tiffROMstore);
 
 //    AddKeyword("hex", tiffHEX);
