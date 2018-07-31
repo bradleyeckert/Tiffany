@@ -8,7 +8,6 @@
 #include <ncurses.h>
 #endif
 
-
 int main(int argc, char *argv[]) {
     int i;  char *s;  char c;
     char argline[MaxTIBsize+1];		    // command line string: args separated by blanks

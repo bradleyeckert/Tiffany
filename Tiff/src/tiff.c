@@ -126,7 +126,8 @@ void SkipWhite (void){                  // skip whitespsce (blanks)
         TOINbump();
     }
 }
-// Parse without skipping delimiter, return string on stack
+// Parse without skipping delimiter, return string on stack.
+// Also return length of string for C to check.
 uint32_t tiffPARSE (void) {             // ( delimiter -- addr length )
     uint32_t length = 0;                // returns a string
     uint8_t delimiter = (uint8_t) PopNum();
@@ -140,7 +141,8 @@ uint32_t tiffPARSE (void) {             // ( delimiter -- addr length )
     PushNum(length);
     return length;
 }
-// Parse skipping blanks, then parsing for the next blank
+// Parse skipping blanks, then parsing for the next blank.
+// Also return length of string for C to check.
 uint32_t tiffPARSENAME (void) {         // ( -- addr length )
     SkipWhite();
     PushNum(' ');
