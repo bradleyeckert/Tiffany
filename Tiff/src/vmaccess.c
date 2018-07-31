@@ -301,42 +301,6 @@ int Sdepth(void) {                      // data stack depth
     return (int)(FetchCell(SP0) - RegRead(6)) / 4;
 }
 
-// Load a ROM image file
-
-char* LoadedFilename;                   // saved filename and format
-int LoadedFileType;
-
-int BinaryLoad(char* filename) {        // Load ROM from binary file
-    FILE *fp;
-    uint8_t data[4];
-    int length, i;
-    uint32_t n;
-    uint32_t addr = 0;
-    fp = fopen(filename, "rb");
-    if (!fp) { return -1; }             // bad filename
-    LoadedFilename = filename;          // save in case we want to reload the file
-    LoadedFileType = 1;
-    do {
-        memset(data, 255, 4);
-        length = fread(data, 1, 4, fp); // get 4 bytes of data
-        n = 0;
-        for (i = 0; i < 4; i++) {       // make little-endian word
-            n += data[i] << (8 * i);
-        }
-        WriteROM(n, addr);              // ignore ior
-        addr += 4;
-    } while (length == 4);
-    fclose(fp);
-    return 0;
-}
-
-void ReloadFile(void) {                 // Reload known ROM image file
-    switch(LoadedFileType) {
-        case 1: BinaryLoad(LoadedFilename);
-        default: break;
-    }
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// Debugger Display uses full screen with VT100 commands
 /// It does not work with the old Windows CMD console.

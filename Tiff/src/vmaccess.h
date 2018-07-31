@@ -28,6 +28,7 @@ void DestroyTrace(void);                     // free memory for the trace buffer
 void InitializeTermTCB(void);                           // Initialize everything
 void InitializeTIB(void);             // Initialize just the terminal task input
 int BinaryLoad(char* filename);                     // Load ROM from binary file
+void ReloadFile(void);                    // reload the latest loaded image file
 void DumpRegs(void);            // clear screen and dump register and stack data
 
 
