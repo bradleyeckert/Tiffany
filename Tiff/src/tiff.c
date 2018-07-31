@@ -35,6 +35,10 @@ void tiffCPUgo (void) {                 // Enter the single stepper
     ShowCPU = 1;
     vmTEST();
 }
+void tiffCLS (void) {                   // clear screen
+    printf("\033[2J");                  // CLS
+    if (ShowCPU) printf("\033[%dH", DumpRows+2);  // cursor below CPU
+}
 void tiffROMstore (void) {
     uint32_t a = PopNum();
     uint32_t n = PopNum();
@@ -73,6 +77,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("+cpu", tiffCPUon);
     AddKeyword("-cpu", tiffCPUoff);
     AddKeyword("cpu",  tiffCPUgo);
+    AddKeyword("cls",  tiffCLS);
     AddKeyword("rom!", tiffROMstore);
 
 //    AddKeyword("hex", tiffHEX);
