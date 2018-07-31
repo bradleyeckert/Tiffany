@@ -6,7 +6,10 @@
 #include "vmaccess.h"
 #include <string.h>
 #include <ctype.h>
+
 #define MaxKeywords 50
+#define MaxFiles 20
+#define File FileStack[filedepth]
 
 int tiffIOR = 0;                        // Interpret error detection when not 0
 int ShowCPU = 0;                        // Enable CPU status display
@@ -45,6 +48,31 @@ void tiffROMstore (void) {
     StoreROM (n, a);
 }
 
+struct FileRec {
+    char Line[MaxTIBsize+1];
+    char FilePath[MaxTIBsize+1];
+    FILE *fp;
+    uint32_t LineNumber;
+};
+
+struct FileRec FileStack[MaxFiles];
+int filedepth = 0;
+
+// When a file is included, the rest of the TIB is discarded.
+// A new file is pushed onto the file stack
+void tiffINCLUDE (void) {
+    StoreCell(1, SOURCEID);
+    tiffPARSENAME();
+    int length = PopNum();
+    int addr = PopNum();
+    filedepth++;
+    if (filedepth >= MaxFiles) tiffIOR = -99;
+    FetchString(File.FilePath, addr, (uint8_t)length);
+    File.fp = fopen(File.FilePath, "r");
+    if (File.fp == NULL) tiffIOR = -199;
+    File.LineNumber = 0;
+    File.Line[0] = 0;
+}
 
 // void tiffHEX (void) {                   // base 16
 //     StoreCell(16, BASE);
@@ -78,6 +106,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("-cpu", tiffCPUoff);
     AddKeyword("cpu",  tiffCPUgo);
     AddKeyword("cls",  tiffCLS);
+    AddKeyword("load", tiffINCLUDE);
     AddKeyword("rom!", tiffROMstore);
 
 //    AddKeyword("hex", tiffHEX);
@@ -159,32 +188,32 @@ void tiffINTERPRET(void) {
         length = PopNum();
         if (length>31) length=32;       // sanity check
         address = PopNum();
-        vmRAMfetchStr(token, address, (uint8_t)length);
+        FetchString(token, address, (uint8_t)length);
         if (NotKeyword(token)) {        // try to convert to number
             x = (int32_t) strtol(token, &eptr, 0); // automatic base (C format)
             if ((x == 0) && ((errno == EINVAL) || (errno == ERANGE))) {
                 bogus: strcpy(ErrorString, token); // not a number
-                tiffIOR = -13;  tiffCOMMENT();
+                tiffIOR = -13;
             } else {
                 if (*eptr) goto bogus;  // points at zero terminator if number
                 PushNum((uint32_t)x);
             }
         }
         if (Sdepth()<0) {
-            tiffIOR = -4;  tiffCOMMENT();
+            tiffIOR = -4;
         }
         if (Rdepth()<0) {
-            tiffIOR = -6;  tiffCOMMENT();
+            tiffIOR = -6;
         }
+        if (tiffIOR) goto ex;
     }
-    PopNum();  PopNum();                // keyword is an empty string
+ex: PopNum();  PopNum();                // keyword is an empty string
 }
 
 // Keyboard input uses the default terminal cooked mode.
 // Since getline includes the trailing LF (or CR), we lop it off.
 
 void tiffQUIT (char *cmdline) {
-    char argline[MaxTIBsize+1];
     size_t bufsize = MaxTIBsize;        // for getline
     char *buf;                          // text from stdin (keyboard)
     int length, source, TIBaddr;
@@ -208,23 +237,41 @@ void tiffQUIT (char *cmdline) {
             switch (source) {
                 case 0:                 // load TIBB from keyboard
                     if (cmdline) {      // first time through use command line
-                        strcpy (argline, cmdline);
+                        strcpy (File.Line, cmdline);
                         length = strlen(cmdline);
                         cmdline = NULL; // clear cmdline
                     } else {
-                        buf = argline;
+                        buf = File.Line;
                         length = getline(&buf, &bufsize, stdin);   // get input line
-                        printf("\033[A\033[%dC", (int)strlen(argline)); // undo the newline
+                        printf("\033[A\033[%dC", (int)strlen(File.Line));
                         if (length > 0) length--;   // remove LF or CR
+                        File.Line[length] = 0;
                     }
                     StoreCell((uint32_t)length, TIBS);
-                    vmRAMstoreStr(argline, (uint32_t)TIBaddr);
+                    StoreString(File.Line, (uint32_t)TIBaddr);
                     break;
-                case 1: // load TIBB using getline(&buffer, &buffer_size, file)
+                case 1:
+                    buf = File.Line;
+                    length = getline(&buf, &bufsize, File.fp);
+                    if (length < 0) {
+                        fclose (File.fp);
+                        filedepth--;
+                        if (filedepth == 0) {
+                            StoreCell(0, SOURCEID);
+                        }
+                        tiffCOMMENT();
+                    } else {
+                        if (length > 0) length--; // remove LF or CR
+                        File.Line[length] = 0;
+                        File.LineNumber++;
+                        StoreCell((uint32_t)length, TIBS);
+                        StoreString(File.Line, (uint32_t)TIBaddr);
+                    }
                     break;
                 default:	// unexpected
                     StoreCell(0, SOURCEID);
             }
+
 #ifdef InterpretColor
             printf(InterpretColor);
 #endif
@@ -243,8 +290,21 @@ void tiffQUIT (char *cmdline) {
         printf(ErrorColor);
 #endif
         ErrorMessage(tiffIOR);
+        while (filedepth) {
+#ifdef FilePathColor
+            printf(FilePathColor);
+#endif
+            printf("%s[%d]: ", File.FilePath, File.LineNumber);
+#ifdef FileLineColor
+            printf(FileLineColor);
+#endif
+            printf("%s\n", File.Line);
+            fclose(File.fp);
+            filedepth--;
+        }
 #ifdef ErrorColor
         printf("\033[0m");              // reset colors
 #endif
     }
 }
+

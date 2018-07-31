@@ -19,6 +19,8 @@
 // Console color scheme, comment out if no colors
 #define InterpretColor  "\033[1;33m"
 #define ErrorColor      "\033[1;31m"
+#define FilePathColor   "\033[1;34m"
+#define FileLineColor   "\033[1;32m"
 
 #define CodePointerOrigin  0                  /* Kernel definitions start here */
 #define HeadPointerOrigin  (ROMsize*2)       /* Headers start halfway into ROM */

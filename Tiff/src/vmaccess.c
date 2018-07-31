@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "vm.h"
 #include "tiff.h"
+#include "fileio.h"
 #include "vmaccess.h"
 #include <string.h>
 #include <ctype.h>
@@ -72,14 +73,14 @@ static void WriteAXI(uint32_t data, uint32_t address) {
     DbgGroup(opDROP, opDROP, opSKIP, opNOOP, opNOOP);
 }
 
-void vmRAMfetchStr(char *s, unsigned int address, uint8_t length){
+void FetchString(char *s, unsigned int address, uint8_t length){
     int i;  char c;                     // Get a string from RAM
     for (i=0; i<length; i++) {
         c = FetchByte(address++);
         *s++ = c;
     }   *s++ = 0;                       // end in trailing zero
 }
-void vmRAMstoreStr(char *s, unsigned int address){
+void StoreString(char *s, unsigned int address){
     char c;                             // Store a string to RAM,
     while ((c = *s++)){                 // not including trailing zero
         StoreByte(c, address++);

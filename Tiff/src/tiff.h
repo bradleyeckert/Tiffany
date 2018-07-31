@@ -16,8 +16,12 @@
 #define termTCB(n)  ((ROMsize + 256 + n)*4)        /* Terminal USER variables */
 
 // error message handling
-char ErrorString[64];   // String to include in error message
+char ErrorString[260];   // String to include in error message
 void ErrorMessage (int error);
+
+// forward references for tiff.c
+uint32_t tiffPARSENAME (void);                             // ( -- addr length )
+
 
 // used by main.c, defined in tiff.c
 // might move to vmaccess.c later, with memory and stack access functions.

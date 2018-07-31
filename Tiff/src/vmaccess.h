@@ -17,8 +17,8 @@ uint8_t FetchByte (uint32_t addr);                       // Read from RAM or ROM
 uint16_t FetchHalf (uint32_t addr);                      // Read from RAM or ROM
 void StoreByte (uint8_t N, uint32_t addr);                       // Write to RAM
 void EraseSPIimage (void);                   // Erase ROM and/or SPI flash image
-void vmRAMfetchStr(char *s, unsigned int address, uint8_t length); // get string
-void vmRAMstoreStr(char *s, unsigned int address);     // Store unbounded string
+void FetchString(char *s, unsigned int address, uint8_t length);   // get string
+void StoreString(char *s, unsigned int address);       // Store unbounded string
 int Rdepth(void);                                          // return stack depth
 int Sdepth(void);                                            // data stack depth
 
