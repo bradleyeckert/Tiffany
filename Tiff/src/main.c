@@ -4,12 +4,17 @@
 #include "vmaccess.h"
 #include <string.h>
 
+#ifdef __linux__
+#include <ncurses.h>
+#endif
+
+
 int main(int argc, char *argv[]) {
     int i;  char *s;  char c;
     char argline[MaxTIBsize+1];		    // command line string: args separated by blanks
     int argidx;						    // the string and length
     int first = 1;                      // first argument of Forth command line
-
+/*
 #ifdef __linux__
     initscr();
     cbreak();
@@ -17,6 +22,7 @@ int main(int argc, char *argv[]) {
     scrollok(stdscr, TRUE);
     nodelay(stdscr, TRUE);
 #endif
+*/
 
 // The command line string is built from the argvs. You can put quotes around an
 // argument to keep its blanks, but then you will lose the quotes.

@@ -13,16 +13,18 @@
   #include <sched.h>
   static int lastchar = ERR;
   int tiffKEYQ (void) {
-      lastchar = getch();
+      lastchar = getc(stdin);
       if (lastchar = ERR) return 0;
       else return -1;
+  }
   int tiffEKEY (void) {
       while (lastchar == ERR) {
           sched_yield();
-          lastchar = getch();
+          lastchar = getc(stdin);
+      }
       return lastchar;
   }
-  void tiffEMIT (uint8_t c) { putch(c); }
+  void tiffEMIT (uint8_t c) { putc(c,stdout); }
 #elif _WIN32
 #include <conio.h>
 int tiffKEYQ (void) { return kbhit(); }
