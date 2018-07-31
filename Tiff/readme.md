@@ -5,7 +5,9 @@
 - `tiff.exe [command line]` Enter Forth interpreter
 
 ## The Terminal
-Tiff uses raw keyboard input and outputs to a VT100 terminal. Is that too much to ask? Only for Microsoft, but Windows 10 finally supports VT100 emulation if you enable it. Even so, ConEmu presents a very nice command line. If you use Windows, download it. For Mac and Linux, VT100 is a subset of Xterm. If your screen looks like it threw up a bunch of garbage, your console doesn't support escape sequences. Shame on them.
+Tiff uses raw keyboard input and outputs to a VT100 terminal. Is that too much to ask? Only for Microsoft, but Windows 10 finally supports VT100 emulation if you enable it. Even so, ConEmu presents a very nice command line. If you use Windows, download it. For Mac and Linux, VT100 is a subset of Xterm. If your screen looks like it threw up a bunch of garbage, your console doesn't support escape sequences.
+
+Low level testing has a problem on Linux - something about how the terminal is used. Main.c is missing a trick to enable raw keyboard input.
 
 ## Low Level Testing
 The internal ROM is erased to -1. If a filename exists, it loads it into ROM in binary format. At this point, you don't need to know much to start playing. You can edit a binary file to create executable ROM or you can type an 8-digit hex number and press X to execute it and see the stack effects. The tester operates like a postfix-style calculator. Hex digits are shifted into a 32-bit parameter. Non-digits are commands. Non-implemented commands display the key code so you know what the more esoteric key codes do. You might want to use them for something. So far, these (case-insensitive) commands are implemented:
