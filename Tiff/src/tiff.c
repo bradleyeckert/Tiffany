@@ -284,7 +284,7 @@ void tiffQUIT (char *cmdline) {
                 case 0:
 #if (OKstyle == 0)      // FORTH Inc style
                     printf(" ok\n");
-#elsif (OKstyle == 1)   // openboot style
+#elif (OKstyle == 1)   // openboot style
                     if (printed) {
                         printf("\n");
                         printed = 0;
