@@ -2,15 +2,17 @@
 
 The most important thing about header space is that it lives in flash memory. The basic rule about flash programming is that you can only change a '1' to a '0'. Erased flash starts out at '1'. You may not program a '0' to the same bit twice. A good chip design might mitigate the possible damage caused by this, but you don't know about the parts you're dealing with. Writing a '0' to the same bit twice without erasing in between could over-charge the floating gate causing problems with incomplete erasure and reading of adjacent bits. So, Tiff throws an error if you try to program a '0' into a bit that's already at '0'.
 
-## To Hash or Not to Hash
+An application can run without header space. It just won't have an interpreter. This is not a problem in embedded systems. SPI flash could be used in development and removed in the final system.
 
-That is the question.
+## To Hash or Not to Hash
 
 Some Forths use a hashed dictionary, where the name to be searched uses a hash to resolve the dictionary thread to search. Is this necessary? Consider the case of headers being kept in SPI flash, clocked at 25 MHz by an MCU's SPI port. Random 32-bit reads spend about 4 usec setting the address and reading the 32-bit link followed by a 32-bit packed name and name length. A typical Forth app tends to be in the 1000-word range. With one dictionary thread, that would take 4 ms to search. Using the scheme of following the list forward to find the end, since it doesn't have an end pointer until it's programmed once into the flash, add another 3 ms. So, 7 ms for a search.
 
 A Forth app with 10,000 words would take 70 seconds to load at that rate, but since the dictionary is built up linearly from nothing it would be more like 35 seconds. Reloading the app would be rarely done. Half a minute for something rarely done isn't bad. More reasonable hardware would use quad SPI at 50 MHz, or 10x the speed.
 
-Tiff, being a PC app, should be quite fast even while reading the flash image by stepping a simulated stack computer. Overall, there's no need for hashing the dictionary.
+Tiff, being a PC app, should be fast even while reading the flash image by stepping a simulated stack computer. Benchmarking on a laptop i7 found 150ns per simulated SPI flash fetch. There are three of these per header, so with 1000 words a search should cost 150 usec. Multiplied by 10k searches is 1.5 sec. A more realistic estimate using a dictionary built from scratch gives a load time of less than a second.
+
+There's no need to hash the dictionary. In the interest of minimizing the size of target code, hashing is not used.
 
 ## Header Data Structure
 
