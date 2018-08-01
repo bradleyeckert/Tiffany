@@ -284,13 +284,13 @@ void tiffQUIT (char *cmdline) {
                 case 0:
 #if (OKstyle == 0)      // FORTH Inc style
                     printf(" ok\n");
-#elif (OKstyle == 1)   // openboot style
+#elif (OKstyle == 1)    // openboot style
                     if (printed) {
                         printf("\n");
                         printed = 0;
                     }
                     printf("ok ");    // should only newline of some text has been output
-#else
+#else                   // openboot style with stack depth
                     if (printed) {
                         printf("\n");
                         printed = 0;
