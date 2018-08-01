@@ -48,35 +48,6 @@ void tiffQUIT (void) {
 }
 ```
 
-## Headers
-
-Header data structures are held in a ROM image, in several linked lists. Each list is a wordlist. Word visibility is controlled by setting up the search order, a list of wordlists to search in order. Headers use dual execution tokens. The target VM has a restriction on writing to ROM, which Tiff emulates: It may not change ‘0’ bits to ‘1’ bits or write ‘0’ bits twice, as per flash memory restrictions.
-
-The header data structure is cell-aligned in such a way as to avoid memory alignment problems on machines that are picky about alignment. Little endian byte order is assumed. A 24-bit fetch uses a 32-bit fetch followed by AND with 0xFFFFFF. The compilation scheme uses dual xts and a value. The 32-bit cells are:
-
-```
-32-bit link to list of words that reference this, -1 if none.
-32-bit link to list of words that this references, -1 if none.
-32-bit link to next header structure, -1 if none.
-32-bit link to previous header structure, -1 if none.
-32-bit xt of compilation semantics, xtc.
-32-bit value, -1 if unused, w.
-32-bit xt of execution semantics, xte.
-8-bit number of code words in the definition.
-8-bit source file ID. 0 = keyboard, 1 = blocks, 2-255 = text file (see file list).
-16-bit source line number.	
-2-bit flags:  IMMEDIATE and CALL-ONLY 
-6-bit Name Length.
-NAME text, 1 to 32 bytes.
-Padding (0xFF bytes) for 4-byte alignment.
-```
-
-The beginning of a header list (the tail) contains a link value of -1, which marks the end of a search. Head space in Tiff contains several threads, each of which is a linked list. A classical wordlist data structure contains a pointer (or an array of pointers if hashing is used) that gets updated each time a header is added to the dictionary. That’s a problem for flash-based systems. You want to add to the end of the dictionary using a read-only wordlist. The way around this is with a doubly linked list. 
-
-Although the wordlist ID points to the start of the read-only structure, its first cell starts out as -1. The word GILD ( wid – ) resolves it by traversing forward to the end of the list and replacing the -1 with that address. A forward traversal is terminated by hitting blank flash (-1). If hashed wordlists are used, the number of hash threads is the size of the array, in cells, containing -1 at the wordlist structure. The tail of the list is easily found from there.
-
-There is a forward linked list for filenames. If a filename exists in the list, its position in the list is its ID number. If it must be appended, the filename is added to the list and the previously blank forward link (located by traversal) is populated.
-
 ### Flash-friendly Wordlist Structure
 ![Header Links](https://github.com/bradleyeckert/Mforth/blob/master/Tiff/doc/header.png "Header Lists in Flash")
 
@@ -87,16 +58,6 @@ The second wordlist is searched first. WID is a ROM address that’s in the sear
 A section of lexicon can be removed without wiping out the whole dictionary (of previously defined words) by erasing that section. GILD creates new wordlist pointers for the headers of the next section of lexicon. It could align that to 4KB sector boundaries for SPI flash.
 
 ![Header Detail](https://github.com/bradleyeckert/Mforth/blob/master/Tiff/doc/headstruct.png "Header Detail")
-
-#### NameLength Word bit fields
-- [31:16] = 16-bit source line number.
-- [15:8] = 8-bit source file ID. 0 = keyboard, 1 = blocks, 2-255 = text file (see Filename list).
-- [7] = IMMEDIATE
-- [6] = CALL-ONLY
-- [5] = Smudge: ‘1’ if smudged, reset to ‘0’ by ;.
-- [4:0] = Name Length = 0 to 31 bytes.
-
-The cross reference structure contains lists of cross reference structures. Since the links can only be written once, the list must be traversed in order to add to it. The list is kept short by doubling the element size with each link taken. The HEAD cells are addresses of the corresponding header structure, from which a name and source code location may be obtained.
 
 ## Interleaved vs Non-interleaved
 Code and head spaces may be interleaved or not. Code memory is divided between internal ROM and external flash. In the case of an FPGA implementation, a quad-rate SPI flash can be clocked at the same frequency as the CPU. It takes eight beats to read in a 32-bit code word. That’s a lot slower than the single cycle access of internal ROM. It’s also much cheaper than internal ROM. Tiff should have separate head and code spaces when building the ROM image.
@@ -130,7 +91,8 @@ The target system erases RAM and processes a run-length compressed table in ROM 
 80h to FFh = set repeat counter, 0 to 127, for looping backwards
 ```
 
-##The Interpreter
+## The Interpreter
+
 The interpreter loop takes text tokens from the input stream until it’s exhausted. This stream is usually the TIB, filled by either the keyboard or the next line of a file, or a 1K block buffer. Since it’s a dual xt system, FIND is replaced by LOCATE ( c-addr u – ht | c-addr u 0 ), where ht is the header token. If the counted name string is not found, the ht is 0. Otherwise, ht points to the H2 word of the header. Depending on STATE, the xt at either H2 or H4 is executed.
 
 If not found, an attempt is made to convert the string to a number. This where we break with classic Forth and its use of decimal. Decimal does not produce a double number. Instead, it converts the number to IEEE floating point format. Built-in C-style radix and quotes are also supported. The number is pushed onto the stack. If STATE is -1 (compiling), a LitPending flag is set. A literal will be compiled by the next instruction, if can integrate it, or a literal opcode will be compiled. 
@@ -138,7 +100,9 @@ If not found, an attempt is made to convert the string to a number. This where w
 Finally, if it can’t be converted to a number, then it’s an error. The tiffIOR variable is set to -13 and the rest of the input buffer is discarded.
 
 The Tiff version of the interpreter implements a host-only keyword search if the word is not found. This is to avoid cluttering head space with headers that are only used for host side keywords such as debugging tools and settings. This uses a simple array of minimal header structures in C space.
-###Interpretation
+
+### Interpretation
+
 When a word is interpreted, xte is fetched and executed. If the word is a constant, the execution function may read the value from w and push it onto the stack. If the word needs to return more than a cell, w would point to a data structure containing the data. For most Forth definitions, xte is the address of the executable code of that word.
 ###Compilation
 When a word is compiled, xtc is fetched and executed. If the word is a constant, the compilation function may compile a literal copy of w. For most Forth definitions, xtc simply compiles a call to the address in w. When a call is compiled, a pointer to its opcode is saved. Tail call optimization is performed by EXIT by clearing a bit of that opcode rather than compiling an EXIT.
@@ -148,7 +112,8 @@ This dual-xt header scheme allows for efficient code generation, but it’s a li
 You may notice that some headers will need to be created (in the VMgen) before the xte of COMPILE, is known. These will be cleaned up afterwards: An xtc of -2 in the VMgen is used as a placeholder for COMPILE,. There are other placeholder values, all of which are negative numbers.
 When the target VM creates a header at run time, undefined fields are -1 to allow patching the flash memory later.
 
-###Loading
+### Loading
+
 Within Tiff are header, code and data spaces that will be compiled as ASCII text into a ROM source file for the VM. A copy of the VM switch interpreter is used by the VM to enable words to be interpreted as they are defined. Stacks and data are kept within the VM.
 To execute OVER, for example, the VM would note the SP and call the ROM code for OVER. The VM runs in a tight loop until SP matches or exceeds its original value. It would push and pop data directly by passing commands to the VM.
 
@@ -167,8 +132,4 @@ STDIO is used for I/O in Tiff. The VM invokes them via API calls. The hard VM em
 
 ### Compile Order
 As much is done by the VM as possible. It starts out brain dead. Tiff loads header space with a few headers that have native functions (numbered by index into a function table). It has its own version of QUIT, which implements a simple version of the Forth interpreter. Later on, when the system has been compiled, a new QUIT is defined (using EXEC: instead of :) to change the xte in QUIT’s header. Since all of the headers are in the ROM image, they will be intact when the ROM image is exported as C or Assembly source code for embedded VMs.
-
-
-
-
 
