@@ -110,11 +110,11 @@ void tiffINCLUDE (void) {
 void CommaHeader (char *name, uint32_t W, uint32_t xte, uint32_t xtc) {
 	CommaH ((File.FID<<24) | 0xFFFFFF);
 	CommaH (((File.LineNumber & 0xFF)<<24) | 0xFFFFFF);
-	uint32_t link = FetchCell(CURRENT);
-	StoreCell (FetchCell(HP), CURRENT);
 	CommaH (((File.LineNumber >> 8  )<<24) | xtc);
 	CommaH (W);
 	CommaH (0xFF000000 | xte);
+	uint32_t link = FetchCell(CURRENT);
+	StoreCell (FetchCell(HP), CURRENT);
 	CommaH (0xFF000000 | link);
 	CommaHstring(name);
 }
