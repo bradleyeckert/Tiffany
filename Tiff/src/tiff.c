@@ -76,17 +76,23 @@ int filedepth = 0;
 uint32_t FilenameListHead = HeadPointerOrigin;
 int FileID = 0;
 
+void FollowingToken (char *str, int max) {  // parse the next blank delimited string
+    tiffPARSENAME();
+    int length = PopNum();
+    if (length >= max) {
+        length = max;
+        tiffIOR = -19;
+    }
+    int addr = PopNum();
+    FetchString(str, addr, (uint8_t)length);
+}
 // When a file is included, the rest of the TIB is discarded.
 // A new file is pushed onto the file stack
 
 void tiffINCLUDE (void) {
     StoreCell(1, SOURCEID);
-    tiffPARSENAME();
-    int length = PopNum();
-    int addr = PopNum();
     filedepth++;
-    if (filedepth >= MaxFiles) tiffIOR = -99;
-    FetchString(File.FilePath, addr, (uint8_t)length);
+    FollowingToken(File.FilePath, MaxTIBsize);
     File.fp = fopen(File.FilePath, "r");
     File.LineNumber = 0;
     File.Line[0] = 0;
@@ -107,16 +113,22 @@ void tiffINCLUDE (void) {
     }
 }
 
-void CommaHeader (char *name, uint32_t W, uint32_t xte, uint32_t xtc) {
-	CommaH ((File.FID<<24) | 0xFFFFFF);
-	CommaH (((File.LineNumber & 0xFF)<<24) | 0xFFFFFF);
-	CommaH (((File.LineNumber >> 8  )<<24) | xtc);
-	CommaH (W);
-	CommaH (0xFF000000 | xte);
+void CommaHeader (char *name, uint32_t W, uint32_t xte, uint32_t xtc, int size){
+	CommaH ((File.FID<<24) | 0xFFFFFF);                // [-5]: File ID | use
+	CommaH (((File.LineNumber & 0xFF)<<24) | 0xFFFFFF);// [-4]: Lower line | use
+	CommaH (((File.LineNumber >> 8  )<<24) | xtc);     // [-3]: Upper line | xtc
+	CommaH (W);                                        // [-2]: W
+	CommaH (((size&0xFF)<<24) | xte);                  // [-1]: Lower size | xte
 	uint32_t link = FetchCell(CURRENT);
 	StoreCell (FetchCell(HP), CURRENT);
-	CommaH (0xFF000000 | link);
-	CommaHstring(name);
+	CommaH (((size&0xFF00)<<16) | link);               // [0]: Upper size | link
+	CommaHstring(name);                                // [1]: Name
+}
+
+void tiffEQU (void) {
+    char name[33];
+    FollowingToken(name, 32);
+    CommaHeader(name, PopNum(), -1, -2, 0);
 }
 
 void benchmark(void) {
@@ -162,6 +174,8 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("cpu",  tiffCPUgo);
     AddKeyword("cls",  tiffCLS);
     AddKeyword("include", tiffINCLUDE);
+    AddKeyword("equ",  tiffEQU);
+
     AddKeyword("rom!", tiffROMstore);
     AddKeyword("bench", benchmark);
 
@@ -263,7 +277,8 @@ void tiffINTERPRET(void) {
         }
         if (tiffIOR) goto ex;
     }
-ex: PopNum();  PopNum();                // keyword is an empty string
+ex: PopNum();                           // keyword is an empty string
+    PopNum();
 }
 
 // Keyboard input uses the default terminal cooked mode.
@@ -311,7 +326,7 @@ void tiffQUIT (char *cmdline) {
                 case 1:
                     buf = File.Line;
                     length = getline(&buf, &bufsize, File.fp);
-                    if (length < 0) {
+                    if (length < 0) {  // EOF
                         fclose (File.fp);
                         filedepth--;
                         if (filedepth == 0) {
