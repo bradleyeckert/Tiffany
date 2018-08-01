@@ -93,7 +93,7 @@ void benchmark(void) {
         sum += FetchCell(0x4000+(i&0xFF));
     }
     now = getMicrotime() - now;
-    printf("%d ps", now);  printed = 1;
+    printf("%d ps", (unsigned int)now);  printed = 1;
 }
 
 // void tiffHEX (void) {                   // base 16
