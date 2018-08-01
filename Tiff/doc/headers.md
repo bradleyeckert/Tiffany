@@ -34,6 +34,8 @@ The source file ID handles up to 128 different filename IDs, which are indices i
 | -2   | Link to list of words that this references, -1 if none.             |
 | -1   | Link to list of words that reference this, -1 if none.              |
 
+The cross reference structure contains lists of cross reference structures. Since the links can only be written once, the list must be traversed in order to add to it. The list is kept short by doubling the element size with each link taken. The HEAD cells are addresses of the corresponding header structure, from which a name and source code location may be obtained.
+
 ## Wordlists
 
 A classical wordlist data structure contains a pointer (or an array of pointers if hashing is used) in RAM that gets updated each time a header is added to the dictionary. That’s a problem for a flash-based system. You want to add to the end of the dictionary using a read-only wordlist. The way around this is with a doubly linked list.
@@ -43,4 +45,5 @@ Although the wordlist ID points to the start of the read-only structure, its fir
 ## Source File ID
 
 There is a forward linked list for filenames. If a filename exists in the list, its position in the list is its ID number. If it must be appended, the filename is added to the list and the previously blank forward link (located by traversal) is populated.
+
 
