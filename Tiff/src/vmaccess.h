@@ -21,6 +21,13 @@ void FetchString(char *s, unsigned int address, uint8_t length);   // get string
 void StoreString(char *s, unsigned int address);       // Store unbounded string
 int Rdepth(void);                                          // return stack depth
 int Sdepth(void);                                            // data stack depth
+void CommaC (uint32_t X);                         // append a word to code space
+void CommaD (uint32_t X);                         // append a word to data space
+void CommaH (uint32_t X);                       // append a word to header space
+void CommaHstring (char *s);                     // compile string to head space
+void CommaDstring (char *s);                     // compile string to data space
+void CommaCstring (char *s);                     // compile string to code space
+void CommaXstring (char *s, void(*fn)(uint32_t), int flags);   // generic string
 
 void CreateTrace(void);                  // allocate memory for the trace buffer
 void DestroyTrace(void);                     // free memory for the trace buffer

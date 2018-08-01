@@ -60,7 +60,7 @@ void SetPCreg (uint32_t PC) {           // Set new PC
     DbgGroup(opDUP, opPORT, opPUSH, opEXIT, opNOOP);
 }
 
-// to do: write to AXI through SetDbgReg and DbgGroup.
+// Write to AXI through SetDbgReg and DbgGroup.
 // accessing this way allows target hardware to write
 // to SPI flash through the debug interface when brain dead
 // Store data to a temporary cell at the top of RAM, which gets trashed.
@@ -146,6 +146,55 @@ void StoreROM (uint32_t data, uint32_t address) {
     }
 #endif // BootFromSPI
     if (!tiffIOR) tiffIOR = ior;
+}
+
+void CommaC (uint32_t X) {  // append a word to code space
+    uint32_t cp = FetchCell(CP);
+    StoreROM(X, cp);
+    StoreCell(cp + 4, CP);
+}
+
+void CommaD (uint32_t X) {  // append a word to data space
+    uint32_t dp = FetchCell(DP);
+    StoreCell(X, dp);
+    StoreCell(dp + 4, DP);
+}
+
+void CommaH (uint32_t X) {  // append a word to header space
+    uint32_t hp = FetchCell(HP);
+    StoreROM(X, hp);
+    StoreCell(hp + 4, HP);
+}
+
+// Generic counted string compile
+// Include optional flags when compiling a header name
+void CommaXstring (char *s, void(*fn)(uint32_t), int flags) {
+    int length = strlen(s);
+    uint32_t word = 0xFFFFFF00 | ((flags | length) & 0xFF);
+    int i = 1;  uint32_t x, mask;
+    while (length--) {
+        x = (uint32_t)*s++ << (i*8);
+        mask = ~(0xFF << (i*8));
+        word &= (mask | x);
+        if (i == 3) {
+            fn(word);
+            word = 0xFFFFFFFF;
+        }
+        i = (i + 1) & 3;
+    }
+    if (i) {
+        fn(word);                // pad if needed
+    }
+}
+
+void CommaHstring (char *s) {   // compile string to head space
+    CommaXstring(s, CommaH, 0);
+}
+void CommaDstring (char *s) {   // compile string to data space
+    CommaXstring(s, CommaD, 0);
+}
+void CommaCstring (char *s) {   // compile string to code space
+    CommaXstring(s, CommaC, 0);
 }
 
 #ifdef TRACEABLE

@@ -64,13 +64,21 @@ struct FileRec {
     char FilePath[MaxTIBsize+1];
     FILE *fp;
     uint32_t LineNumber;
+    int FID;
 };
 
 struct FileRec FileStack[MaxFiles];
 int filedepth = 0;
 
+// The dictionary list is assumed to be at the beginning of header space.
+// "include" compiles the next node in the list
+
+uint32_t FilenameListHead = HeadPointerOrigin;
+int FileID = 0;
+
 // When a file is included, the rest of the TIB is discarded.
 // A new file is pushed onto the file stack
+
 void tiffINCLUDE (void) {
     StoreCell(1, SOURCEID);
     tiffPARSENAME();
@@ -80,10 +88,23 @@ void tiffINCLUDE (void) {
     if (filedepth >= MaxFiles) tiffIOR = -99;
     FetchString(File.FilePath, addr, (uint8_t)length);
     File.fp = fopen(File.FilePath, "r");
-    if (File.fp == NULL) tiffIOR = -199;
     File.LineNumber = 0;
     File.Line[0] = 0;
+    File.FID = FileID;
     tiffCOMMENT();
+    if (File.fp == NULL) {
+        tiffIOR = -199;
+    } else {
+        uint32_t hp = FetchCell(HP);
+        if (!FileID) {                  // not the first header
+            StoreROM(hp, FilenameListHead);
+            FilenameListHead = hp;
+        }
+        CommaH(0xFFFFFFFF);             // forward link
+        CommaHstring(File.FilePath);
+        FileID++;
+        if (FileID == 255) tiffIOR = -99;
+    }
 }
 
 void benchmark(void) {

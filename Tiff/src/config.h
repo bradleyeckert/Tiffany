@@ -28,8 +28,8 @@
 #define OKstyle  1     /* Style of OK prompt: 0=classic, 1=openboot, 2=depth */
 
 #define CodePointerOrigin  0                  /* Kernel definitions start here */
-#define HeadPointerOrigin  (ROMsize*2)       /* Headers start halfway into ROM */
 #define DataPointerOrigin ((ROMsize+0x140)*4) /* Data starts after stack space */
+#define HeadPointerOrigin ((ROMsize+RAMsize)*4)  /* Headers start in AXI space */
 
 // Wordlists can be hashed into a number of different threads
 #define WordlistStrands  3                           /* must be a prime number */
