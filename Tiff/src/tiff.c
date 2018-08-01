@@ -6,10 +6,20 @@
 #include "vmaccess.h"
 #include <string.h>
 #include <ctype.h>
+#include <sys/time.h>
 
 #define MaxKeywords 50
 #define MaxFiles 20
 #define File FileStack[filedepth]
+
+/**
+* Returns the current time in microseconds.
+*/
+long getMicrotime(){
+    struct timeval currentTime;
+    gettimeofday(&currentTime, NULL);
+    return currentTime.tv_sec * (int)1e6 + currentTime.tv_usec;
+}
 
 int tiffIOR = 0;                        // Interpret error detection when not 0
 int ShowCPU = 0;                        // Enable CPU status display
@@ -73,6 +83,17 @@ void tiffINCLUDE (void) {
     if (File.fp == NULL) tiffIOR = -199;
     File.LineNumber = 0;
     File.Line[0] = 0;
+    tiffCOMMENT();
+}
+
+void benchmark(void) {
+    long now = getMicrotime();
+    uint32_t i, sum;
+    for (i=0; i<1000000; i++) {
+        sum += FetchCell(0x4000+(i&0xFF));
+    }
+    now = getMicrotime() - now;
+    printf("%d ps", now);  printed = 1;
 }
 
 // void tiffHEX (void) {                   // base 16
@@ -109,6 +130,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("cls",  tiffCLS);
     AddKeyword("include", tiffINCLUDE);
     AddKeyword("rom!", tiffROMstore);
+    AddKeyword("bench", benchmark);
 
 //    AddKeyword("hex", tiffHEX);
 //    AddKeyword("decimal", tiffDECIMAL);
