@@ -1,5 +1,7 @@
 # Dev Tools
-I use Code::Blocks and CLion. CLion is great to have if you're doing serious C coding, as its editor has the best hinting and real-time error hilighting. If you're on a budget, Code::Blocks is free. Linux is also free, but making console I/O work properly (raw vs cooked) is a little tricky. I run the executable in ConEmu.
+I use Code::Blocks and CLion. CLion is great to have if you're doing serious C coding, as its editor has the best hinting and real-time error hilighting. If you're on a budget, Code::Blocks is free. Linux is also free, but making console I/O work properly (raw vs cooked) is a little tricky. When creating a new project, include all of the files in the `/src` folder.
+
+I run the executable in ConEmu. If you must use a very dumb terminal, #define MONOCHROME in config.h.
 
 # Command Line parameters
 
