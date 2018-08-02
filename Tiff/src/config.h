@@ -9,6 +9,9 @@
 #define ROMsize   0x800                         /* must be an exact power of 2 */
 #define AXIsize   0x4000             /* SPI flash, must be a multiple of 0x400 */
 
+// Copy internal ROM writes to SPI flash
+#define BootFromSPI
+
 // Instruments the VM to allow Undo and Redo
 #define TRACEABLE
 #define TraceDepth 12           /* Log2 of the trace buffer size, 13*2^N bytes */
