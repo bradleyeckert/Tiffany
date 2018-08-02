@@ -71,6 +71,7 @@ void tiffQUIT(char *s);                                    // The C-side QUIT lo
 #define opUP         (050)
 #define opWstoreA    (052)
 #define opSetUP      (053)
+#define opShift24    (054)
 #define opCstoreA    (056)
 #define opUSER       (060)
 #define opNIP        (063)

@@ -22,11 +22,10 @@ The link and the name should be adjacent in memory to allow for faster fetch fro
 
 | Cell | \[31:24\]                        | \[23:0\]                           |
 | ---- |:---------------------------------| ----------------------------------:|
-| -5   | Source File ID                   | List of words that this references |
-| -4   | Source Line, Low byte            | List of words that reference this  |
-| -3   | # of instructions in definition  | xte, Execution token for execute   |
+| -4   | Source File ID                   | List of words that this references |
+| -3   | Source Line, Low byte            | List of words that reference this  |
 | -2   | Source Line, High byte           | xtc, Execution token for compile   |
-| -1   | W (upper byte)                   | W (lower 3 bytes)                  |
+| -1   | # of instructions in definition  | xte, Execution token for execute   |
 | 0    | # of instructions high byte      | Link                               |
 | 1    | Name Length                      | Name Text, first 3 characters      |
 | 2    | 4th name character               | Name Text, chars 5-7, etc...       |

@@ -28,7 +28,7 @@ void CommaHstring (char *s);                     // compile string to head space
 void CommaDstring (char *s);                     // compile string to data space
 void CommaCstring (char *s);                     // compile string to code space
 void CommaXstring (char *s, void(*fn)(uint32_t), int flags);   // generic string
-void CommaHeader (char *name, uint32_t W, uint32_t xte, uint32_t xtc, int Size, int flags);
+void CommaHeader (char *name, uint32_t xte, uint32_t xtc, int Size, int flags);
 
 void CreateTrace(void);                  // allocate memory for the trace buffer
 void DestroyTrace(void);                     // free memory for the trace buffer
@@ -36,8 +36,6 @@ void DestroyTrace(void);                     // free memory for the trace buffer
 void InitializeTermTCB(void);                           // Initialize everything
 void InitializeTIB(void);             // Initialize just the terminal task input
 void DumpRegs(void);            // clear screen and dump register and stack data
-
-void tiffFUNC (int n, uint32_t W);  // see compile.c
 
 #define DataStackCol     1
 #define ReturnStackCol  13

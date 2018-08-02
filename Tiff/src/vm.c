@@ -428,7 +428,12 @@ GetPointer:
                 Trace(New, RidUP, UP, T>>2);  New=0;
 #endif // TRACEABLE
 			    UP = (uint8_t) (T>>2);  SDROP();	    break;	// UP!
-            case 054: return PC; // reserved for future IMM opcode
+            case 054:
+#ifdef TRACEABLE
+                Trace(New, RidT, T, (T<<24) | (IMM & 0xFFFFFF));  New=0;
+#endif // TRACEABLE
+                T = (T<<24) | (IMM & 0xFFFFFF);
+                return PC;                                      // SH24
 			case 056: StoreX(A>>2, T, (A&3)*8, 0xFF);   break;  // C!A
 
 			case 060: M = UserFunction (T, N, IMM);             // USER

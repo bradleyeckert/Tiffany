@@ -4,6 +4,7 @@
 #include "vm.h"
 #include "tiff.h"
 #include "vmaccess.h"
+#include "compile.h"
 #include <string.h>
 #include <ctype.h>
 #include <sys/time.h>
@@ -11,8 +12,6 @@
 #define MaxKeywords 50
 #define MaxFiles 20
 #define File FileStack[filedepth]
-
-// try scanf for keyboard input
 
 /**
 * Returns the current time in microseconds.
@@ -60,6 +59,12 @@ void tiffROMstore (void) {
     uint32_t n = PopNum();
     StoreROM (n, a);
 }
+void tiffSTATEon (void) {               // ]
+    StoreCell(1, STATE);
+}
+void tiffSTATEoff (void) {              // [
+    StoreCell(0, STATE);
+}
 
 struct FileRec FileStack[MaxFiles];
 int filedepth = 0;
@@ -70,13 +75,17 @@ int filedepth = 0;
 uint32_t FilenameListHead = HeadPointerOrigin;
 int FileID = 0;
 
+void initFilelist (void) {
+    FilenameListHead = HeadPointerOrigin;
+    FileID = 0;
+}
+
 // Use Size=-1 if unknown
-void CommaHeader (char *name, uint32_t W, uint32_t xte, uint32_t xtc, int Size, int flags){
-	CommaH ((File.FID<<24) | 0xFFFFFF);                // [-5]: File ID | use
-	CommaH (((File.LineNumber & 0xFF)<<24) | 0xFFFFFF);// [-4]: Lower line | use
-	CommaH (((Size&0xFF)<<24) | xte);                  // [-3]: Lower size | xte
+void CommaHeader (char *name, uint32_t xte, uint32_t xtc, int Size, int flags){
+	CommaH ((File.FID<<24) | 0xFFFFFF);                // [-4]: File ID | use
+	CommaH (((File.LineNumber & 0xFF)<<24) | 0xFFFFFF);// [-3]: Lower line | use
 	CommaH (((File.LineNumber >> 8  )<<24) | xtc);     // [-2]: Upper line | xtc
-	CommaH (W);                                        // [-1]: W
+	CommaH (((Size&0xFF)<<24) | xte);                  // [-1]: Lower size | xte
 	uint32_t wid = FetchCell(CURRENT);                 // CURRENT -> Wordlist
 	uint32_t link = FetchCell(wid);
 	StoreCell (FetchCell(HP), wid);
@@ -173,7 +182,8 @@ void tiffINCLUDE (void) {
 void tiffEQU (void) {
     char name[33];
     FollowingToken(name, 32);
-    CommaHeader(name, PopNum(), -1, -2, 0, 0);
+    CommaH(PopNum());
+    CommaHeader(name, -1, -2, 0, 0);
 }
 void tiffHUH (void) {
     char name[33];
@@ -218,6 +228,8 @@ void AddKeyword(char *name, void (*func)()) {
 void LoadKeywords(void) {               // populate the list of gator brain functions
     keywords = 0;                       // start empty
     AddKeyword("bye",  tiffBYE);
+    AddKeyword("[",    tiffSTATEoff);
+    AddKeyword("]",    tiffSTATEon);
     AddKeyword("\\",   tiffCOMMENT);
     AddKeyword(".",    tiffDOT);
     AddKeyword("+cpu", tiffCPUon);
@@ -310,13 +322,12 @@ void tiffINTERPRET(void) {
             PopNum();
             PopNum();
             uint32_t xt;
-            uint32_t w = 0xFFFFFF & FetchCell(ht - 4);
             if (FetchCell(STATE)) {     // compiling
                 xt = 0xFFFFFF & FetchCell(ht - 8);
             } else {                    // interpreting
-                xt = 0xFFFFFF & FetchCell(ht - 12);
+                xt = 0xFFFFFF & FetchCell(ht - 4);
             }
-            tiffFUNC(xt, w);
+            tiffFUNC(xt, ht);
         } else {
             // dictionary search using ROM head space not implemented yet.
             // Assume it falls through with ( c-addr len ) on the stack.
@@ -331,7 +342,11 @@ void tiffINTERPRET(void) {
                     tiffIOR = -13;
                 } else {
                     if (*eptr) goto bogus;  // points at zero terminator if number
-                    PushNum((uint32_t)x);
+                    if (FetchCell(STATE)) {
+                        Literal(x);
+                    } else {
+                        PushNum((uint32_t)x);
+                    }
                 }
             }
             if (Sdepth()<0) {

@@ -336,6 +336,8 @@ void InitializeTIB(void) {
 // Initialize ALL variables in the terminal task
 void InitializeTermTCB(void) {
     VMpor();                            // clear VM and RAM
+    InitIR();                           // clear compiler
+    initFilelist();
     EraseSPIimage();                    // clear SPI flash image
     StoreCell(HeadPointerOrigin, HP);
     StoreCell(CodePointerOrigin, CP);
@@ -456,7 +458,7 @@ void DisassembleIR(uint32_t IR) {
     "+IF|", "!AS",  "@A",   "---", "-IF|",  "2*",   "@A+",   "---",
     "NEXT", "U2/",  "W@A",  "A!",  "REPT|", "2/",   "C@A",   "B!",
     "SP",   "COM",  "!A",   "RP!", "RP",    "PORT", "!B+",   "SP!",
-    "UP",   "---",  "W!A",  "UP!", "---",   "---",  "C!A",   "---",
+    "UP",   "---",  "W!A",  "UP!", "SH24",  "---",  "C!A",   "---",
     "USER", "---",  "---",  "NIP", "JUMP",  "---",  "@AS",   "---",
     "LIT",  "---",  "DROP", "ROT", "CALL",  "1+",   ">R",    "SWAP"
     };

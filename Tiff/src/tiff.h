@@ -21,6 +21,7 @@ void ErrorMessage (int error);
 
 // forward references for tiff.c
 uint32_t tiffPARSENAME (void);                             // ( -- addr length )
+void initFilelist(void);
 
 
 // used by main.c, defined in tiff.c
