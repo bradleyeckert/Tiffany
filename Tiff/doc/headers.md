@@ -10,7 +10,7 @@ Some Forths use a hashed dictionary, where the name to be searched uses a hash t
 
 A Forth app with 10,000 words would take 40 seconds to load at that rate, but since the dictionary is built up linearly from nothing it would be more like 20 seconds. Reloading the app would be rarely done. Half a minute for something rarely done isn't bad. More reasonable hardware would use quad SPI at 50 MHz, or 10x the speed.
 
-Tiff, being a PC app, should be fast even while reading the flash image by stepping a simulated stack computer. Benchmarking on a laptop i7 found 100ns per simulated SPI flash fetch. There are two of these per header, so with 1000 words a search should cost 200 usec. Multiplied by 10k searches is 2 sec. A more realistic estimate using a dictionary built from scratch gives a load time of less than a second.
+Tiff, being a PC app, should be fast even while reading the flash image by stepping a simulated stack computer. Benchmarking on a laptop i7 found 150ns per simulated SPI flash fetch. There are two of these per header, so with 1000 words a search should cost 300 usec. Multiplied by 10k searches is 3 sec. A more realistic estimate using a dictionary built from scratch gives a load time of 1.5 seconds.
 
 For each wordlist, there is a RAM variable that holds the pointer to the head of the list. Hashing increases RAM usage. There's no need to hash the dictionary. In the interest of minimizing the size of target code, hashing is not used.
 
@@ -24,9 +24,9 @@ The link and the name should be adjacent in memory to allow for faster fetch fro
 | ---- |:---------------------------------| ----------------------------------:|
 | -5   | Source File ID                   | List of words that this references |
 | -4   | Source Line, Low byte            | List of words that reference this  |
-| -3   | Source Line, High byte           | xtc, Execution token for compile   |
-| -2   | W (upper byte)                   | W (lower 3 bytes)                  |
-| -1   | # of instructions in definition  | xte, Execution token for execute   |
+| -3   | # of instructions in definition  | xte, Execution token for execute   |
+| -2   | Source Line, High byte           | xtc, Execution token for compile   |
+| -1   | W (upper byte)                   | W (lower 3 bytes)                  |
 | 0    | # of instructions high byte      | Link                               |
 | 1    | Name Length                      | Name Text, first 3 characters      |
 | 2    | 4th name character               | Name Text, chars 5-7, etc...       |

@@ -31,9 +31,6 @@
 #define DataPointerOrigin ((ROMsize+0x140)*4) /* Data starts after stack space */
 #define HeadPointerOrigin ((ROMsize+RAMsize)*4)  /* Headers start in AXI space */
 
-// Wordlists can be hashed into a number of different threads
-#define WordlistStrands  3                           /* must be a prime number */
-
 //===============================================================================
 // Sanity checks
 

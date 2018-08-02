@@ -333,14 +333,17 @@ void InitializeTIB(void) {
     StoreCell(0, STATE);
 }
 
-// Initialize useful variables in the terminal task
+// Initialize ALL variables in the terminal task
 void InitializeTermTCB(void) {
-    VMpor();
-    EraseSPIimage();
+    VMpor();                            // clear VM and RAM
+    EraseSPIimage();                    // clear SPI flash image
     StoreCell(HeadPointerOrigin, HP);
     StoreCell(CodePointerOrigin, CP);
     StoreCell(DataPointerOrigin, DP);
-    StoreCell(10, BASE);
+    StoreCell(10, BASE);                // decimal
+    StoreCell(FORTHWID, CURRENT);       // definitions are to Forth wordlist
+    StoreCell(FORTHWID, CONTEXT);       // context is Forth
+    StoreCell(1, WIDS);                 // one wordlist in search order
     InitializeTIB();
 }
 

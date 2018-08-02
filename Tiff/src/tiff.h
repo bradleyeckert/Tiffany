@@ -43,19 +43,28 @@ void vmTEST(void);
 #define HP          termTCB(6)   /* head space pointer                        */
 #define CP          termTCB(7)   /* code space pointer                        */
 #define DP          termTCB(8)   /* data space pointer                        */
-#define TIBS        termTCB(9)   /* number of chars in TIB                    */
-#define TIBB        termTCB(10)  /* pointer to tib (paired with TIBS)         */
-#define TOIN        termTCB(11)  /* offset into TIB                           */
-#define SOURCEID    termTCB(12)  /* input source, 0(keybd) +(file) -(blk)     */
-#define STATE       termTCB(13)  /* compiler state                            */
+#define STATE       termTCB(9)   /* compiler state                            */
+#define TIBS        termTCB(10)  /* number of chars in TIB                    */
+#define TIBB        termTCB(11)  /* pointer to tib (paired with TIBS)         */
+#define TOIN        termTCB(12)  /* offset into TIB                           */
+#define SOURCEID    termTCB(13)  /* input source, 0(keybd) +(file) -(blk)     */
 #define HEAD        termTCB(14)  /* current definition's header address       */
 #define CURRENT     termTCB(15)  /* the wid which is compiled into            */
 #define PERSONALITY termTCB(16)  /* address of personality array              */
-#define BLK         termTCB(17)  /* block number for LOAD                     */
-#define WIDS        termTCB(18)  /* number of WID entries in context stack    */
-#define CONTEXT     termTCB(19)  /* 8 cells of context                        */
+#define WIDS        termTCB(17)  /* number of WID entries in context stack    */
+#define CONTEXT     termTCB(18)  /* 8 cells of context                        */
+#define FORTHWID    termTCB(27)  /* Forth wordlist                            */
 #define TIB         termTCB(28)  /* Terminal Input Buffer                     */
 #define MaxTIBsize  (4*(64-28))  /* Maximum bytes allowed in TIB              */
 
 //==============================================================================
+
+struct FileRec {
+    char Line[MaxTIBsize+1];
+    char FilePath[MaxTIBsize+1];
+    FILE *fp;
+    uint32_t LineNumber;
+    int FID;
+};
+
 #endif
