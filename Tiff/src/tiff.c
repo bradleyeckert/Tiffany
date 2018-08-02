@@ -37,6 +37,12 @@ void tiffBYE (void) {
     tiffIOR = -99999;                   // exit Forth
     tiffCOMMENT();
 }
+void tiffSTATEon (void) {               // ]
+    StoreCell(1, STATE);
+}
+void tiffSTATEoff (void) {              // [
+    StoreCell(0, STATE);
+}
 void tiffDOT (void) {                   // pop and print
     printf("%d ", PopNum());  printed = 1;
 }
@@ -58,12 +64,6 @@ void tiffROMstore (void) {
     uint32_t a = PopNum();
     uint32_t n = PopNum();
     StoreROM (n, a);
-}
-void tiffSTATEon (void) {               // ]
-    StoreCell(1, STATE);
-}
-void tiffSTATEoff (void) {              // [
-    StoreCell(0, STATE);
 }
 
 struct FileRec FileStack[MaxFiles];
@@ -155,11 +155,11 @@ void FollowingToken (char *str, int max) {  // parse the next blank delimited st
 // When a file is included, the rest of the TIB is discarded.
 // A new file is pushed onto the file stack
 
-void tiffINCLUDE (void) {
+void tiffINCLUDED (char *name) {
     StoreCell(1, SOURCEID);
     filedepth++;
-    FollowingToken(File.FilePath, MaxTIBsize);
-    File.fp = fopen(File.FilePath, "r");
+    strcpy (File.FilePath, name);
+    File.fp = fopen(name, "r");
     File.LineNumber = 0;
     File.Line[0] = 0;
     File.FID = FileID;
@@ -179,18 +179,25 @@ void tiffINCLUDE (void) {
     }
 }
 
+char name[MaxTIBsize+1];                // generic scratchpad
+
+void tiffINCLUDE (void) {
+    FollowingToken(name, MaxTIBsize);
+    tiffINCLUDED (name);
+}
+
 void tiffEQU (void) {
-    char name[33];
     FollowingToken(name, 32);
     CommaH(PopNum());
     CommaHeader(name, -1, -2, 0, 0);
 }
-void tiffHUH (void) {
-    char name[33];
+
+void tiffImplicit (void) {              // define implicit opcode
     FollowingToken(name, 32);
-    uint32_t wid = FetchCell(CONTEXT);  // search the first list
-    printf("%X", SearchWordlist(name, wid));  printed = 1;
+    CommaH(PopNum());
+    CommaHeader(name, -3, -4, 0, 0);
 }
+
 
 void benchmark(void) {
     long now = getMicrotime();
@@ -238,7 +245,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("cls",  tiffCLS);
     AddKeyword("include", tiffINCLUDE);
     AddKeyword("equ",  tiffEQU);
-    AddKeyword("huh",  tiffHUH);
+    AddKeyword("imp_op", tiffImplicit);
 
     AddKeyword("rom!", tiffROMstore);
     AddKeyword("bench", benchmark);
@@ -313,9 +320,6 @@ uint32_t tiffPARSENAME (void) {         // ( -- addr length )
 }
 // Interpret the TIB inside the VM, on the VM data stack.
 void tiffINTERPRET(void) {
-    char token[33];  char *eptr;
-    uint32_t address, length;
-    long int x;
     while (tiffPARSENAME()) {           // get the next blank delimited keyword
         uint32_t ht = tiffLOCATE();     // search for keyword in the dictionary
         if (ht) {
@@ -331,12 +335,14 @@ void tiffINTERPRET(void) {
         } else {
             // dictionary search using ROM head space not implemented yet.
             // Assume it falls through with ( c-addr len ) on the stack.
-            length = PopNum();
+            uint32_t length = PopNum();
             if (length>31) length=32;   // sanity check
-            address = PopNum();
+            uint32_t address = PopNum();
+            char token[33];
             FetchString(token, address, (uint8_t)length);
             if (NotKeyword(token)) {    // try to convert to number
-                x = (int32_t) strtol(token, &eptr, 0); // automatic base (C format)
+                char *eptr;
+                long int x = strtol(token, &eptr, 0); // automatic base (C format)
                 if ((x == 0) && ((errno == EINVAL) || (errno == ERANGE))) {
                     bogus: strcpy(ErrorString, token); // not a number
                     tiffIOR = -13;
@@ -345,7 +351,7 @@ void tiffINTERPRET(void) {
                     if (FetchCell(STATE)) {
                         Literal(x);
                     } else {
-                        PushNum((uint32_t)x);
+                        PushNum((int32_t)x);
                     }
                 }
             }
@@ -366,6 +372,7 @@ ex: PopNum();                           // keyword is an empty string
 // Since getline includes the trailing LF (or CR), we lop it off.
 
 void tiffQUIT (char *cmdline) {
+    int loaded = 0;
     size_t bufsize = MaxTIBsize;        // for getline
     char *buf;                          // text from stdin (keyboard)
     int length, source, TIBaddr;
@@ -375,6 +382,14 @@ void tiffQUIT (char *cmdline) {
         InitializeTIB();
         StoreCell(0, SOURCEID);     	// input is keyboard
         StoreCell(0, STATE);     	    // interpret
+        if (!loaded) {
+            FILE *test = fopen(DefaultFile, "r");
+            if (test != NULL) {
+                fclose(test);           // if default file exists
+                tiffINCLUDED(DefaultFile);
+            }
+            loaded = 1;
+        }
         while (1) {
 #ifdef InterpretColor
             printf("\033[0m");          // reset colors
@@ -386,12 +401,14 @@ void tiffQUIT (char *cmdline) {
             StoreCell(0, TIBS);
             source = FetchCell(SOURCEID);
             TIBaddr = FetchCell(TIBB);
+            int iscmdline = 0;          // using command line argument?
             switch (source) {
                 case 0:                 // load TIBB from keyboard
                     if (cmdline) {      // first time through use command line
                         strcpy (File.Line, cmdline);
                         length = strlen(cmdline);
                         cmdline = NULL; // clear cmdline
+                        iscmdline = 1;  // tell not to say "ok"
                     } else {
                         buf = File.Line;
                         length = getline(&buf, &bufsize, stdin);   // get input line
@@ -433,6 +450,7 @@ void tiffQUIT (char *cmdline) {
             if (tiffIOR) break;
             switch (FetchCell(SOURCEID)) {
                 case 0:
+                    if (iscmdline) break;
 #if (OKstyle == 0)      // FORTH Inc style
                     printf(" ok\n");
 #elif (OKstyle == 1)    // openboot style

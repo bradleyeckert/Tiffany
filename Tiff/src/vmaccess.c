@@ -4,6 +4,7 @@
 #include "tiff.h"
 #include "fileio.h"
 #include "vmaccess.h"
+#include "compile.h"
 #include <string.h>
 #include <ctype.h>
 

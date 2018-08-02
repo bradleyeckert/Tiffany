@@ -9,5 +9,6 @@
 void InitIR (void);
 void Literal (int32_t N);
 void tiffFUNC (int n, uint32_t ht);
+void Implicit (int opcode);
 
 #endif

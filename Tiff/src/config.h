@@ -12,6 +12,9 @@
 // Copy internal ROM writes to SPI flash
 #define BootFromSPI
 
+// Default file to load from
+#define DefaultFile "tiff.f"
+
 // Instruments the VM to allow Undo and Redo
 #define TRACEABLE
 #define TraceDepth 12           /* Log2 of the trace buffer size, 13*2^N bytes */
