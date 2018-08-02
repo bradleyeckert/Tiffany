@@ -69,6 +69,7 @@ void ErrorMessage (int error) {
        case  -56: msg = "QUIT";                                         break;
        case  -57: msg = "Exception in sending or receiving a character";break;
        case  -58: msg = "[IF], [ELSE], or [THEN] exception";            break;
+       case  -59: msg = "Missing literal before opcode";                break;
        case  -60: msg = "Attempt to write to non-blank flash memory";   break;
        case  -80: msg = "Dictionary full";                              break;
        case  -99: msg = "Nesting overflow during include";              break;

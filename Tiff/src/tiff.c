@@ -198,6 +198,12 @@ void tiffImplicit (void) {              // define implicit opcode
     CommaHeader(name, -3, -4, 0, 0);
 }
 
+void tiffExplicit (void) {              // define explicit opcode, gets IMM from the stack
+    FollowingToken(name, 32);
+    CommaH(PopNum());
+    CommaHeader(name, -5, -6, 0, 0);
+}
+
 
 void benchmark(void) {
     long now = getMicrotime();
@@ -246,6 +252,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("include", tiffINCLUDE);
     AddKeyword("equ",  tiffEQU);
     AddKeyword("imp_op", tiffImplicit);
+    AddKeyword("imm_op", tiffExplicit);
 
     AddKeyword("rom!", tiffROMstore);
     AddKeyword("bench", benchmark);
@@ -351,7 +358,7 @@ void tiffINTERPRET(void) {
                     if (FetchCell(STATE)) {
                         Literal(x);
                     } else {
-                        PushNum((int32_t)x);
+                        PushNum((uint32_t)x);
                     }
                 }
             }

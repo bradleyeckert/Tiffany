@@ -7,8 +7,10 @@
 #include "config.h"
 
 void InitIR (void);
-void Literal (int32_t N);
+void Literal (uint32_t N);
 void tiffFUNC (int n, uint32_t ht);
 void Implicit (int opcode);
+void Explicit (int opcode, uint32_t n);
+void FlushLit (void);
 
 #endif
