@@ -10,7 +10,7 @@ I run the executable in ConEmu. If you must use a very dumb terminal, #define MO
 - `tiff.exe [command line]` Enter Forth interpreter
 
 ## The Terminal
-Tiff uses raw keyboard input and outputs to a VT100 terminal. Is that too much to ask? Only for Microsoft, but Windows 10 finally supports VT100 emulation if you enable it. Even so, ConEmu presents a very nice command line. If you use Windows, download it. For Mac and Linux, VT100 is a subset of Xterm. If your screen looks like it threw up a bunch of garbage, your console doesn't support escape sequences.
+Tiff uses raw keyboard input and outputs to a VT100 terminal. Is that too much to ask? Only for Microsoft, but ConEmu presents a very nice command line. If you use Windows, download it. For Mac and Linux, VT100 is a subset of Xterm. If your screen looks like it threw up a bunch of garbage, your console doesn't support escape sequences.
 
 Low level testing has a problem on Linux - something about how the terminal is used. Main.c is missing a trick to enable raw keyboard input. I commented it out because it's missing a mystery header file. Possibly an easy fix. It's rather ironic given the quality of xterm.
 
