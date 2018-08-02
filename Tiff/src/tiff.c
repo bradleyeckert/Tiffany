@@ -12,6 +12,8 @@
 #define MaxFiles 20
 #define File FileStack[filedepth]
 
+// try scanf for keyboard input
+
 /**
 * Returns the current time in microseconds.
 */
