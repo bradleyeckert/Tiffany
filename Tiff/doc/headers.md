@@ -22,17 +22,22 @@ The link and the name should be adjacent in memory to allow for faster fetch fro
 
 | Cell | \[31:24\]                        | \[23:0\]                           |
 | ---- |:---------------------------------| ----------------------------------:|
-| -4   | Source File ID                   | List of words that this references |
-| -3   | Source Line, Low byte            | List of words that reference this  |
-| -2   | Source Line, High byte           | xtc, Execution token for compile   |
-| -1   | # of instructions in definition  | xte, Execution token for execute   |
-| 0    | # of instructions high byte      | Link                               |
+| -3   | Source File ID                   | List of words that reference this  |
+| -2   | Source Line, Low byte            | xtc, Execution token for compile   |
+| -1   | Source Line, High byte           | xte, Execution token for execute   |
+| 0    | # of instructions in definition  | Link                               |
 | 1    | Name Length                      | Name Text, first 3 characters      |
 | 2    | 4th name character               | Name Text, chars 5-7, etc...       |
 
 The cross reference structure contains lists of cross reference structures. Since the links can only be written once, the list must be traversed in order to add to it. The list is kept short by doubling the element size with each link taken. The HEAD cells are addresses of the corresponding header structure, from which a name and source code location may be obtained.
 
-The name length byte includes smudge, immediate, and call-only bits that default to '1' and are set to '0' later on.
+IMMEDIATE works by clearing xtc. The interpreter uses xte if it's zero.
+
+The name length byte includes `smudge`, `jumpok`, and `anonymous` bits that default to '1' and are set to '0' later on. CALL-ONLY clears the jumpok bit to inhibit tail call optimization.
+
+The WHERE list (cell -3) is 0xFFFFFF if the word is not referenced. Every reference to this header will append to the WHERE list, which is a forward linked list whose head pointer is re-calculated (by traversal) each time it's needed. If the referencer's `anonymous` bit is '0', it doesn't get appended to the WHERE list. Opcode words are anonymous.
+
+WHERE elements are 3-cell chunks initialized to -1, in header space. The first cell is a forward link and the other two are addresses. Each reference takes 6+ bytes of header space, which may be an expense you can do without. So, the NOWHERE flag disables this feature.
 
 ## Wordlists
 
