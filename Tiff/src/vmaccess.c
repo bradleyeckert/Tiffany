@@ -112,7 +112,7 @@ uint32_t SearchWordlist(char *name, uint32_t WID) {
         word &= (mask | x);                   // build the 32-bit initial search
     }
     do {
-        uint32_t test = FetchCell(WID+4);
+        uint32_t test = FetchCell(WID+4) & ~0xC0;  // mask off jumpok and public
         if (test == word) {    // likely candidate: length and first three match
             if (length<4) return WID;
             length -= 3;                             // remaining chars to check
@@ -194,6 +194,7 @@ void tiffWORDS (void) {
 // The idea is to find the string just below the wordlist.
 // You don't know how many data words prepend a header.
 // Requires some searching for an offset that's -4, -8 or -12.
+// untested
 void WIDname(uint32_t WID) {
     uint32_t wid0 = WID;            // display if name not found
     uint32_t wid;  int i;  uint8_t length;
@@ -476,6 +477,8 @@ void InitializeTIB(void) {
     StoreCell(TiffSP0, SP0);
     StoreCell(TIB, TIBB);               // point to TIB
     StoreCell(0, STATE);
+    StoreCell(0, COLONDEF);             // clear this byte and the other three
+    InitIR();
 }
 
 // Initialize ALL variables in the terminal task

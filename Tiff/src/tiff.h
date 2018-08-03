@@ -51,17 +51,27 @@ void vmTEST(void);
 #define TIBS        termTCB(13)  /* number of chars in TIB                    */
 #define TIBB        termTCB(14)  /* pointer to tib (paired with TIBS)         */
 #define TOIN        termTCB(15)  /* offset into TIB                           */
-#define CALLADDR    termTCB(16)  /* address+slot of last compiled CALL        */
-#define NEXTLIT     termTCB(17)  /* Next literal to be compiled               */
-#define WIDS        termTCB(18)  /* number of WID entries in context stack    */
-#define CALLED      termTCB(18)+1  /* set if last explicit opcode was a call  */
-#define SLOT        termTCB(18)+2  /* current slot position, these are a pair */
-#define LITPEND     termTCB(18)+3  /* literal-pending flag                    */
-#define IRACC       termTCB(19)  /* IR accumulator                            */
-#define CONTEXT     termTCB(20)  /* 8 cells of context                        */
-#define FORTHWID    termTCB(28)  /* Forth wordlist                            */
-#define TIB         termTCB(29)  /* Terminal Input Buffer                     */
-#define MaxTIBsize  (4*(64-29))  /* Maximum bytes allowed in TIB              */
+// 8-bit variables are used here to save RAM
+#define WIDS        termTCB(16)+0  /* number of WID entries in context stack  */
+#define CALLED      termTCB(16)+1  /* set if last explicit opcode was a call  */
+#define SLOT        termTCB(16)+2  /* current slot position, these are a pair */
+#define LITPEND     termTCB(16)+3  /* literal-pending flag                    */
+#define COLONDEF    termTCB(17)+0  /* colon definition is in progress         */
+// Compiler internal state
+#define CALLADDR    termTCB(18)  /* address+slot of last compiled CALL        */
+#define NEXTLIT     termTCB(19)  /* Next literal to be compiled               */
+#define IRACC       termTCB(20)  /* IR accumulator                            */
+#define CONTEXT     termTCB(21)  /* 8 cells of context                        */
+#define FORTHWID    termTCB(29)  /* Forth wordlist                            */
+#define TIB         termTCB(30)  /* Terminal Input Buffer                     */
+// support 132-column text files plus a little extra in case of zero-terminator
+#define MaxTIBsize  136          /* Maximum bytes allowed in TIB              */
+
+#define DataPointerOrigin (TIB + MaxTIBsize)         /* Data starts after TIB */
+
+#if (MaxTIBsize & 3)
+#error Please make MaxTIBsize a multiple of 4
+#endif
 
 //==============================================================================
 

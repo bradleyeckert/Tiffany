@@ -82,14 +82,13 @@ void initFilelist (void) {
 
 // Use Size=-1 if unknown
 void CommaHeader (char *name, uint32_t xte, uint32_t xtc, int Size, int flags){
-	CommaH ((File.FID<<24) | 0xFFFFFF);                // [-4]: File ID | use
-	CommaH (((File.LineNumber & 0xFF)<<24) | 0xFFFFFF);// [-3]: Lower line | use
-	CommaH (((File.LineNumber >> 8  )<<24) | xtc);     // [-2]: Upper line | xtc
-	CommaH (((Size&0xFF)<<24) | xte);                  // [-1]: Lower size | xte
+	CommaH ((File.FID<<24) | 0xFFFFFF);                // [-3]: File ID | where
+	CommaH (((File.LineNumber & 0xFF)<<24) | xtc);     // [-2]: Lower line | xtc
+	CommaH (((File.LineNumber >> 8  )<<24) | xte);     // [-1]: Upper line | xte
 	uint32_t wid = FetchCell(CURRENT);                 // CURRENT -> Wordlist
 	uint32_t link = FetchCell(wid);
 	StoreCell (FetchCell(HP), wid);
-	CommaH (((Size&0xFF00)<<16) | link);               // [0]: Upper size | link
+	CommaH (((Size&0xFF)<<24) | link);                 // [0]: Upper size | link
 	CommaXstring(name, CommaH, flags);                 // [1]: Name
 }
 
@@ -144,12 +143,19 @@ void tiffEQU (void) {
     CommaHeader(name, ~0, ~1, 0, 0);
 }
 
+void tiffNONAME (void) {
+    NewGroup();
+    PushNum(FetchCell(CP));
+    StoreCell(1, STATE);
+}
+
 void tiffCOLON (void) {
     FollowingToken(name, 32);
     NewGroup();
     uint32_t cp = FetchCell(CP);
     CommaH(cp);
-    CommaHeader(name, cp, ~9, -1, 0x80);
+    CommaHeader(name, cp, ~9, -1, 0xE0);
+    StoreByte(1, COLONDEF);
     StoreCell(1, STATE);
 }
 
@@ -188,22 +194,23 @@ void AddKeyword(char *name, void (*func)()) {
 
 void LoadKeywords(void) {               // populate the list of gator brain functions
     keywords = 0;                       // start empty
-    AddKeyword("bye",  tiffBYE);
-    AddKeyword("[",    tiffSTATEoff);
-    AddKeyword("]",    tiffSTATEon);
-    AddKeyword("\\",   tiffCOMMENT);
-    AddKeyword(".",    tiffDOT);
-    AddKeyword("+cpu", tiffCPUon);
-    AddKeyword("-cpu", tiffCPUoff);
-    AddKeyword("cpu",  tiffCPUgo);
-    AddKeyword("cls",  tiffCLS);
+    AddKeyword("bye",     tiffBYE);
+    AddKeyword("[",       tiffSTATEoff);
+    AddKeyword("]",       tiffSTATEon);
+    AddKeyword("\\",      tiffCOMMENT);
+    AddKeyword(".",       tiffDOT);
+    AddKeyword("+cpu",    tiffCPUon);
+    AddKeyword("-cpu",    tiffCPUoff);
+    AddKeyword("cpu",     tiffCPUgo);
+    AddKeyword("cls",     tiffCLS);
     AddKeyword("include", tiffINCLUDE);
-    AddKeyword("equ",  tiffEQU);
-    AddKeyword("words",tiffWORDS);
-    AddKeyword(":",    tiffCOLON);
-    AddKeyword(";",    Semicolon);
-    AddKeyword("rom!", tiffROMstore);
-    AddKeyword("bench", benchmark);
+    AddKeyword("equ",     tiffEQU);
+    AddKeyword("words",   tiffWORDS);
+    AddKeyword(":noname", tiffNONAME);
+    AddKeyword(":",       tiffCOLON);
+    AddKeyword(";",       Semicolon);
+    AddKeyword("rom!",    tiffROMstore);
+    AddKeyword("bench",   benchmark);
 
 //    AddKeyword("hex", tiffHEX);
 //    AddKeyword("decimal", tiffDECIMAL);
@@ -295,7 +302,7 @@ void tiffINTERPRET(void) {
             } else {                    // interpreting
                 xt = 0xFFFFFF & FetchCell(ht - 4);
             }
-            tiffFUNC(xt, ht-20);
+            tiffFUNC(xt, ht-16);
         } else {
             // dictionary search using ROM head space not implemented yet.
             // Assume it falls through with ( c-addr len ) on the stack.

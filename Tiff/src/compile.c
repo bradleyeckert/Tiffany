@@ -14,7 +14,7 @@
 
 static void FlushLit (void);
 
-static void InitIR (void) {             // initialize the IR
+void InitIR (void) {                    // initialize the IR
     StoreCell(0, IRACC);
     StoreHalf(26, SLOT);                // SLOT=26, LITPEND=0
     StoreByte(0, CALLED);
@@ -87,7 +87,8 @@ static void Compile (uint32_t addr) {
 // 1. Attempt to convert the last call to a jump.
 // 2. Otherwise, append an EXIT and end the group.
 // 3. Unsmudge the current header if it's smudged.
-// 4. Return to EXECUTE mode.
+// 4. if COLONDEF, resolve the code length.
+// 5. Return to EXECUTE mode.
 
 void Semicolon (void) {  /*EXPORT*/
 	if (FetchByte(CALLED)) {            // ca = packed slot and address
@@ -105,8 +106,17 @@ void Semicolon (void) {  /*EXPORT*/
 	uint32_t wid = FetchCell(CURRENT);
 	wid = FetchCell(wid);               // -> current definition
     uint32_t name = FetchCell(wid + 4);
-    if (name & 0x80) {                  // if the smudge bit is set
-        StoreROM(~0x80, wid + 4);       // then clear it
+    if (name & 0x20) {                  // if the smudge bit is set
+        StoreROM(~0x20, wid + 4);       // then clear it
+    }
+    // The code address is in the header at wid-16.
+    if (FetchByte(COLONDEF)) {          // resolve length of definition
+        StoreByte(0, COLONDEF);
+        uint32_t org = FetchCell(wid-16); // start address
+        uint32_t cp  = FetchCell(CP);     // end address
+        uint32_t length = (cp - org) / 4; // length in cells
+        if (length>255) length=255;       // limit to 8-bit
+        StoreROM((length<<24) + 0xFFFFFF, wid);
     }
     StoreCell(0, STATE);
 }

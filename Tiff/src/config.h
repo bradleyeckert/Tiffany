@@ -38,7 +38,6 @@
 
 // A word is reserved for a forward jump to cold boot, kernel starts at 000004.
 #define CodePointerOrigin  4                  /* Kernel definitions start here */
-#define DataPointerOrigin ((ROMsize+0x140)*4) /* Data starts after stack space */
 #define HeadPointerOrigin ((ROMsize+RAMsize)*4)  /* Headers start in AXI space */
 
 //===============================================================================
