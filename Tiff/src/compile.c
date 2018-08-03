@@ -170,7 +170,7 @@ void tiffFUNC (int n, uint32_t ht) {   /*EXPORT*/
     uint32_t i;
     if (n & 0x800000) n |= 0xFF000000; // sign extend 24-bit n
 	if (n<0) { // internal C function
-        uint32_t w = FetchCell(ht-20);
+        uint32_t w = FetchCell(ht);
 		switch(~n) {
 			case 0: PushNum (w);    break;
 			case 1: Literal (w);    break;
@@ -181,8 +181,7 @@ void tiffFUNC (int n, uint32_t ht) {   /*EXPORT*/
             case 6: SkipOp(w);      break;  // compile skip opcode
             case 7: HardSkipOp(w);  break;  // compile skip opcode in slot 0
             case 8: FlushLit();  NewGroup();  break; // skip to new instruction group
-            case 9: tiffIOR = -14;  break;  // execute code at w in the VM (why?)
-            case 10: Compile(w);    break;  // compile call to w
+            case 9: Compile(w);     break;  // compile call to w
 			default: break;
 		}
 	} else { // execute in the VM

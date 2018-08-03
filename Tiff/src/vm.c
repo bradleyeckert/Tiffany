@@ -249,7 +249,7 @@ void VMpor(void) {  // EXPORTED
     memset(RAM, 0, RAMsize);            // clear RAM
 }
 
-int32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
+uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 	uint32_t M;  int slot;
 	unsigned int opcode, addr;
 // The PC is incremented at the same time the IR is loaded. Slot0 is next clock.
@@ -291,7 +291,7 @@ LastOp:
                 Trace(New, RidT, T, T + N);  New=0;
 #endif // TRACEABLE
                 T = T + N;  SNIP();	                    break;	// +
-			case 004: slot = 0;						    break;	// NO|
+			case 004: slot = 0;						    break;	// NO:
 			case 005: SDUP();
 #ifdef TRACEABLE
                 Trace(New, RidT, T, R);  New=0;
@@ -307,7 +307,7 @@ LastOp:
                 Trace(New, RidT, T, T & N);  New=0;
 #endif // TRACEABLE
                 T = T & N;  SNIP();	                    break;	// AND
-			case 010: if (T!=0) slot = 0;				break;	// NIF|
+			case 010: if (T!=0) slot = 0;				break;	// NIF:
 			case 011: M = N;  SDUP();
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
@@ -331,7 +331,7 @@ LastOp:
                 T = A;						            break;	// A
 			case 016: RDROP();				            break;	// RDROP
 
-			case 020: if (T<0) slot = 0;				break;	// +IF|
+			case 020: if (T & 0x80000000) slot = 0;		break;	// +IF:
 			case 021: M = N & 0xFF;
                 SendAXI(T/4, M);    // T is address, N is length-1
 #ifdef TRACEABLE
@@ -342,7 +342,7 @@ LastOp:
 				T += 4 * (M + 1);			    		break;	// !AS
 			case 022: FetchX(A>>2, 0, 0xFFFFFFFF); 		break;  // @A
 			case 023: 									break;
-			case 024: if (T>=0)  slot = 0;				break;	// -IF|
+			case 024: if ((T&0x80000000)==0) slot = 0;  break;  // -IF:
 			case 025:
 #ifdef TRACEABLE
                 Trace(New, RidT, T, T*2);  New=0;
@@ -354,7 +354,7 @@ LastOp:
 #endif // TRACEABLE
 			    A += 4;                                 break;  // @A+
 
-			case 030: if (R<0) {slot = 0;}
+			case 030: if (R & 0x10000) slot = 0;
 #ifdef TRACEABLE
                 Trace(New, RidR, R, R-1);  New=0;
 #endif // TRACEABLE
@@ -363,14 +363,14 @@ LastOp:
 #ifdef TRACEABLE
                 Trace(New, RidT, T, (unsigned) T / 2);  New=0;
 #endif // TRACEABLE
-			    T = (unsigned) T / 2;                   break;	// U2/
+			    T = T / 2;                              break;	// U2/
 			case 032: FetchX(A>>2, (A&2) * 8, 0xFFFF);  break;  // W@A
 			case 033:
 #ifdef TRACEABLE
                 Trace(New, RidA, A, T);  New=0;
 #endif // TRACEABLE
 			    A = T;	SDROP();		    			break;	// A!
-			case 034: if (R>=0) {slot = 26;}
+			case 034: if ((R&0x10000)==0) slot = 26;
 #ifdef TRACEABLE
                 Trace(New, RidR, R, R-1);  New=0;
 #endif // TRACEABLE
@@ -379,7 +379,7 @@ LastOp:
 #ifdef TRACEABLE
                 Trace(New, RidT, T, T / 2);  New=0;
 #endif // TRACEABLE
-			    T = T / 2;                              break;	// 2/
+			    T = (signed)T / 2;                      break;	// 2/
 			case 036: FetchX(A>>2, (A&3) * 8, 0xFF);    break;  // C@A
 			case 037:
 #ifdef TRACEABLE

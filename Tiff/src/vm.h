@@ -8,7 +8,7 @@
 //================================================================================
 
 // Defined in vm.c, the basic debug and simulation interface.
-int32_t VMstep(uint32_t IR, int Paused);    // Execute an instruction group
+uint32_t VMstep(uint32_t IR, int Paused);   // Execute an instruction group
 void VMpor(void);                           // Reset the VM
 void SetDbgReg(uint32_t n);                 // write to the debug mailbox
 uint32_t GetDbgReg(void);                   // read from the debug mailbox

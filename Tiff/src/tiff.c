@@ -147,8 +147,9 @@ void tiffEQU (void) {
 void tiffCOLON (void) {
     FollowingToken(name, 32);
     NewGroup();
-    CommaH(FetchCell(CP));
-    CommaHeader(name, ~9, ~10, -1, 0x80);
+    uint32_t cp = FetchCell(CP);
+    CommaH(cp);
+    CommaHeader(name, cp, ~9, -1, 0x80);
     StoreCell(1, STATE);
 }
 
@@ -294,7 +295,7 @@ void tiffINTERPRET(void) {
             } else {                    // interpreting
                 xt = 0xFFFFFF & FetchCell(ht - 4);
             }
-            tiffFUNC(xt, ht);
+            tiffFUNC(xt, ht-20);
         } else {
             // dictionary search using ROM head space not implemented yet.
             // Assume it falls through with ( c-addr len ) on the stack.

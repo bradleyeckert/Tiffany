@@ -6,7 +6,7 @@
 char ErrorString[64];   // String to include in error message
 
 void ErrorMessage (int error) {
-   char *msg;  int i;
+   char *msg;
    if (!error) return;
    switch (error) {
        case   -1: msg = "";                        /* ABORT */          break;
@@ -22,10 +22,7 @@ void ErrorMessage (int error) {
        case  -11: msg = "Result out of range";                          break;
        case  -12: msg = "Argument type mismatch";                       break;
        case  -13: memmove (ErrorString+4,ErrorString,60);
-                  memmove (ErrorString, "???{",4);
-                  i = strlen(ErrorString);
-                  ErrorString[i] = '}';
-                  ErrorString[i+1] = 0;
+                  memmove (ErrorString, "??? ",4);
                   msg = *&ErrorString;                                  break;
        case  -14: msg = "Interpreting a compile-only word";             break;
        case  -15: msg = "Invalid FORGET";                               break;

@@ -97,9 +97,10 @@ void StoreString(char *s, unsigned int address){
 }
 
 // Search the thread whose head pointer is at WID. Return ht if found, 0 if not.
-int SearchWordlist(char *name, uint32_t WID) {
-    int length = strlen(name);  int i = length;  uint32_t x, mask;
-    uint32_t word = 0xFFFFFF00 | length;
+uint32_t SearchWordlist(char *name, uint32_t WID) {
+    unsigned int length = strlen(name);
+    int i = length;  uint32_t x, mask;
+    uint32_t word = 0xFFFFFF00 + length;
     if (length>31) tiffIOR = -19;
     if (i>3) i = 3;                      // max of 3 bytes to add to search word
     while (i) {
@@ -131,8 +132,8 @@ int SearchWordlist(char *name, uint32_t WID) {
 
 static char str[33];
 
-int tiffFIND (void) {  // ( addr len -- addr len | 0 ht )
-    uint8_t length = PopNum();
+uint32_t tiffFIND (void) {  // ( addr len -- addr len | 0 ht )
+    uint8_t length = (uint8_t)PopNum();
     uint32_t addr = PopNum();
     uint8_t wids = FetchByte(WIDS);
     while (wids--) {

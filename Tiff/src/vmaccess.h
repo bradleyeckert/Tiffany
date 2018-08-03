@@ -31,8 +31,8 @@ void CommaCstring (char *s);                     // compile string to code space
 void CommaXstring (char *s, void(*fn)(uint32_t), int flags);   // generic string
 void CommaHeader (char *name, uint32_t xte, uint32_t xtc, int Size, int flags);
 
-int SearchWordlist(char *name, uint32_t WID);
-int tiffFIND (void);                          // ( addr len -- addr len | 0 ht )
+uint32_t SearchWordlist(char *name, uint32_t WID);
+uint32_t tiffFIND (void);                     // ( addr len -- addr len | 0 ht )
 void tiffWORDS (void);
 
 void CreateTrace(void);                  // allocate memory for the trace buffer
