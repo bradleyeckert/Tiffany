@@ -15,6 +15,8 @@
 /// VMstep() and DebugReg.
 /// Even if TRACEABLE allows easier access, it isn't used here.
 
+int CaseInsensitive = 1;
+
 uint32_t DbgPC; // last PC returned by VMstep
 
 uint32_t DbgGroup (uint32_t op0, uint32_t op1,
@@ -23,42 +25,48 @@ uint32_t DbgGroup (uint32_t op0, uint32_t op1,
     return GetDbgReg();
 }
 uint32_t PopNum (void) {                // Pop from the stack
-    return DbgGroup(opPORT, opDROP, opSKIP, opNOOP, opNOOP);
+    return DbgGroup(opPORT, opDROP, opSKIP, opNOP, opNOP);
 }
 void PushNum (uint32_t N) {             // Push to the stack
     SetDbgReg(N);
-    DbgGroup(opDUP, opPORT, opSKIP, opNOOP, opNOOP);
+    DbgGroup(opDUP, opPORT, opSKIP, opNOP, opNOP);
 }
 uint32_t FetchCell (uint32_t addr) {    // Read from RAM or ROM
     SetDbgReg(addr);
-    DbgGroup(opA, opDUP, opPORT, opSetA, opNOOP);
-    return DbgGroup(opFetchA, opPORT, opDROP, opSetA, opNOOP);
-}
-void StoreCell (uint32_t N, uint32_t addr) {  // Write to RAM
-    SetDbgReg(addr);
-    DbgGroup(opA, opDUP, opPORT, opSetA, opNOOP);
-    SetDbgReg(N);
-    DbgGroup(opDUP, opPORT, opStoreA, opSetA, opNOOP);
+    DbgGroup(opA, opDUP, opPORT, opSetA, opNOP);
+    return DbgGroup(opFetchA, opPORT, opDROP, opSetA, opNOP);
 }
 uint8_t FetchByte (uint32_t addr) {     // Read from RAM or ROM
     SetDbgReg(addr);
-    DbgGroup(opA, opDUP, opPORT, opSetA, opNOOP);
-    return (uint8_t) DbgGroup(opCfetchA, opPORT, opDROP, opSetA, opNOOP);;
+    DbgGroup(opA, opDUP, opPORT, opSetA, opNOP);
+    return (uint8_t) DbgGroup(opCfetchA, opPORT, opDROP, opSetA, opNOP);;
 }
 uint16_t FetchHalf (uint32_t addr) {    // Read from RAM or ROM
     SetDbgReg(addr);
-    DbgGroup(opA, opDUP, opPORT, opSetA, opNOOP);
-    return (uint16_t) DbgGroup(opWfetchA, opPORT, opDROP, opSetA, opNOOP);
+    DbgGroup(opA, opDUP, opPORT, opSetA, opNOP);
+    return (uint16_t) DbgGroup(opWfetchA, opPORT, opDROP, opSetA, opNOP);
+}
+void StoreCell (uint32_t N, uint32_t addr) {  // Write to RAM
+    SetDbgReg(addr);
+    DbgGroup(opA, opDUP, opPORT, opSetA, opNOP);
+    SetDbgReg(N);
+    DbgGroup(opDUP, opPORT, opStoreA, opSetA, opNOP);
+}
+void StoreHalf (uint16_t N, uint32_t addr) {  // Write to RAM
+    SetDbgReg(addr);
+    DbgGroup(opA, opDUP, opPORT, opSetA, opNOP);
+    SetDbgReg(N);
+    DbgGroup(opDUP, opPORT, opWstoreA, opSetA, opNOP);
 }
 void StoreByte (uint8_t N, uint32_t addr) {  // Write to RAM
     SetDbgReg(addr);
-    DbgGroup(opA, opDUP, opPORT, opSetA, opNOOP);
+    DbgGroup(opA, opDUP, opPORT, opSetA, opNOP);
     SetDbgReg(N);
-    DbgGroup(opDUP, opPORT, opCstoreA, opSetA, opNOOP);
+    DbgGroup(opDUP, opPORT, opCstoreA, opSetA, opNOP);
 }
 void SetPCreg (uint32_t PC) {           // Set new PC
     SetDbgReg(PC);
-    DbgGroup(opDUP, opPORT, opPUSH, opEXIT, opNOOP);
+    DbgGroup(opDUP, opPORT, opPUSH, opEXIT, opNOP);
 }
 
 // Write to AXI through SetDbgReg and DbgGroup.
@@ -71,7 +79,7 @@ static void WriteAXI(uint32_t data, uint32_t address) {
     DbgGroup(opSetA, opDUP, opPORT, opStoreA, opDUP); // save in temp
     SetDbgReg(address);
     DbgGroup(opDUP, opXOR, opDUP, opPORT, opStoreAS); // 1 word to AXI
-    DbgGroup(opDROP, opDROP, opSKIP, opNOOP, opNOOP);
+    DbgGroup(opDROP, opDROP, opSKIP, opNOP, opNOP);
 }
 
 void FetchString(char *s, unsigned int address, uint8_t length){
@@ -86,6 +94,131 @@ void StoreString(char *s, unsigned int address){
     while ((c = *s++)){                 // not including trailing zero
         StoreByte(c, address++);
     }
+}
+
+// Search the thread whose head pointer is at WID. Return ht if found, 0 if not.
+int SearchWordlist(char *name, uint32_t WID) {
+    int length = strlen(name);  int i = length;  uint32_t x, mask;
+    uint32_t word = 0xFFFFFF00 | length;
+    if (length>31) tiffIOR = -19;
+    if (i>3) i = 3;                      // max of 3 bytes to add to search word
+    while (i) {
+        if (CaseInsensitive)
+            x = (uint32_t)tolower(name[i-1]) << (i*8);
+        else
+            x = (uint32_t)name[i-1] << (i*8);
+        mask = ~(0xFF << (i*8));  i--;
+        word &= (mask | x);                   // build the 32-bit initial search
+    }
+    do {
+        uint32_t test = FetchCell(WID+4);
+        if (test == word) {    // likely candidate: length and first three match
+            if (length<4) return WID;
+            length -= 3;                             // remaining chars to check
+            i = 3;                                     // starting index in name
+            uint32_t k = WID+8;                                   // RAM address
+            while (length--) {
+                char c1 = name[i++];
+                if (CaseInsensitive) c1 = tolower(c1);
+                uint8_t c2 = FetchByte(k++);
+                if (c1 == c2) return WID;
+            }
+        }
+        WID = FetchCell(WID) & 0xFFFFFF;
+    } while (WID);
+    return 0;
+}
+
+static char str[33];
+
+int tiffFIND (void) {  // ( addr len -- addr len | 0 ht )
+    uint8_t length = PopNum();
+    uint32_t addr = PopNum();
+    uint8_t wids = FetchByte(WIDS);
+    while (wids--) {
+        uint32_t wid = FetchCell(CONTEXT + wids*4);  // search the first list
+        FetchString(str, addr, length);
+        uint32_t ht = SearchWordlist(str, FetchCell(wid));
+        if (ht) {
+            PushNum(0);
+            PushNum(ht);
+            return ht;
+        }
+    }
+    PushNum(addr);
+    PushNum(length);
+    return 0;
+}
+
+// WORDS primitive
+
+void PrintWordlist(uint32_t WID, int verbosity) {
+    do {
+        uint8_t length = FetchByte(WID+4);
+#ifdef ErrorColor
+        printf("\033[0m");              // reset colors
+#endif
+        if (length & 0x80) {            // smudged bit is set
+#ifdef ErrorColor
+        printf(ErrorColor);
+#endif
+        }
+        if (length & 0x40) {            // call-only bit is set
+#ifdef FilePathColor
+        printf(FilePathColor);
+#endif
+        }
+        length &= 0x1F;
+        FetchString(str, WID+5, length);
+        printf("%s ", str);
+        WID = FetchCell(WID) & 0xFFFFFF;
+    } while (WID);
+#ifdef ErrorColor
+        printf("\033[0m");              // reset colors
+#endif
+    printed = 1;
+}
+
+void tiffWORDS (void) {
+    uint8_t wids = FetchByte(WIDS);
+    while (wids--) {
+        uint32_t wid = FetchCell(CONTEXT + wids*4);  // search the first list
+        PrintWordlist(FetchCell(wid), 0);
+    }
+#ifdef InterpretColor
+    printf(InterpretColor);
+#endif
+}
+
+// The idea is to find the string just below the wordlist.
+// You don't know how many data words prepend a header.
+// Requires some searching for an offset that's -4, -8 or -12.
+void WIDname(uint32_t WID) {
+    uint32_t wid0 = WID;            // display if name not found
+    uint32_t wid;  int i;  uint8_t length;
+    do {
+        uint32_t link = FetchCell(WID);
+        wid = WID;
+        WID = link;
+    } while (WID);                  // find beginning of wordlist
+    wid -= 20;                     // point to the supposed offset, but could be a W
+    for (i=0; i<2; i++) {
+        uint32_t offset = FetchCell(wid);
+        if ((offset & 0xFFFFFFF3) == 0xFFFFFFF0) {
+            wid += offset;             // valid offset
+            goto good;
+        } else {
+            wid -= 4;
+        }
+    }
+    printf("0x%X", wid0);
+    printed = 1;
+    return;
+good:
+    length = FetchByte(wid++) & 0x1F;
+    FetchString(str, wid, length);
+    printf("%s", str);
+    printed = 1;
 }
 
 /// Get registers the easy way if TRACEABLE, the hard way if not.
@@ -109,35 +242,45 @@ extern uint32_t VMreg[10];
 #else
 uint32_t RegRead(int ID) {
     switch(ID) {
-        case 0: return DbgGroup(opDUP, opPORT, opDROP, opSKIP, opNOOP); // T
-        case 1: return DbgGroup(opOVER, opPORT, opDROP, opSKIP, opNOOP);// N
-        case 2: return DbgGroup(opR, opPORT, opDROP, opSKIP, opNOOP);   // R
-        case 3: return DbgGroup(opA, opPORT, opDROP, opSKIP, opNOOP);   // A
+        case 0: return DbgGroup(opDUP, opPORT, opDROP, opSKIP, opNOP); // T
+        case 1: return DbgGroup(opOVER, opPORT, opDROP, opSKIP, opNOP);// N
+        case 2: return DbgGroup(opR, opPORT, opDROP, opSKIP, opNOP);   // R
+        case 3: return DbgGroup(opA, opPORT, opDROP, opSKIP, opNOP);   // A
         case 5: VMstep((opA<<8) + opRP*4, 1);                           // RP
-            return DbgGroup(opA, opPORT, opDROP, opSetA, opNOOP);
+            return DbgGroup(opA, opPORT, opDROP, opSetA, opNOP);
         case 6: VMstep((opA<<8) + opSP*4, 1);                           // SP
-            return (DbgGroup(opA, opPORT, opDROP, opSetA, opNOOP) + 4);
+            return (DbgGroup(opA, opPORT, opDROP, opSetA, opNOP) + 4);
             // The SP is offset due to saving A on the stack
         case 7: VMstep((opA<<8) + opUP*4, 1);                           // UP
-            return DbgGroup(opA, opPORT, opDROP, opSetA, opNOOP);
+            return DbgGroup(opA, opPORT, opDROP, opSetA, opNOP);
         case 8: return (DbgPC*4); // Don't make this the first RegRead  // PC
         default: return 0;
     }
 }
 #endif // TRACEABLE
 
-void EraseSPIimage (void) {  // Erase SPI flash image
+void EraseSPIimage (void) {  // Erase SPI flash image and internal ROM
     int i, ior;
     for (i=0; i < (AXIsize/1024); i++) {
         ior = EraseAXI4K(i * 1024);
         if (!tiffIOR) tiffIOR = ior;
     }
+    for (i=0; i < ROMsize; i++) {
+        WriteROM(-1, i);
+    }
 }
+
+// StoreROM simulates flash memory.
+// It starts out blank and writing '0's clears bits.
+// If you try to write '0' to already '0' bits, you get an error.
+// To write directly to internal ROM, use WriteROM.
 
 void StoreROM (uint32_t data, uint32_t address) {
     int ior = 0;
     if (address < (ROMsize*4)){
-        ior = WriteROM(data, address);
+        uint32_t rom = FetchCell(address);
+        ior = WriteROM(rom & data, address);
+        if (~(rom|data)) ior = -60; // non-blank
     }
 #ifdef BootFromSPI
     WriteAXI(data, address);
@@ -321,9 +464,9 @@ void TraceHist(void) {                  // dump trace history
 // Initialize useful variables in the terminal task
 void InitializeTIB(void) {
     SetDbgReg(STATUS);                  // reset USER pointer
-    DbgGroup(opDUP, opPORT, opSetUP, opSKIP, opNOOP);
+    DbgGroup(opDUP, opPORT, opSetUP, opSKIP, opNOP);
     SetDbgReg(TiffRP0);                 // reset return stack
-    DbgGroup(opDUP, opPORT, opSetRP, opSKIP, opNOOP);
+    DbgGroup(opDUP, opPORT, opSetRP, opSKIP, opNOP);
     SetDbgReg(TiffSP0);                 // reset data stack
     // T ends nonzero after this, so we clear it with XOR.
     DbgGroup(opDUP, opPORT, opSetSP, opDUP, opXOR);
@@ -337,7 +480,6 @@ void InitializeTIB(void) {
 // Initialize ALL variables in the terminal task
 void InitializeTermTCB(void) {
     VMpor();                            // clear VM and RAM
-    InitIR();                           // clear compiler
     initFilelist();
     EraseSPIimage();                    // clear SPI flash image
     StoreCell(HeadPointerOrigin, HP);
@@ -346,8 +488,11 @@ void InitializeTermTCB(void) {
     StoreCell(10, BASE);                // decimal
     StoreCell(FORTHWID, CURRENT);       // definitions are to Forth wordlist
     StoreCell(FORTHWID, CONTEXT);       // context is Forth
-    StoreCell(1, WIDS);                 // one wordlist in search order
+    StoreByte(1, WIDS);                 // one wordlist in search order
     InitializeTIB();
+    CommaHstring("forth");              // place wordlist name before 1st header
+    CommaH(-8);                         // offset to the name
+    InitCompiler();                     // load compiler words
 }
 
 int Rdepth(void) {                      // return stack depth
@@ -454,14 +599,14 @@ void DisassembleIR(uint32_t IR) {
     int slot = 26;  // 26 20 14 8 2
     int opcode;
     char name[64][6] = {
-    "NOOP", "DUP",  ";",    "+",   "NO|",   "R@",   ";|",    "AND",
-    "NIF|", "OVER", "R>",   "XOR", "IF|",   "A",    "RDROP", "---",
-    "+IF|", "!AS",  "@A",   "---", "-IF|",  "2*",   "@A+",   "---",
-    "NEXT", "U2/",  "W@A",  "A!",  "REPT|", "2/",   "C@A",   "B!",
-    "SP",   "COM",  "!A",   "RP!", "RP",    "PORT", "!B+",   "SP!",
-    "UP",   "---",  "W!A",  "UP!", "SH24",  "---",  "C!A",   "---",
-    "USER", "---",  "---",  "NIP", "JUMP",  "---",  "@AS",   "---",
-    "LIT",  "---",  "DROP", "ROT", "CALL",  "1+",   ">R",    "SWAP"
+    "nop",   "dup",  "exit", "+",   "no:",   "r@",   "---",   "and",
+    "nif:",  "over", "r>",   "xor", "if:",   "a",    "rdrop", "---",
+    "+if:",  "!as",  "@a",   "---", "-if:",  "2*",   "@a+",   "---",
+    "next:", "u2/",  "w@a",  "a!",  "rept",  "2/",   "c@a",   "b!",
+    "sp",    "com",  "!a",   "rp!", "rp",    "port", "!b+",   "sp!",
+    "up",    "---",  "w!a",  "up!", "sh24",  "---",  "c!a",   "---",
+    "user",  "---",  "---",  "nip", "jump",  "---",  "@as",   "---",
+    "lit",   "---",  "drop", "rot", "call",  "1+",   ">r",    "swap"
     };
     while (slot>=0) {
         opcode = (IR >> slot) & 0x3F;
@@ -508,8 +653,8 @@ void DumpROM(void) {
 void DumpRegs(void) {
     int row = 2;
     char name[9][4] = {" T", " N", " R", " A", " B", "RP", "SP", "UP", "PC"};
-    char term[9][10] = {"STATUS", "FOLLOWER", "SP0", "RP0", "HANDLER", "BASE",
-                        "Head: HP", "Code: CP", "Data: DP"};
+    char term[12][10] = {"STATUS", "FOLLOWER", "SP0", "RP0", "HANDLER", "BASE",
+                        "Head: HP", "Code: CP", "Data: DP", "STATE", "CURRENT", "SOURCEID"};
     uint32_t i;
     printf("\033[s");                   // save cursor
     printf("\033[%d;0H", DumpRows+2);
@@ -532,7 +677,7 @@ void DumpRegs(void) {
 #endif
     }
     row = 2;
-    for (i=0; i<9; i++) {               // terminal task USER variables
+    for (i=0; i<DumpRows; i++) {        // terminal task USER variables
         SetCursorPosition(RAMdumpCol + 5 - strlen(term[i]), row++);
         printf("%s %X", term[i], FetchCell(STATUS + i*4));
     }

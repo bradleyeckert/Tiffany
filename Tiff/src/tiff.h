@@ -18,11 +18,11 @@
 // error message handling
 char ErrorString[260];   // String to include in error message
 void ErrorMessage (int error);
+extern int printed;
 
 // forward references for tiff.c
 uint32_t tiffPARSENAME (void);                             // ( -- addr length )
 void initFilelist(void);
-
 
 // used by main.c, defined in tiff.c
 // might move to vmaccess.c later, with memory and stack access functions.
@@ -45,18 +45,23 @@ void vmTEST(void);
 #define CP          termTCB(7)   /* code space pointer                        */
 #define DP          termTCB(8)   /* data space pointer                        */
 #define STATE       termTCB(9)   /* compiler state                            */
-#define TIBS        termTCB(10)  /* number of chars in TIB                    */
-#define TIBB        termTCB(11)  /* pointer to tib (paired with TIBS)         */
-#define TOIN        termTCB(12)  /* offset into TIB                           */
-#define SOURCEID    termTCB(13)  /* input source, 0(keybd) +(file) -(blk)     */
-#define HEAD        termTCB(14)  /* current definition's header address       */
-#define CURRENT     termTCB(15)  /* the wid which is compiled into            */
-#define PERSONALITY termTCB(16)  /* address of personality array              */
-#define WIDS        termTCB(17)  /* number of WID entries in context stack    */
-#define CONTEXT     termTCB(18)  /* 8 cells of context                        */
-#define FORTHWID    termTCB(27)  /* Forth wordlist                            */
-#define TIB         termTCB(28)  /* Terminal Input Buffer                     */
-#define MaxTIBsize  (4*(64-28))  /* Maximum bytes allowed in TIB              */
+#define CURRENT     termTCB(10)  /* the wid which is compiled into            */
+#define SOURCEID    termTCB(11)  /* input source, 0(keybd) +(file) -(blk)     */
+#define PERSONALITY termTCB(12)  /* address of personality array              */
+#define TIBS        termTCB(13)  /* number of chars in TIB                    */
+#define TIBB        termTCB(14)  /* pointer to tib (paired with TIBS)         */
+#define TOIN        termTCB(15)  /* offset into TIB                           */
+#define CALLADDR    termTCB(16)  /* address+slot of last compiled CALL        */
+#define NEXTLIT     termTCB(17)  /* Next literal to be compiled               */
+#define WIDS        termTCB(18)  /* number of WID entries in context stack    */
+#define CALLED      termTCB(18)+1  /* set if last explicit opcode was a call  */
+#define SLOT        termTCB(18)+2  /* current slot position, these are a pair */
+#define LITPEND     termTCB(18)+3  /* literal-pending flag                    */
+#define IRACC       termTCB(19)  /* IR accumulator                            */
+#define CONTEXT     termTCB(20)  /* 8 cells of context                        */
+#define FORTHWID    termTCB(28)  /* Forth wordlist                            */
+#define TIB         termTCB(29)  /* Terminal Input Buffer                     */
+#define MaxTIBsize  (4*(64-29))  /* Maximum bytes allowed in TIB              */
 
 //==============================================================================
 

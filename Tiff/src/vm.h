@@ -30,7 +30,7 @@ uint32_t UserFunction (uint32_t T, uint32_t N, int fn );
 void tiffQUIT(char *s);                                    // The C-side QUIT loop
 
 //================================================================================
-#define opNOOP       (000)
+#define opNOP        (000)
 #define opDUP        (001)
 #define opEXIT       (002)
 #define opADD        (003)

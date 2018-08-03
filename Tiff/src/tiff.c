@@ -93,64 +93,16 @@ void CommaHeader (char *name, uint32_t xte, uint32_t xtc, int Size, int flags){
 	CommaXstring(name, CommaH, flags);                 // [1]: Name
 }
 
-// Search the thread whose head pointer is at WID. Return ht if found, 0 if not.
-int SearchWordlist(char *name, uint32_t WID) {
-    int length = strlen(name);  int i = length;  uint32_t x, mask;
-    uint32_t word = 0xFFFFFF00 | length;
-    if (length>31) tiffIOR = -19;
-    if (i>3) i = 3;                      // max of 3 bytes to add to search word
-    while (i) {
-        x = (uint32_t)tolower(name[i-1]) << (i*8);           // case insensitive
-        mask = ~(0xFF << (i*8));  i--;
-        word &= (mask | x);                   // build the 32-bit initial search
-    }
-    do {
-        uint32_t test = FetchCell(WID+4);
-        if (test == word) {    // likely candidate: length and first three match
-            if (length<4) return WID;
-            length -= 3;                             // remaining chars to check
-            i = 3;                                     // starting index in name
-            uint32_t k = WID+8;                                   // RAM address
-            while (length--) {
-                char c1 = tolower(name[i++]);
-                uint8_t c2 = FetchByte(k++);
-                if (c1 == c2) return WID;
-            }
-        }
-        WID = FetchCell(WID);
-    } while (WID);
-    return 0;
-}
-
-int tiffLOCATE (void) {  // ( addr len -- addr len | 0 ht )
-    uint8_t length = PopNum();
-    uint32_t addr = PopNum();
-    uint8_t wids = FetchCell(WIDS);
-    char str[32];
-    while (wids--) {
-        uint32_t wid = FetchCell(CONTEXT + wids*4);  // search the first list
-        FetchString(str, addr, length);
-        uint32_t ht = SearchWordlist(str, wid);
-        if (ht) {
-            PushNum(0);
-            PushNum(ht);
-            return ht;
-        }
-    }
-    PushNum(addr);
-    PushNum(length);
-    return 0;
-}
-
 void FollowingToken (char *str, int max) {  // parse the next blank delimited string
     tiffPARSENAME();
     int length = PopNum();
+    int addr = PopNum();
     if (length >= max) {
         length = max;
         tiffIOR = -19;
     }
-    int addr = PopNum();
     FetchString(str, addr, (uint8_t)length);
+//    printf("\n|%s|, >IN=%d ", str, FetchCell(TOIN));
 }
 // When a file is included, the rest of the TIB is discarded.
 // A new file is pushed onto the file stack
@@ -189,21 +141,16 @@ void tiffINCLUDE (void) {
 void tiffEQU (void) {
     FollowingToken(name, 32);
     CommaH(PopNum());
-    CommaHeader(name, -1, -2, 0, 0);
+    CommaHeader(name, ~0, ~1, 0, 0);
 }
 
-void tiffImplicit (void) {              // define implicit opcode
+void tiffCOLON (void) {
     FollowingToken(name, 32);
-    CommaH(PopNum());
-    CommaHeader(name, -3, -4, 0, 0);
+    NewGroup();
+    CommaH(FetchCell(CP));
+    CommaHeader(name, ~9, ~10, -1, 0x80);
+    StoreCell(1, STATE);
 }
-
-void tiffExplicit (void) {              // define explicit opcode, gets IMM from the stack
-    FollowingToken(name, 32);
-    CommaH(PopNum());
-    CommaHeader(name, -5, -6, 0, 0);
-}
-
 
 void benchmark(void) {
     long now = getMicrotime();
@@ -251,9 +198,9 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("cls",  tiffCLS);
     AddKeyword("include", tiffINCLUDE);
     AddKeyword("equ",  tiffEQU);
-    AddKeyword("imp_op", tiffImplicit);
-    AddKeyword("imm_op", tiffExplicit);
-
+    AddKeyword("words",tiffWORDS);
+    AddKeyword(":",    tiffCOLON);
+    AddKeyword(";",    Semicolon);
     AddKeyword("rom!", tiffROMstore);
     AddKeyword("bench", benchmark);
 
@@ -327,8 +274,17 @@ uint32_t tiffPARSENAME (void) {         // ( -- addr length )
 }
 // Interpret the TIB inside the VM, on the VM data stack.
 void tiffINTERPRET(void) {
+//    char foo[256];
     while (tiffPARSENAME()) {           // get the next blank delimited keyword
-        uint32_t ht = tiffLOCATE();     // search for keyword in the dictionary
+        /*
+        uint32_t tempLen = PopNum();
+        uint32_t tempAddr = PopNum();
+        FetchString(foo, tempAddr, tempLen);
+        printf("\nSearch:|%s| at >IN=%X", foo, FetchCell(TOIN));
+        PushNum(tempAddr);
+        PushNum(tempLen);
+        */
+        uint32_t ht = tiffFIND();     // search for keyword in the dictionary
         if (ht) {
             PopNum();
             PopNum();
@@ -415,7 +371,7 @@ void tiffQUIT (char *cmdline) {
                         strcpy (File.Line, cmdline);
                         length = strlen(cmdline);
                         cmdline = NULL; // clear cmdline
-                        iscmdline = 1;  // tell not to say "ok"
+//                        iscmdline = 1;  // tell not to say "ok"
                     } else {
                         buf = File.Line;
                         length = getline(&buf, &bufsize, stdin);   // get input line

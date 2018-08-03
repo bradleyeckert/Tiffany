@@ -278,7 +278,7 @@ LastOp: if (OpCounter[opcode] != 0xFFFFFFFF) OpCounter[opcode]++;
 LastOp:
 #endif // TRACEABLE
         switch (opcode) {
-			case 000:									break;	// NOOP
+			case 000:									break;	// NOP
 			case 001: SDUP();							break;	// DUP
 			case 002:
 #ifdef TRACEABLE
