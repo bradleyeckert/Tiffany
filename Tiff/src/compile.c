@@ -68,9 +68,11 @@ void NewGroup (void) {                  // finish the group and start a new one
     InitIR();
 }
 
+////////////////////////////////////////////////////////////////////////////////
 // Tail-call optimization requires knowing the address of the instruction
 // containing the call as well as its slot number. It makes certain assumptions
 // about opcodes. CALL is 074, JUMP is 064 octal (111100 and 110100 binary).
+// See tiffCOLON.
 
 // notail not implemented yet
 
@@ -80,8 +82,31 @@ static void CompCall (uint32_t addr, int notail) {
     StoreByte(1, CALLED);
 }
 
-static void Compile (uint32_t addr) {
+static void Compile (uint32_t addr) {   // the normal compile
     CompCall (addr, 0);
+}
+
+// Definitions that only use implicit opcodes are very easy to compile as
+// macros.
+
+static void CompileMacro(uint32_t addr) { // compile as a macro
+    int i;  int opcode;  uint32_t ir;
+    int slot = 26;
+    for (i=0; i<20; i++) {                // limit length of macro
+        if (slot == 26) {
+            ir = FetchCell(addr);
+            addr += 4;
+        }
+        if (slot < 0) {
+            opcode = ir & 3;                // slot = -4
+            slot = 26;
+        } else {
+            opcode = (ir >> slot) & 0x3F;   // slot = 26, 20, 14, 8, 2
+            slot -= 6;
+        }
+        if (opcode == opEXIT) return;
+        Implicit(opcode);
+    } tiffIOR = -61;
 }
 
 // ; does several things:
@@ -121,6 +146,26 @@ void Semicolon (void) {  /*EXPORT*/
     }
     StoreCell(0, STATE);
 }
+
+void tiffMACRO (void) {  /*EXPORT*/
+    uint32_t wid = FetchCell(CURRENT);
+    wid = FetchCell(wid);               // -> current definition
+    StoreROM(~4, wid - 8);              // flip xtc from compile to macro
+}
+
+void tiffCALLONLY (void) {  /*EXPORT*/
+    uint32_t wid = FetchCell(CURRENT);
+    wid = FetchCell(wid);               // -> current definition
+    StoreROM(~0x80, wid + 4);           // clear the "call only" bit
+}
+
+void tiffANON (void) {  /*EXPORT*/
+    uint32_t wid = FetchCell(CURRENT);
+    wid = FetchCell(wid);               // -> current definition
+    StoreROM(~0x40, wid + 4);           // clear the "anonymous" bit
+}
+
+////////////////////////////////////////////////////////////////////////////////
 
 static void HardLit (int32_t N) {
     uint32_t u = abs(N);
@@ -192,7 +237,9 @@ void tiffFUNC (int n, uint32_t ht) {   /*EXPORT*/
             case 6: SkipOp(w);      break;  // compile skip opcode
             case 7: HardSkipOp(w);  break;  // compile skip opcode in slot 0
             case 8: FlushLit();  NewGroup();   break;  // skip to new instruction group
-            case 9: Compile(FetchCell(ht+12)); break;  // compile call to xte
+// Compile xt must be multiple of 8 so that clearing bit2 converts to a macro
+            case 16: Compile(FetchCell(ht+12)); break;  // compile call to xte
+            case 20: CompileMacro(FetchCell(ht+12)); break;
 			default: break;
 		}
 	} else { // execute in the VM

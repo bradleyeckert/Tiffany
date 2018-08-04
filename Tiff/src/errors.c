@@ -71,6 +71,7 @@ void ErrorMessage (int error) {
        case  -58: msg = "[IF], [ELSE], or [THEN] exception";            break;
        case  -59: msg = "Missing literal before opcode";                break;
        case  -60: msg = "Attempt to write to non-blank flash memory";   break;
+       case  -61: msg = "Macro expansion failure";                      break;
        case  -80: msg = "Dictionary full";                              break;
        case  -99: msg = "Nesting overflow during include";              break;
        case -100: msg = "ALLOCATE failed";                              break;

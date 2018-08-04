@@ -165,7 +165,8 @@ void tiffNONAME (void) {
 void tiffCOLON (void) {
     FollowingToken(name, 32);
     NewGroup();
-    CommaHeader(name, FetchCell(CP), ~9, -1, 0xE0);
+    CommaHeader(name, FetchCell(CP), ~16, -1, 0xE0);
+    // xtc must be multiple of 8 ----^
     StoreByte(1, COLONDEF);
     StoreCell(1, STATE);
 }
@@ -180,10 +181,6 @@ void tiffXWORDS (void) {
     tiffWords (name, 1);
 }
 
-void tiffXWORDSALL (void) {
-    tiffWords (NULL, 1);
-}
-
 void benchmark(void) {
     long now = getMicrotime();
     uint32_t i, sum;
@@ -194,10 +191,15 @@ void benchmark(void) {
     printf("%d ps", (unsigned int)now);  printed = 1;
 }
 
+// This is not needed by target Forth because it's only used to
+// patch xts in headers, which breaks flash write rules.
+uint32_t HeaderPtr;                     // last header returned by H' or '
+
 uint32_t Htick (void) {
     tiffPARSENAME();  // ( addr len )
-    uint32_t ht = tiffFIND();     // search for keyword in the dictionary
+    uint32_t ht = tiffFIND();           // search for keyword in the dictionary
     if (ht) {
+        HeaderPtr = ht;
         PopNum();
         PopNum();
         return ht;
@@ -216,6 +218,20 @@ void tiffHTICK (void) {
 void tiffTICK (void) {
     uint32_t ht = Htick();
     PushNum(FetchCell(ht-4));
+}
+
+void tiffSTATS (void) {
+#ifdef TRACEABLE
+    static unsigned long mark;
+    printf("\nClock cycles elapsed: %lu, since last: %lu ",
+           cyclecount, cyclecount-mark);
+    mark = cyclecount;
+#endif
+    uint32_t hp = FetchCell(HP);
+    printf("\nROM usage: %d bytes of %d",
+           FetchCell(CP), ROMsize*4);  printed = 1;
+    printf("\nFlash usage: HP = %d of %d, header space is %d bytes of %d",
+           hp, AXIsize*4, hp-HeadPointerOrigin, AXIsize*4-HeadPointerOrigin);
 }
 
 // void tiffHEX (void) {                   // base 16
@@ -248,6 +264,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("]",       tiffSTATEon);
     AddKeyword("\\",      tiffCOMMENT);
     AddKeyword(".",       tiffDOT);
+    AddKeyword("stats",   tiffSTATS);
     AddKeyword("+cpu",    tiffCPUon);
     AddKeyword("-cpu",    tiffCPUoff);
     AddKeyword("cpu",     tiffCPUgo);
@@ -256,7 +273,6 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("equ",     tiffEQU);
     AddKeyword("words",   tiffWORDS);
     AddKeyword("xwords",  tiffXWORDS);
-    AddKeyword("xwordsall", tiffXWORDSALL);
     AddKeyword(":noname", tiffNONAME);
     AddKeyword(":",       tiffCOLON);
     AddKeyword(";",       Semicolon);
@@ -264,6 +280,9 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("bench",   benchmark);
     AddKeyword("h'",      tiffHTICK);
     AddKeyword("'",       tiffTICK);
+    AddKeyword("macro",   tiffMACRO);
+    AddKeyword("call-only", tiffCALLONLY);
+    AddKeyword("anonymous", tiffANON);
 
 //    AddKeyword("hex", tiffHEX);
 //    AddKeyword("decimal", tiffDECIMAL);
@@ -442,13 +461,13 @@ void tiffQUIT (char *cmdline) {
                             tiffINCLUDED(DefaultFile);
                         }
                         loaded = 1;
+                        NoHi = 1;  // tell not to say "ok"
                         break;
                     }
                     if (cmdline) {      // first time through use command line
                         strcpy (File.Line, cmdline);
                         length = strlen(cmdline);
                         cmdline = NULL; // clear cmdline
-                        NoHi = 1;  // tell not to say "ok"
                     } else {
                         buf = File.Line;
                         length = getline(&buf, &bufsize, stdin);   // get input line

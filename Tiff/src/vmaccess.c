@@ -122,8 +122,9 @@ uint32_t SearchWordlist(char *name, uint32_t WID) {
                 char c1 = name[i++];
                 if (CaseInsensitive) c1 = tolower(c1);
                 uint8_t c2 = FetchByte(k++);
-                if (c1 == c2) return WID;
+                if (c1 != c2) return 0;
             }
+            return WID;
         }
         WID = FetchCell(WID) & 0xFFFFFF;
     } while (WID);

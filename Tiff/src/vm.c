@@ -47,11 +47,11 @@
     #define RidSP (-7)
     #define RidUP (-8)
     #define RidPC (-9)
-    #define RidDebug (-10)
     #define VMregs 10
 
     uint32_t VMreg[VMregs];     // registers with undo capability
     uint32_t OpCounter[64];     // opcode counter
+    unsigned long cyclecount;
 
     static int New; // New trace type, used to mark new sections of trace
     static uint32_t RAM[RAMsize];
@@ -243,6 +243,7 @@ static void StoreX (uint32_t addr, uint32_t data, int shift, int mask) {
 void VMpor(void) {  // EXPORTED
 #ifdef TRACEABLE
     memset(OpCounter, 0, 64);           // clear opcode profile counters
+    cyclecount = 0;                     // cycles since POR
 #endif // TRACEABLE
     PC = 0;  RP = 64;  SP = 32;  UP = 64;
     T=0;  N=0;  R=0;  A=0;  B=0;  DebugReg = 0;
@@ -274,6 +275,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 #ifdef TRACEABLE
 LastOp: if (OpCounter[opcode] != 0xFFFFFFFF) OpCounter[opcode]++;
         New = 1;  // first state change in an opcode
+        if (!Paused) cyclecount += 1;
 #else
 LastOp:
 #endif // TRACEABLE
@@ -283,6 +285,7 @@ LastOp:
 			case 002:
 #ifdef TRACEABLE
                 Trace(New, RidPC, PC, R>>2);  New=0;
+                if (!Paused) cyclecount += 3;  // PC change flushes pipeline
 #endif // TRACEABLE
                 // PC is a cell address. The return stack works in bytes.
                 PC = R>>2;  RDROP();  slot = 0;         break;	// ;
@@ -300,6 +303,7 @@ LastOp:
 			case 006:
 #ifdef TRACEABLE
                 Trace(New, RidPC, PC, R);  New=0;
+                if (!Paused) cyclecount += 3;  // PC change flushes pipeline
 #endif // TRACEABLE
                 PC = R>>2;	 RDROP();      			    break;	// ;|
 			case 007:
@@ -446,6 +450,7 @@ GetPointer:
 			case 064:
 #ifdef TRACEABLE
                 Trace(New, ~9, PC, IMM);  New=0;
+                if (!Paused) cyclecount += 3;  // PC change flushes pipeline
 #endif // TRACEABLE
                 // Jumps and calls use cell addressing
 			    PC = IMM;  return PC;                           // JUMP
@@ -477,6 +482,7 @@ GetPointer:
 #ifdef TRACEABLE
                 Trace(0, RidR, R, PC);    R = PC;
                 Trace(0, RidPC, PC, IMM);  PC = IMM;  return PC;
+                if (!Paused) cyclecount += 3;  // PC change flushes pipeline
 #else
                 R = PC<<2;  PC = IMM;  return PC;
 #endif // TRACEABLE
