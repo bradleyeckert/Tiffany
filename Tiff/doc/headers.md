@@ -33,9 +33,36 @@ The link and the name should be adjacent in memory to allow for faster fetch fro
 
 The name length byte includes `smudge`, `jumpok`, and `anonymous` bits that default to '1' and are set to '0' later on. `call-only` clears the jumpok bit to inhibit tail call optimization.
 
+| Bit | Usage       | Description                                  |
+|:---:|:------------|:---------------------------------------------|
+| 7   | Call Only   | '0' when tail call optimization is inhibited |
+| 6   | Anonymous   | '0' when to be excluded from where list      |
+| 5   | Smudged     | '0' when header is findable (used by : etc.) |
+| 4:0 | Name Length | 0 to 31                                      |
+
 The `where` list (cell -3) is 0xFFFFFF if the word is not referenced. Every reference to this header will append to the `where` list, which is a forward linked list whose head pointer is re-calculated (by traversal) each time it's needed. If the referencer's `anonymous` bit is '0', it doesn't get appended to the `where` list. Opcode words are anonymous.
 
 `where` elements are 3-cell chunks initialized to -1, in header space. The first cell is a forward link and the other two are addresses. Each reference takes 6+ bytes of header space, which may be an expense you can do without. So, the `nowhere` flag disables this feature.
+
+### Macro Compilation
+
+The xtc of defined words is either `compile,` (by default) or `macrocomp,`. The two xts observe certain rules so that `macro` can flip bit 2 in xtc from `1` to`0`. These rules are:
+
+1. They are adjacent.
+2. The first function of the pair is macro expansion.
+3. The pair starts at an address that's a multiple of 8.
+
+The structure for doing this is:
+
+```
+:noname ( code for macro expansion )
+; cp @  8 aligned  cp !
+jump  \ compile a machine opcode
+: compile, ( xt -- ) ( code for compile, )
+;
+```
+
+Macro expansion is amazingly simple. Each slot of an instruction in a definition that's marked as a macro is compiled until `exit` is encountered.
 
 ## Wordlists
 
