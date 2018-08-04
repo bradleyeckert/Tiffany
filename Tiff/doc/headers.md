@@ -29,7 +29,7 @@ The link and the name should be adjacent in memory to allow for faster fetch fro
 | 1    | Name Length                      | Name Text, first 3 characters      |
 | 2    | 4th name character               | Name Text, chars 5-7, etc...       |
 
-`immediate` works by clearing xtc. The interpreter uses xte if it's zero.
+`immediate` works by clearing xtc. The interpreter uses xte if it's zero. It's done this way because flash can't be patched unless it's blank.
 
 The name length byte includes `smudge`, `call-only`, and `anonymous` bits that default to '1' and are set to '0' later on.
 
