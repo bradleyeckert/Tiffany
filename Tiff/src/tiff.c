@@ -82,11 +82,21 @@ void initFilelist (void) {
     FileID = 0;
 }
 
+/*
+| Cell | \[31:24\]                        | \[23:0\]                           |
+| ---- |:---------------------------------| ----------------------------------:|
+| -3   | Source File ID                   | List of words that reference this  |
+| -2   | Source Line, Low byte            | xtc, Execution token for compile   |
+| -1   | Source Line, High byte           | xte, Execution token for execute   |
+| 0    | # of instructions in definition  | Link                               |
+| 1    | Name Length                      | Name Text, first 3 characters      |
+| 2    | 4th name character               | Name Text, chars 5-7, etc...       |
+*/
 // Use Size=-1 if unknown
 void CommaHeader (char *name, uint32_t xte, uint32_t xtc, int Size, int flags){
-	CommaH ((File.FID<<24) | 0xFFFFFF);                // [-3]: File ID | where
-	CommaH (((File.LineNumber & 0xFF)<<24) | xtc);     // [-2]: Lower line | xtc
-	CommaH (((File.LineNumber & 0xFF00)<<16) | xte);   // [-1]: Upper line | xte
+	CommaH ((File.FID << 24) | 0xFFFFFF);              // [-3]: File ID | where
+	CommaH (((File.LineNumber & 0xFF)<<24)  +  (xtc & 0xFFFFFF)); // [-2]
+	CommaH (((File.LineNumber & 0xFF00)<<16) + (xte & 0xFFFFFF)); // [-1]
 	uint32_t wid = FetchCell(CURRENT);                 // CURRENT -> Wordlist
 	uint32_t link = FetchCell(wid);
 	StoreCell (FetchCell(HP), wid);

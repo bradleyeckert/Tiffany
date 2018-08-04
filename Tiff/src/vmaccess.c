@@ -186,7 +186,7 @@ char WordColors[16] = {
 */
 void PrintWordlist(uint32_t WID, char *substring, int verbosity) {
     if (verbosity) {
-        printf("\nNAME             LEN    XTE    XTC FID  LINE  WHERE    VALUE FLAG");
+        printf("\nNAME             LEN    XTE    XTC FID  LINE  WHERE    VALUE FLAG HEAD");
     }
     do {
         uint8_t length = FetchByte(WID+4);
@@ -205,14 +205,15 @@ good:       if (verbosity) {            // long version
                 uint32_t where = FetchCell(WID-12);
                 uint32_t xtc = FetchCell(WID-8);
                 uint32_t xte = FetchCell(WID-4);
-                uint32_t linenum = ((xtc>>16) & 0xFF00) + (xte>>24);
+                uint32_t linenum = ((xte>>16) & 0xFF00) + (xtc>>24);
                 printf("\n%-17s%3d%7X%7X",
                        str, FetchByte(WID+3), xte&0xFFFFFF, xtc&0xFFFFFF);
                 if (linenum == 0xFFFF)
                     printf("  --    --");
                 else
                     printf("%4X%6d", where>>24, linenum);
-                printf("%7X%9X%5d", where&0xFFFFFF, FetchCell(WID-16), flags);
+                printf("%7X%9X%5d %X",
+                       where&0xFFFFFF, FetchCell(WID-16), flags, WID);
             }
             else printf("%s", str);
 #ifdef ErrorColor

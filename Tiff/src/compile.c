@@ -113,7 +113,7 @@ void Semicolon (void) {  /*EXPORT*/
     // The code address is in the header at wid-16.
     if (FetchByte(COLONDEF)) {          // resolve length of definition
         StoreByte(0, COLONDEF);
-        uint32_t org = FetchCell(wid-16); // start address
+        uint32_t org = FetchCell(wid-4);  // start address = xte
         uint32_t cp  = FetchCell(CP);     // end address
         uint32_t length = (cp - org) / 4; // length in cells
         if (length>255) length=255;       // limit to 8-bit
