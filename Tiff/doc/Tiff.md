@@ -6,6 +6,8 @@ Tiff uses a simulated Mforth CPU to execute compiled code as needed. It’s desi
 gradually handing off all control to the simulated CPU. The resulting ROM image is binary compatible with the FPGA or ASIC based CPU,
 which runs the same Forth system (big or small) as Tiff.
 
+Note: Not actively updated.
+
 ## Input Streams
 
 Input Streams
