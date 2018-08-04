@@ -31,7 +31,7 @@ The link and the name should be adjacent in memory to allow for faster fetch fro
 
 `immediate` works by clearing xtc. The interpreter uses xte if it's zero.
 
-The name length byte includes `smudge`, `jumpok`, and `anonymous` bits that default to '1' and are set to '0' later on. `call-only` clears the jumpok bit to inhibit tail call optimization.
+The name length byte includes `smudge`, `call-only`, and `anonymous` bits that default to '1' and are set to '0' later on. `call-only` clears the jumpok bit to inhibit tail call optimization.
 
 | Bit | Usage       | Description                                  |
 |:---:|:------------|:---------------------------------------------|
