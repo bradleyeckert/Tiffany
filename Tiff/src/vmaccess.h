@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include "config.h"
 
-uint32_t DbgPC; // last PC returned by VMstep
+extern uint32_t DbgPC; // last PC returned by VMstep
 
 uint32_t DbgGroup (uint32_t op0, uint32_t op1,   // Execute an instruction group
                    uint32_t op2, uint32_t op3, uint32_t op4);
@@ -33,7 +33,7 @@ void CommaHeader (char *name, uint32_t xte, uint32_t xtc, int Size, int flags);
 
 uint32_t SearchWordlist(char *name, uint32_t WID);
 uint32_t tiffFIND (void);                     // ( addr len -- addr len | 0 ht )
-void tiffWORDS (void);
+void tiffWords (char *substring, int verbosity);
 
 void CreateTrace(void);                  // allocate memory for the trace buffer
 void DestroyTrace(void);                     // free memory for the trace buffer

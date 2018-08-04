@@ -6,13 +6,14 @@
 #include "compile.h"
 #include "tiff.h"
 #include <string.h>
-#define RunLimit 1000
+#define RunLimit 10
 
 /// The compiler keeps all state inside the VM when compiling code
 /// so that executable code can take over later by redirecting
 /// the header's xtc and xte.
 
 static void FlushLit (void);
+uint32_t DbgPC; // shared with vmaccess.c
 
 void InitIR (void) {                    // initialize the IR
     StoreCell(0, IRACC);
@@ -190,21 +191,35 @@ void tiffFUNC (int n, uint32_t ht) {   /*EXPORT*/
             case 5: Immediate(w);   break;  // compile immediate opcode
             case 6: SkipOp(w);      break;  // compile skip opcode
             case 7: HardSkipOp(w);  break;  // compile skip opcode in slot 0
-            case 8: FlushLit();  NewGroup();  break; // skip to new instruction group
-            case 9: Compile(w);     break;  // compile call to w
+            case 8: FlushLit();  NewGroup();   break;  // skip to new instruction group
+            case 9: Compile(FetchCell(ht+12)); break;  // compile call to xte
 			default: break;
 		}
 	} else { // execute in the VM
+#ifdef VERBOSE
+        printf(", Executing at %X", n);  printed = 1;
+#endif // VERBOSE
         SetDbgReg(DbgPC);
         DbgGroup(opDUP, opPORT, opPUSH, opSKIP, opNOP); // Push current PC
-        SetDbgReg(0xDEADC0DE);
+        SetDbgReg(0xDEADC0DC);
         DbgGroup(opDUP, opPORT, opPUSH, opSKIP, opNOP); // Push bogus return address
         SetDbgReg(n);
         DbgGroup(opDUP, opPORT, opPUSH, opEXIT, opNOP); // Jump to code to run
-        for (i=0; i<RunLimit; i++) {
-            uint32_t NextPC = VMstep(FetchCell(DbgPC), 1);
-            if (NextPC == 0xDEADC0DE) {                 // Terminator found
+        DbgPC = n;
+        for (i=1; i<RunLimit; i++) {
+            uint32_t ir = FetchCell(DbgPC);
+#ifdef VERBOSE
+            printf("\nStep %d: IR=%08X, PC=%X", i, ir, DbgPC);
+#endif // VERBOSE
+            DbgPC = 4 * VMstep(ir, 1);
+#ifdef VERBOSE
+            printf(" ==> PC=%X", DbgPC);
+#endif // VERBOSE
+            if (DbgPC == 0xDEADC0DC) {                  // Terminator found
                 DbgGroup(opEXIT, opSKIP, opNOP, opNOP, opNOP); // restore PC
+#ifdef VERBOSE
+                printf("\nFinished after %d groups\n", i);
+#endif // VERBOSE
                 return;
             }
         }
@@ -227,7 +242,10 @@ static void AddHardSkip(int opcode, char *name) {
     CommaH(opcode);
     CommaHeader(name, ~4, ~7, 0, 0);
 }
-
+static void AddEqu(uint32_t n, char *name) {
+    CommaH(n);
+    CommaHeader(name, ~0, ~1, 0, 0x40); // not anonymous header
+}
 void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     InitIR();
     CommaHeader("|", ~4, ~8, 0, 0);     // skip to new opcode group
@@ -288,5 +306,27 @@ void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     AddHardSkip(opSKIPZ  , "if|");
     AddHardSkip(opSKIPMI , "+if|");
     AddHardSkip(opSKIPGE , "-if|");
+    AddEqu     (HeadPointerOrigin, "hp0");  // bottom of head space
+    AddEqu     (BASE     , "base");         // tiff.h variable names
+    AddEqu     (HP       , "hp");
+    AddEqu     (CP       , "cp");
+    AddEqu     (DP       , "dp");
+    AddEqu     (STATE    , "state");
+    AddEqu     (CURRENT  , "current");
+    AddEqu     (SOURCEID , "source-id");
+    AddEqu     (PERSONALITY, "personality");
+    AddEqu     (TIBS     , "tibs");
+    AddEqu     (TIBB     , "tibb");
+    AddEqu     (TOIN     , ">in");
+    AddEqu     (WIDS     , "c_wids");
+    AddEqu     (CALLED   , "c_called");
+    AddEqu     (SLOT     , "c_slot");
+    AddEqu     (LITPEND  , "c_litpend");
+    AddEqu     (COLONDEF , "c_colondef");
+    AddEqu     (CALLADDR , "calladdr");
+    AddEqu     (NEXTLIT  , "nextlit");
+    AddEqu     (IRACC    , "iracc");
+    AddEqu     (CONTEXT  , "context");
+    AddEqu     (FORTHWID , "forthwid");
+    AddEqu     (TIB      , "tib");
 }
-

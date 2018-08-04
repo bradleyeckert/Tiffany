@@ -25,20 +25,25 @@
 // number of rows in the CPU register dump, minimum 9, maximum 12
 #define DumpRows         11
 
-//#define MONOCHROME
+#define MONOCHROME
 // Console color scheme, comment out if no colors.
 #ifndef MONOCHROME
 #define InterpretColor  "\033[1;33m"
 #define ErrorColor      "\033[1;31m"
 #define FilePathColor   "\033[1;34m"
 #define FileLineColor   "\033[1;32m"
+#define AnonAttribute   "\033[1;4m"
+#define NoJumpAttribute "\033[1;34m"
 #endif
 
 #define OKstyle  2     /* Style of OK prompt: 0=classic, 1=openboot, 2=depth */
+// #define VERBOSE     /* for debugging the quit loop, etc. */
 
 // A word is reserved for a forward jump to cold boot, kernel starts at 000004.
+// These are byte addresses.
 #define CodePointerOrigin  4                  /* Kernel definitions start here */
-#define HeadPointerOrigin ((ROMsize+RAMsize)*4)  /* Headers start in AXI space */
+#define HeadPointerMin    ((ROMsize+RAMsize)*4)     /* Lowest SPI code address */
+#define HeadPointerOrigin  0x8000       /* Headers are in AXI space above code */
 
 //===============================================================================
 // Sanity checks

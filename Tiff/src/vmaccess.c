@@ -21,7 +21,7 @@ uint32_t DbgPC; // last PC returned by VMstep
 
 uint32_t DbgGroup (uint32_t op0, uint32_t op1,
                    uint32_t op2, uint32_t op3, uint32_t op4) {
-    DbgPC = VMstep(op0<<26 | op1<<20 | op2<<14 | op3<<8 | op4<<2, 1);
+    DbgPC = 4 * VMstep(op0<<26 | op1<<20 | op2<<14 | op3<<8 | op4<<2, 1);
     return GetDbgReg();
 }
 uint32_t PopNum (void) {                // Pop from the stack
@@ -153,38 +153,86 @@ uint32_t tiffFIND (void) {  // ( addr len -- addr len | 0 ht )
 
 // WORDS primitive
 
-void PrintWordlist(uint32_t WID, int verbosity) {
+/*
+40	Black
+41	Red
+42	Green
+43	Yellow
+44	Blue
+45	Magenta
+46	Cyan
+47	White
+*/
+
+char WordColors[16] = {
+30, 44,
+31, 44, // bit 0 = smudged
+30, 40,
+31, 40,
+33, 44, // bit 2 = call-only (when '0')
+31, 44,
+33, 40, // bit 1 = public
+31, 40
+};
+/*
+| Cell | \[31:24\]                        | \[23:0\]                           |
+| ---- |:---------------------------------| ----------------------------------:|
+| -3   | Source File ID                   | List of words that reference this  |
+| -2   | Source Line, Low byte            | xtc, Execution token for compile   |
+| -1   | Source Line, High byte           | xte, Execution token for execute   |
+| 0    | # of instructions in definition  | Link                               |
+| 1    | Name Length                      | Name Text, first 3 characters      |
+| 2    | 4th name character               | Name Text, chars 5-7, etc...       |
+*/
+void PrintWordlist(uint32_t WID, char *substring, int verbosity) {
+    if (verbosity) {
+        printf("\nNAME             LEN    XTE    XTC FID  LINE  WHERE    VALUE FLAG");
+    }
     do {
         uint8_t length = FetchByte(WID+4);
 #ifdef ErrorColor
-        printf("\033[0m");              // reset colors
+        uint8_t color = (length>>4) & 0x0E;
+        printf("\033[1;%d;%dm", WordColors[color], WordColors[color+1]);
 #endif
-        if (length & 0x80) {            // smudged bit is set
-#ifdef ErrorColor
-        printf(ErrorColor);
-#endif
-        }
-        if (length & 0x40) {            // call-only bit is set
-#ifdef FilePathColor
-        printf(FilePathColor);
-#endif
-        }
+        int flags = length>>5;
         length &= 0x1F;
         FetchString(str, WID+5, length);
-        printf("%s ", str);
+        if (substring) {
+            char *s = strstr(str, substring);
+            if (s != NULL) goto good;
+        } else {
+good:       if (verbosity) {            // long version
+                uint32_t where = FetchCell(WID-12);
+                uint32_t xtc = FetchCell(WID-8);
+                uint32_t xte = FetchCell(WID-4);
+                uint32_t linenum = ((xtc>>16) & 0xFF00) + (xte>>24);
+                printf("\n%-17s%3d%7X%7X",
+                       str, FetchByte(WID+3), xte&0xFFFFFF, xtc&0xFFFFFF);
+                if (linenum == 0xFFFF)
+                    printf("  --    --");
+                else
+                    printf("%4X%6d", where>>24, linenum);
+                printf("%7X%9X%5d", where&0xFFFFFF, FetchCell(WID-16), flags);
+            }
+            else printf("%s", str);
+#ifdef ErrorColor
+            printf("\033[0m");          // reset colors
+#endif
+            printf(" ");
+        }
         WID = FetchCell(WID) & 0xFFFFFF;
     } while (WID);
 #ifdef ErrorColor
-        printf("\033[0m");              // reset colors
+    printf("\033[0m");
 #endif
     printed = 1;
 }
 
-void tiffWORDS (void) {
+void tiffWords (char *substring, int verbosity) {
     uint8_t wids = FetchByte(WIDS);
     while (wids--) {
         uint32_t wid = FetchCell(CONTEXT + wids*4);  // search the first list
-        PrintWordlist(FetchCell(wid), 0);
+        PrintWordlist(FetchCell(wid), substring, verbosity);
     }
 #ifdef InterpretColor
     printf(InterpretColor);
@@ -194,7 +242,7 @@ void tiffWORDS (void) {
 // The idea is to find the string just below the wordlist.
 // You don't know how many data words prepend a header.
 // Requires some searching for an offset that's -4, -8 or -12.
-// untested
+// **********untested*************
 void WIDname(uint32_t WID) {
     uint32_t wid0 = WID;            // display if name not found
     uint32_t wid;  int i;  uint8_t length;
@@ -264,11 +312,11 @@ uint32_t RegRead(int ID) {
 void EraseSPIimage (void) {  // Erase SPI flash image and internal ROM
     int i, ior;
     for (i=0; i < (AXIsize/1024); i++) {
-        ior = EraseAXI4K(i * 1024);
+        ior = EraseAXI4K(i * 4096);     // start at a byte address
         if (!tiffIOR) tiffIOR = ior;
     }
-    for (i=0; i < ROMsize; i++) {
-        WriteROM(-1, i);
+    for (i=0; i < ROMsize; i++) {       // size is cells
+        WriteROM(-1, i*4);              // addressing is bytes
     }
 }
 
@@ -486,7 +534,7 @@ void InitializeTermTCB(void) {
     VMpor();                            // clear VM and RAM
     initFilelist();
     EraseSPIimage();                    // clear SPI flash image
-    StoreCell(HeadPointerOrigin, HP);
+    StoreCell(HeadPointerOrigin+4, HP); // leave forward link to filename list
     StoreCell(CodePointerOrigin, CP);
     StoreCell(DataPointerOrigin, DP);
     StoreCell(10, BASE);                // decimal
@@ -603,7 +651,7 @@ void DisassembleIR(uint32_t IR) {
     int slot = 26;  // 26 20 14 8 2
     int opcode;
     char name[64][6] = {
-    "nop",   "dup",  "exit", "+",   "no:",   "r@",   "---",   "and",
+    "nop",   "dup",  "exit", "+",   "no:",   "r@",   "exit:", "and",
     "nif:",  "over", "r>",   "xor", "if:",   "a",    "rdrop", "---",
     "+if:",  "!as",  "@a",   "---", "-if:",  "2*",   "@a+",   "---",
     "next:", "u2/",  "w@a",  "a!",  "rept",  "2/",   "c@a",   "b!",
