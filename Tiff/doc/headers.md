@@ -56,7 +56,7 @@ The structure for doing this is:
 
 ```
 :noname ( code for macro expansion )
-; cp @  8 aligned  cp !
+; cp @  8 aligns  cp !
 jump  \ compile a machine opcode
 : compile, ( xt -- ) ( code for compile, )
 ;
