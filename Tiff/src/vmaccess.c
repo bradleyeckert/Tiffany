@@ -704,7 +704,7 @@ void DumpReturnStack(void){
 
 void DisassembleIR(uint32_t IR) {
     int slot = 26;  // 26 20 14 8 2
-    int opcode;
+    int opcode;  int32_t qimm;
     char name[64][6] = {
     "nop",   "dup",  "exit", "+",   "no:",   "r@",   "exit:", "and",
     "nif:",  "over", "r>",   "xor", "if:",   "a",    "rdrop", "---",
@@ -713,15 +713,16 @@ void DisassembleIR(uint32_t IR) {
     "sp",    "com",  "!a",   "rp!", "rp",    "port", "!b+",   "sp!",
     "up",    "---",  "w!a",  "up!", "sh24",  "---",  "c!a",   "---",
     "user",  "---",  "---",  "nip", "jump",  "---",  "@as",   "---",
-    "lit",   "---",  "drop", "rot", "call",  "1+",   ">r",    "swap"
+    "lit",   "---", "drop", "rot", "call",  "1+",   ">r",    "swap"
     };
     while (slot>=0) {
         opcode = (IR >> slot) & 0x3F;
-NextOp: if (opcode>31)
+NextOp: if (opcode>31) {
             if ((opcode&3)==0) { // immediate opcode uses prefix format
                 printf("0x%X ", IR & ~(0xFFFFFFFF << slot));
                 slot=0;
             }
+        }
         printf("%s ", name[opcode]);
         slot -= 6;
     }
