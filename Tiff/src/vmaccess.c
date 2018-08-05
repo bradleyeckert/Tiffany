@@ -281,7 +281,7 @@ void ReplaceXTWID(uint32_t WID, uint32_t OldXt, uint32_t NewXt) {
 void ReplaceXTs(void) {  // ( newXT oldXT -- )
     uint32_t OldXt = PopNum();
     uint32_t NewXt = PopNum();
-    uint8_t wids = FetchByte(WIDS);  char *name;
+    uint8_t wids = FetchByte(WIDS);
     while (wids--) {
         uint32_t wid = FetchCell(CONTEXT + wids * 4);  // search the first list
         wid = FetchCell(wid);
@@ -704,7 +704,7 @@ void DumpReturnStack(void){
 
 void DisassembleIR(uint32_t IR) {
     int slot = 26;  // 26 20 14 8 2
-    int opcode;  int32_t qimm;
+    int opcode;
     char name[64][6] = {
     "nop",   "dup",  "exit", "+",   "no:",   "r@",   "exit:", "and",
     "nif:",  "over", "r>",   "xor", "if:",   "a",    "rdrop", "---",
