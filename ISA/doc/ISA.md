@@ -38,12 +38,10 @@ Preliminary opcodes in 2-digit octal format:
 | **4** | **sp**   | com  | !a   | rp! | **rp**   | port | !b+   | sp!  |
 | **5** | **up**   | ---  | w!a  | up! | **sh24** | ---  | c!a   | ---  |
 | **6** | **user** | ---  | ---  | nip | **jump** | ---  | @as   | ---  |
-| **7** | **lit**  | qlit | drop | rot | **call** | 1+   | >r    | swap |
+| **7** | **lit**  | ---  | drop | rot | **call** | 1+   | >r    | swap |
 
-- opcode *conditionally skips the rest of the slots*
-- opcode **uses the rest of the slots as unsigned immediate data**
-
-With all of these slots available, it seems a waste to throw away a bunch when only a short literal is needed. Since the architecture supports it, a quick lit can take a signed 6-bit (or 3-bit) value from the next slot.
+- *opcode conditionally skips the rest of the slots*
+- **opcode uses the rest of the slots as unsigned immediate data**
 
 ### Opcodes (proposed)
 
