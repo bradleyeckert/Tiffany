@@ -100,7 +100,6 @@ UP!   RAM[SP++] → N → T → UP
 NIP   RAM[SP++] → N
 DROP  RAM[SP++] → N → T
 >R    RAM[SP++] → N → T → PC → R → RAM[--RP]
-QLIT  QIMM → T → N  → RAM[--SP]   QIMM =s sign-extended next slot
 
 |	Begin a new opcode group
 ```
