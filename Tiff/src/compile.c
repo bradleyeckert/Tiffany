@@ -170,9 +170,11 @@ void tiffANON (void) {  /*EXPORT*/
 static void HardLit (int32_t N) {
     uint32_t u = abs(N);
     if (u < 0x03FFFFFF) {               // single width literal
-        Explicit(opLIT, u);
         if (N < 0) {
+            Explicit(opLIT, u-1);       // negative number
             Implicit(opCOM);
+        } else {
+            Explicit(opLIT, u);
         }
     } else {
         Explicit(opLIT, (N>>24));       // split into 8 and 24
@@ -227,7 +229,7 @@ void tiffFUNC (int32_t n) {   /*EXPORT*/
     if (n & 0x800000) n |= 0xFF000000; // sign extend 24-bit n
 	if (n<0) { // internal C function
 #ifdef VERBOSE
-        printf("xt=%X, ht=%X ", n, ht);  printed = 1;
+        printf("xt=%X, ht=%X ", n, FetchCell(HEAD));  printed = 1;
 #endif
         uint32_t ht = FetchCell(HEAD);
         uint32_t w = FetchCell(ht-16);

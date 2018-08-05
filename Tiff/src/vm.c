@@ -346,7 +346,7 @@ LastOp:
                 T = A;						            break;	// A
 			case 016: RDROP();				            break;	// RDROP
 
-			case 020: if (T & 0x80000000) slot = -1;	break;	// +IF:
+			case 020: if ((signed)T < 0)  slot = -1;	break;	// +IF:
 			case 021: M = N & 0xFF;
                 SendAXI(T/4, M);    // T is address, N is length-1
 #ifdef TRACEABLE
@@ -357,7 +357,7 @@ LastOp:
 				T += 4 * (M + 1);			    		break;	// !AS
 			case 022: FetchX(A>>2, 0, 0xFFFFFFFF); 		break;  // @A
 			case 023: 									break;
-			case 024: if ((T&0x80000000)==0) slot = -1; break;  // -IF:
+			case 024: if ((signed)T >= 0) slot = -1;    break;  // -IF:
 			case 025:
 #ifdef TRACEABLE
                 Trace(New, RidT, T, T*2);  New=0;

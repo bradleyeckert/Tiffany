@@ -118,18 +118,18 @@ uint32_t SearchWordlist(char *name, uint32_t WID) {
         uint32_t test = FetchCell(WID+4) & ~0xC0;  // mask off jumpok and public
         if (test == word) {    // likely candidate: length and first three match
             if (length<4) return WID;
-            length -= 3;                             // remaining chars to check
+            int remainder = length - 3;              // remaining chars to check
             i = 3;                                     // starting index in name
             uint32_t k = WID+8;                                   // RAM address
-            while (length--) {
+            while (remainder--) {
                 char c1 = name[i++];
                 if (CaseInsensitive) c1 = tolower(c1);
                 uint8_t c2 = FetchByte(k++);
-                if (c1 != c2) return 0;
+                if (c1 != c2) goto next;
             }
             return WID;
         }
-        WID = FetchCell(WID) & 0xFFFFFF;
+next:   WID = FetchCell(WID) & 0xFFFFFF;
     } while (WID);
     return 0;
 }

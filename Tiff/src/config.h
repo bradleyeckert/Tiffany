@@ -20,7 +20,7 @@
 #define TraceDepth 12           /* Log2 of the trace buffer size, 13*2^N bytes */
 
 // Tell TIF to copy ROM writes to SPI flash (not used yet)
-//#define BootFromSPI             /* Defined if SPI gets a copy of the ROM image */
+#define BootFromSPI             /* Defined if SPI gets a copy of the ROM image */
 
 // number of rows in the CPU register dump, minimum 9, maximum 12
 #define DumpRows         11
