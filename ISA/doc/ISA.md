@@ -27,6 +27,19 @@ Slot 5 only fits 4 opcodes. The opcode map supports {NOP, DUP, EXIT, +} as per P
 
 ALU operations take their operands from registers for minimum input delay. Since the RAM is synchronous read/write, the opcode must be pre-decoded. The pre-decoder initiates reads. The main decoder has a registered opcode to work with, so the decode delay isn’t so bad. Opcodes that read from RAM should be grouped together for easy decoding from the opcode, which is already delayed by a logic level. So, for example, rd_enable is opcode[5] and the rd_addr mux is controlled by opcode[4:1]. Non-reading opcodes are decoded from a registered opcode. The pre-read stage of the pipeline allows time for immediate data to be registered, so the execute stage see no delay. Opcodes have time to add the immediate data to registers, for more complex operations. One can index into the stack, for example.
 
+Preliminary opcodes in 2-digit octal format:
+
+|   | 0     | 1    | 2    | 3   | 4    | 5    | 6     | 7    |
+|:-:|:-----:|:----:|:----:|:---:|:----:|:----:|:-----:|:----:|
+| 0 | nop   | dup  | exit | +   | no:  | r@   | exit: | and  |
+| 1 | nif:  | over | r>   | xor | if:  | a    | rdrop | ---  |
+| 2 | +if:  | !as  | @a   | --- | -if: | 2*   | @a+   | ---  |
+| 3 | next: | u2/  | w@a  | a!  | rept | 2/   | c@a   | b!   |
+| 4 | sp    | com  | !a   | rp! | rp   | port | !b+   | sp!  |
+| 5 | up    | ---  | w!a  | up! | sh24 | ---  | c!a   | ---  |
+| 6 | user  | ---  | ---  | nip | jump | ---  | @as   | ---  |
+| 7 | lit   | ---  | drop | rot | call | 1+   | >r    | swap |
+
 ### Opcodes (proposed)
 
 ```
