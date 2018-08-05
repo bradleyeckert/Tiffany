@@ -13,7 +13,7 @@
 
 #define TiffRP0     ((ROMsize + 255)*4)             /* Initial stack pointers */
 #define TiffSP0     ((ROMsize + 240)*4)                    /* Byte addressing */
-#define termTCB(n)  ((ROMsize + 256 + n)*4)        /* Terminal USER variables */
+#define termTCB(n)  ((ROMsize + 256 + (n))*4)      /* Terminal USER variables */
 
 // error message handling
 char ErrorString[260];   // String to include in error message
@@ -61,9 +61,10 @@ void vmTEST(void);
 #define CALLADDR    termTCB(18)  /* address+slot of last compiled CALL        */
 #define NEXTLIT     termTCB(19)  /* Next literal to be compiled               */
 #define IRACC       termTCB(20)  /* IR accumulator                            */
-#define CONTEXT     termTCB(21)  /* 8 cells of context                        */
-#define FORTHWID    termTCB(29)  /* Forth wordlist                            */
-#define TIB         termTCB(30)  /* Terminal Input Buffer                     */
+#define HEAD        termTCB(21)  /* Points to header of last found word       */
+#define CONTEXT     termTCB(22)  /* 8 cells of context                        */
+#define FORTHWID    termTCB(30)  /* Forth wordlist                            */
+#define TIB         termTCB(31)  /* Terminal Input Buffer                     */
 // support 132-column text files plus a little extra in case of zero-terminator
 #define MaxTIBsize  136          /* Maximum bytes allowed in TIB              */
 

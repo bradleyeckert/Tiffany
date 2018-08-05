@@ -46,7 +46,8 @@ void tiffSTATEoff (void) {              // [
     StoreCell(0, STATE);
 }
 void tiffDOT (void) {                   // pop and print
-    printf("%d ", PopNum());  printed = 1;
+    uint32_t n = PopNum();
+    printf("%d (%X) ", n, n);  printed = 1;
 }
 void tiffCPUon (void) {                 // enable CPU display mode
     ShowCPU = 1;
@@ -125,7 +126,7 @@ void tiffINCLUDED (char *name) {
     File.fp = fopen(name, "r");
 #ifdef VERBOSE
     printf("\nOpening file %s, handle 0x%X\n", name, (uint32_t)File.fp);
-#endif // VERBOSE
+#endif 
     File.LineNumber = 0;
     File.Line[0] = 0;
     File.FID = FileID;
@@ -191,20 +192,15 @@ void benchmark(void) {
     printf("%d ps", (unsigned int)now);  printed = 1;
 }
 
-// This is not needed by target Forth because it's only used to
-// patch xts in headers, which breaks flash write rules.
-uint32_t HeaderPtr;                     // last header returned by H' or '
-
-uint32_t Htick (void) {
+uint32_t Htick (void) {  // ( -- )
     tiffPARSENAME();  // ( addr len )
     uint32_t ht = tiffFIND();           // search for keyword in the dictionary
     if (ht) {
-        HeaderPtr = ht;
         PopNum();
         PopNum();
         return ht;
     } else {
-        uint8_t length = PopNum();
+        uint8_t length = (uint8_t)PopNum();
         FetchString(name, PopNum(), length);
         strcpy(ErrorString, name);
         tiffIOR = -13;
@@ -212,12 +208,18 @@ uint32_t Htick (void) {
     return 0;
 }
 
-void tiffHTICK (void) {
+void tiffHTICK (void) {                 // h' = header tick, a primitive of '
     PushNum(Htick());
 }
-void tiffTICK (void) {
+void tiffTICK (void) {                  // '
     uint32_t ht = Htick();
-    PushNum(FetchCell(ht-4));
+    PushNum(FetchCell(ht-4) & 0xFFFFFF);
+}
+void tiffSEE (void) {                   // disassemble word
+    uint32_t ht = Htick();
+    uint32_t addr =  FetchCell(ht-4) & 0xFFFFFF;
+    uint8_t length = FetchByte(ht+3);
+    Disassemble(addr, length);
 }
 
 void tiffSTATS (void) {
@@ -254,7 +256,7 @@ void AddKeyword(char *name, void (*func)()) {
     if (keywords<MaxKeywords){          // ignore new keywords if full
         strcpy (HostWord[keywords].name, name);
         HostWord[keywords++].Function = func;
-    }
+    } else printf("\nPlease increase MaxKeywords and rebuild.");
 }
 
 void LoadKeywords(void) {               // populate the list of gator brain functions
@@ -263,6 +265,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("[",       tiffSTATEoff);
     AddKeyword("]",       tiffSTATEon);
     AddKeyword("\\",      tiffCOMMENT);
+    AddKeyword("//",      tiffCOMMENT); // too much cog dis switching between C and Forth
     AddKeyword(".",       tiffDOT);
     AddKeyword("stats",   tiffSTATS);
     AddKeyword("+cpu",    tiffCPUon);
@@ -283,6 +286,8 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("macro",   tiffMACRO);
     AddKeyword("call-only", tiffCALLONLY);
     AddKeyword("anonymous", tiffANON);
+    AddKeyword("see",     tiffSEE);
+    AddKeyword("replace-xt", ReplaceXTs);   // Replace XTs  ( NewXT OldXT -- )
 
 //    AddKeyword("hex", tiffHEX);
 //    AddKeyword("decimal", tiffDECIMAL);
@@ -362,9 +367,9 @@ void tiffINTERPRET(void) {
         printf("\nFind:|%s| at >IN=%X, STATE=%d ", name, FetchCell(TOIN), FetchCell(STATE));
         PushNum(tempAddr);
         PushNum(tempLen);
-#endif // VERBOSE
+#endif 
         uint32_t ht = tiffFIND();     // search for keyword in the dictionary
-        if (ht) {
+        if (ht) {  // ( 0 ht )
             PopNum();
             PopNum();
             uint32_t xt;
@@ -373,10 +378,7 @@ void tiffINTERPRET(void) {
             } else {                    // interpreting
                 xt = 0xFFFFFF & FetchCell(ht - 4);
             }
-#ifdef VERBOSE
-        printf("xt=%X, ht=%X ", xt, ht-16);  printed = 1;
-#endif // VERBOSE
-            tiffFUNC(xt, ht-16);
+            tiffFUNC(xt);
         } else {
             // dictionary search using ROM head space not implemented yet.
             // Assume it falls through with ( c-addr len ) on the stack.
@@ -395,19 +397,19 @@ void tiffINTERPRET(void) {
                     if (FetchCell(STATE)) {
 #ifdef VERBOSE
                         printf(", Literal %d\n", (int32_t)x);  printed = 1;
-#endif // VERBOSE
+#endif 
                         Literal(x);
                     } else {
 #ifdef VERBOSE
                         printf(", Push %d\n", (int32_t)x);  printed = 1;
-#endif // VERBOSE
+#endif 
                         PushNum((uint32_t)x);
                     }
                 }
             }
 #ifdef VERBOSE
             else printf(" <<< Local Keyword\n");
-#endif // VERBOSE
+#endif 
             if (Sdepth()<0) {
                 tiffIOR = -4;
             }
@@ -429,6 +431,7 @@ void tiffQUIT (char *cmdline) {
     size_t bufsize = MaxTIBsize;        // for getline
     char *buf;                          // text from stdin (keyboard)
     int length, source, TIBaddr;
+    int NoHi = 0;                       // suppress extra "ok"s
     LoadKeywords();
     while (1){
         tiffIOR = 0;
@@ -446,7 +449,6 @@ void tiffQUIT (char *cmdline) {
             StoreCell(0, TIBS);
             source = FetchCell(SOURCEID);
             TIBaddr = FetchCell(TIBB);
-            int NoHi = 0;          // using command line argument?
             switch (source) {
                 case 0:                 // load TIBB from keyboard
                     if (!loaded) {
@@ -454,14 +456,14 @@ void tiffQUIT (char *cmdline) {
                         printf("%d\nAttempting to include file ", tiffIOR);
                         printf(DefaultFile);
                         printf("\n");  printed = 1;
-#endif // VERBOSE
+#endif 
                         FILE *test = fopen(DefaultFile, "r");
                         if (test != NULL) {
                             fclose(test);           // if default file exists
                             tiffINCLUDED(DefaultFile);
                         }
                         loaded = 1;
-                        NoHi = 1;  // tell not to say "ok"
+                        NoHi = 1;       // tell not to say "ok"
                         break;
                     }
                     if (cmdline) {      // first time through use command line
@@ -486,7 +488,7 @@ void tiffQUIT (char *cmdline) {
                     if (length < 0) {  // EOF
 #ifdef VERBOSE
                         printf("Closing file handle 0x%X\n", (uint32_t)File.fp);
-#endif // VERBOSE
+#endif 
                         fclose (File.fp);
                         filedepth--;
                         if (filedepth == 0) {
@@ -507,16 +509,19 @@ void tiffQUIT (char *cmdline) {
 
 #ifdef InterpretColor
             printf(InterpretColor);
-#endif // InterpretColor
+#endif
 #ifdef VERBOSE
             FetchString(name, FetchCell(TIBB), (uint8_t)FetchCell(TIBS));
             printf("ior before Interpret of |%s| is %d\n", name, tiffIOR);
-#endif // VERBOSE
+#endif 
             tiffINTERPRET();            // interpret the TIBB until it's exhausted
             if (tiffIOR) break;
             switch (FetchCell(SOURCEID)) {
                 case 0:
-                    if (NoHi) break;
+                    if (NoHi) {
+                        NoHi = 0;
+                        break;
+                    }
 #if (OKstyle == 0)      // FORTH Inc style
                     printf(" ok\n");
 #elif (OKstyle == 1)    // openboot style

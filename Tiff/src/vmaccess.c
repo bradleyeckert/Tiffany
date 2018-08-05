@@ -96,6 +96,9 @@ void StoreString(char *s, unsigned int address){
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Dictionary Traversal Words
+
 // Search the thread whose head pointer is at WID. Return ht if found, 0 if not.
 uint32_t SearchWordlist(char *name, uint32_t WID) {
     unsigned int length = strlen(name);
@@ -144,6 +147,7 @@ uint32_t tiffFIND (void) {  // ( addr len -- addr len | 0 ht )
         if (ht) {
             PushNum(0);
             PushNum(ht);
+            StoreCell(ht, HEAD);    // copy to HEAD
             return ht;
         }
     }
@@ -154,26 +158,15 @@ uint32_t tiffFIND (void) {  // ( addr len -- addr len | 0 ht )
 
 // WORDS primitive
 
-/*
-40	Black
-41	Red
-42	Green
-43	Yellow
-44	Blue
-45	Magenta
-46	Cyan
-47	White
-*/
-
 char WordColors[16] = {
-30, 44,
-31, 44, // bit 0 = smudged
-30, 40,
-31, 40,
-33, 44, // bit 2 = call-only (when '0')
-31, 44,
-33, 40, // bit 1 = public
-31, 40
+30, 44,                                 // 30, 40 = Black
+31, 44, // bit 0 = smudged              // 31, 41 = Red
+30, 40,                                 // 32, 42 = Green
+31, 40,                                 // 33, 43 = Yellow
+33, 44, // bit 2 = call-only (when '0') // 34, 44 = Blue
+31, 44,                                 // 35, 45 = Magenta
+33, 40, // bit 1 = public               // 36, 46 = Cyan
+31, 40                                  // 37, 47 = White
 };
 /*
 | Cell | \[31:24\]                        | \[23:0\]                           |
@@ -241,6 +234,61 @@ void tiffWords (char *substring, int verbosity) {
 #endif
 }
 
+// Look up the name of a definition from its address (xte)
+char *GetXtNameWID(uint32_t WID, uint32_t xt) {
+//    if (xt) {
+        do {
+            uint32_t xte = FetchCell(WID - 4) & 0xFFFFFF;
+            if (xte == xt) {
+                uint8_t length = (uint8_t) FetchByte(WID + 4);
+                FetchString(str, WID + 5, length & 0x1F);
+                return str;
+            }
+            WID = FetchCell(WID) & 0xFFFFFF;
+        } while (WID);
+//    }
+    return NULL;
+}
+
+char *GetXtName(uint32_t xt) {
+    uint8_t wids = FetchByte(WIDS);  char *name;
+    while (wids--) {
+        uint32_t wid = FetchCell(CONTEXT + wids * 4);  // search the first list
+        wid = FetchCell(wid);
+        name = GetXtNameWID(wid, xt);
+        if (name != NULL) return name;
+    } return NULL;
+}
+
+// Replace all instances of OldXt with NewXt.
+// This uses WriteROM, which is host-only (doesn't work on flash) so there's
+// no ReplaceXTWID equivalent in the target Forth.
+void ReplaceXTWID(uint32_t WID, uint32_t OldXt, uint32_t NewXt) {
+    do {
+        uint32_t xte = FetchCell(WID - 4);
+        uint32_t xtc = FetchCell(WID - 8);
+        if (((xte ^ OldXt) & 0xFFFFFF) == 0) {
+            xte = (xte & ~0xFFFFFF) + NewXt;
+            WriteROM(xte, WID - 4);
+        }
+        if (((xtc ^ OldXt) & 0xFFFFFF) == 0) {
+            xtc = (xtc & ~0xFFFFFF) + NewXt;
+            WriteROM(xtc, WID - 8);
+        }
+        WID = FetchCell(WID) & 0xFFFFFF;
+    } while (WID);
+}
+void ReplaceXTs(void) {  // ( newXT oldXT -- )
+    uint32_t OldXt = PopNum();
+    uint32_t NewXt = PopNum();
+    uint8_t wids = FetchByte(WIDS);  char *name;
+    while (wids--) {
+        uint32_t wid = FetchCell(CONTEXT + wids * 4);  // search the first list
+        wid = FetchCell(wid);
+        ReplaceXTWID(wid, OldXt, NewXt);
+    }
+}
+
 // The idea is to find the string just below the wordlist.
 // You don't know how many data words prepend a header.
 // Requires some searching for an offset that's -4, -8 or -12.
@@ -273,43 +321,8 @@ good:
     printed = 1;
 }
 
-/// Get registers the easy way if TRACEABLE, the hard way if not.
-/// Note: The B register is not readable by the debugger (there's no opcode for it)
-#ifdef TRACEABLE
-extern uint32_t VMreg[10];
-    uint32_t RegRead(int ID) {
-        switch(ID) {
-            case 0:
-            case 1:
-            case 2:
-            case 3:
-            case 4: return VMreg[ID];   // T N R A B
-            case 5:
-            case 6:
-            case 7: return 4*(VMreg[ID] + ROMsize);
-            case 8: return 4*VMreg[ID];
-            default: return 0;
-        }
-    }
-#else
-uint32_t RegRead(int ID) {
-    switch(ID) {
-        case 0: return DbgGroup(opDUP, opPORT, opDROP, opSKIP, opNOP); // T
-        case 1: return DbgGroup(opOVER, opPORT, opDROP, opSKIP, opNOP);// N
-        case 2: return DbgGroup(opR, opPORT, opDROP, opSKIP, opNOP);   // R
-        case 3: return DbgGroup(opA, opPORT, opDROP, opSKIP, opNOP);   // A
-        case 5: VMstep((opA<<8) + opRP*4, 1);                           // RP
-            return DbgGroup(opA, opPORT, opDROP, opSetA, opNOP);
-        case 6: VMstep((opA<<8) + opSP*4, 1);                           // SP
-            return (DbgGroup(opA, opPORT, opDROP, opSetA, opNOP) + 4);
-            // The SP is offset due to saving A on the stack
-        case 7: VMstep((opA<<8) + opUP*4, 1);                           // UP
-            return DbgGroup(opA, opPORT, opDROP, opSetA, opNOP);
-        case 8: return (DbgPC*4); // Don't make this the first RegRead  // PC
-        default: return 0;
-    }
-}
-#endif // TRACEABLE
+////////////////////////////////////////////////////////////////////////////////
+// Dumb Compilation
 
 void EraseSPIimage (void) {  // Erase SPI flash image and internal ROM
     int i, ior;
@@ -392,6 +405,48 @@ void CommaDstring (char *s) {   // compile string to data space
 void CommaCstring (char *s) {   // compile string to code space
     CommaXstring(s, CommaC, 0);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Tracing and debug facilities
+
+// Get registers the easy way if TRACEABLE, the hard way if not.
+// Note: The B register is not readable by the debugger (there's no opcode for it)
+#ifdef TRACEABLE
+extern uint32_t VMreg[10];
+uint32_t RegRead(int ID) {
+    switch(ID) {
+        case 0:
+        case 1:
+        case 2:
+        case 3:
+        case 4: return VMreg[ID];   // T N R A B
+        case 5:
+        case 6:
+        case 7: return 4*(VMreg[ID] + ROMsize);
+        case 8: return 4*VMreg[ID];
+        default: return 0;
+    }
+}
+#else
+uint32_t RegRead(int ID) {
+    switch(ID) {
+        case 0: return DbgGroup(opDUP, opPORT, opDROP, opSKIP, opNOP); // T
+        case 1: return DbgGroup(opOVER, opPORT, opDROP, opSKIP, opNOP);// N
+        case 2: return DbgGroup(opR, opPORT, opDROP, opSKIP, opNOP);   // R
+        case 3: return DbgGroup(opA, opPORT, opDROP, opSKIP, opNOP);   // A
+        case 5: VMstep((opA<<8) + opRP*4, 1);                           // RP
+            return DbgGroup(opA, opPORT, opDROP, opSetA, opNOP);
+        case 6: VMstep((opA<<8) + opSP*4, 1);                           // SP
+            return (DbgGroup(opA, opPORT, opDROP, opSetA, opNOP) + 4);
+            // The SP is offset due to saving A on the stack
+        case 7: VMstep((opA<<8) + opUP*4, 1);                           // UP
+            return DbgGroup(opA, opPORT, opDROP, opSetA, opNOP);
+        case 8: return (DbgPC*4); // Don't make this the first RegRead  // PC
+        default: return 0;
+    }
+}
+#endif // TRACEABLE
+
 
 #ifdef TRACEABLE
 //==============================================================================
@@ -508,8 +563,6 @@ void TraceHist(void) {                  // dump trace history
         }
     }
 }
-//---------------------------------------------------------
-
 //==============================================================================
  #endif
 
@@ -678,6 +731,21 @@ NextOp: if (opcode>31)
     }
 }
 
+// Disassemble to screen
+void Disassemble(uint32_t addr, uint32_t length) {
+    int i;
+    if (addr & 0xFF800000) {
+        printf("Can't disassemble a C function");
+    } else {
+        for (i=0; i<length; i++) {
+            uint32_t IR = FetchCell(addr);
+            printf("\n%04X: ", addr);  DisassembleIR(IR);
+            addr += 4;
+        }
+    }
+    printed = 1;
+}
+
 void DumpROM(void) {
     int row = 2;  int i;
     static uint32_t ROMorigin;          // first ROM address
@@ -697,8 +765,20 @@ void DumpROM(void) {
         if (PC == (addr)) {
             printf("\033[4m");          // hilight
         }
-        printf("%04X %08X ", addr, FetchCell(addr));
-        DisassembleIR(FetchCell(addr));
+        uint32_t ir = FetchCell(addr);
+        printf("%04X %08X ", addr, ir);
+        DisassembleIR(ir);
+        char *name = GetXtName(addr);
+        if (name) {
+            printf("  \\ ");
+#ifdef ErrorColor
+            printf(ErrorColor);
+#endif
+            printf("%s", name);
+#ifdef ErrorColor
+            printf("\033[0m");
+#endif
+        }
         printf("\033[0m");              // default FG/BG
         addr += 4;
     }

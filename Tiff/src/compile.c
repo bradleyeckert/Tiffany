@@ -222,11 +222,15 @@ static void FakeIt (int opcode) {       // execute an opcode in the VM
 // Positive means execute in the VM.
 // Negative means execute in C.
 
-void tiffFUNC (int n, uint32_t ht) {   /*EXPORT*/
+void tiffFUNC (int32_t n) {   /*EXPORT*/
     uint32_t i;
     if (n & 0x800000) n |= 0xFF000000; // sign extend 24-bit n
 	if (n<0) { // internal C function
-        uint32_t w = FetchCell(ht);
+#ifdef VERBOSE
+        printf("xt=%X, ht=%X ", n, ht);  printed = 1;
+#endif
+        uint32_t ht = FetchCell(HEAD);
+        uint32_t w = FetchCell(ht-16);
 		switch(~n) {
 			case 0: PushNum (w);    break;
 			case 1: Literal (w);    break;
@@ -238,8 +242,8 @@ void tiffFUNC (int n, uint32_t ht) {   /*EXPORT*/
             case 7: HardSkipOp(w);  break;  // compile skip opcode in slot 0
             case 8: FlushLit();  NewGroup();   break;  // skip to new instruction group
 // Compile xt must be multiple of 8 so that clearing bit2 converts to a macro
-            case 16: Compile(FetchCell(ht+12)); break;  // compile call to xte
-            case 20: CompileMacro(FetchCell(ht+12)); break;
+            case 16: Compile(FetchCell(ht-4)); break;  // compile call to xte
+            case 20: CompileMacro(FetchCell(ht-4)); break;
 			default: break;
 		}
 	} else { // execute in the VM
@@ -258,7 +262,7 @@ void tiffFUNC (int n, uint32_t ht) {   /*EXPORT*/
 #ifdef VERBOSE
             printf("\nStep %d: IR=%08X, PC=%X", i, ir, DbgPC);
 #endif // VERBOSE
-            DbgPC = 4 * VMstep(ir, 1);
+            DbgPC = 4 * VMstep(ir, 0);
 #ifdef VERBOSE
             printf(" ==> PC=%X", DbgPC);
 #endif // VERBOSE
@@ -376,4 +380,5 @@ void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     AddEqu     (CONTEXT  , "context");
     AddEqu     (FORTHWID , "forthwid");
     AddEqu     (TIB      , "tib");
+    AddEqu     (HEAD     , "head");
 }

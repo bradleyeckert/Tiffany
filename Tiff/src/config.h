@@ -25,7 +25,7 @@
 // number of rows in the CPU register dump, minimum 9, maximum 12
 #define DumpRows         11
 
-#define MONOCHROME
+//#define MONOCHROME
 // Console color scheme, comment out if no colors.
 #ifndef MONOCHROME
 #define InterpretColor  "\033[1;33m"

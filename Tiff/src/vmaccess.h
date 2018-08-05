@@ -34,6 +34,7 @@ void CommaHeader (char *name, uint32_t xte, uint32_t xtc, int Size, int flags);
 uint32_t SearchWordlist(char *name, uint32_t WID);
 uint32_t tiffFIND (void);                     // ( addr len -- addr len | 0 ht )
 void tiffWords (char *substring, int verbosity);
+void ReplaceXTs(void);    // Replace XTs with executable code ( NewXT OldXT -- )
 
 void CreateTrace(void);                  // allocate memory for the trace buffer
 void DestroyTrace(void);                     // free memory for the trace buffer
@@ -41,6 +42,7 @@ void DestroyTrace(void);                     // free memory for the trace buffer
 void InitializeTermTCB(void);                           // Initialize everything
 void InitializeTIB(void);             // Initialize just the terminal task input
 void DumpRegs(void);            // clear screen and dump register and stack data
+void Disassemble(uint32_t addr, uint32_t length);
 
 #define DataStackCol     1
 #define ReturnStackCol  13

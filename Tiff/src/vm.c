@@ -114,9 +114,15 @@
 int WriteROM(uint32_t data, uint32_t address) { // EXPORTED
     uint32_t addr = address / 4;
     if (address & 3) return -23;        // alignment problem
-    if (addr >= ROMsize) return -9;     // out of range
-    ROM[addr] = data;
-    return 0;
+    if (addr < ROMsize)  {
+        ROM[addr] = data;
+        return 0;
+    }
+    if (addr < AXIsize)  {
+        AXI[addr] = data;
+        return 0;
+    }
+    return -9;                          // out of range
 }
 
 int EraseAXI4K(uint32_t address) { // EXPORTED
@@ -269,11 +275,16 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
         PC = PC + 1;
     }
 
-	slot = 26;
-	while (slot>=0) {
-		opcode = (IR >> slot) & 0x3F;	// slot = 26, 20, 14, 8, 2
+	slot = 32;
+	do { // valid slots: 26, 20, 14, 8, 2, -4
+        slot -= 6;
+        if (slot < 0) {
+            opcode = IR & 3;                // slot = -4
+        } else {
+            opcode = (IR >> slot) & 0x3F;   // slot = 26, 20, 14, 8, 2
+        }
 #ifdef TRACEABLE
-LastOp: if (OpCounter[opcode] != 0xFFFFFFFF) OpCounter[opcode]++;
+        if (OpCounter[opcode] != 0xFFFFFFFF) OpCounter[opcode]++;
         New = 1;  // first state change in an opcode
         if (!Paused) cyclecount += 1;
 #else
@@ -288,13 +299,13 @@ LastOp:
                 if (!Paused) cyclecount += 3;  // PC change flushes pipeline
 #endif // TRACEABLE
                 // PC is a cell address. The return stack works in bytes.
-                PC = R>>2;  RDROP();  slot = 0;         break;	// ;
+                PC = R>>2;  RDROP();  slot = -1;        break;	// ;
 			case 003:
 #ifdef TRACEABLE
                 Trace(New, RidT, T, T + N);  New=0;
 #endif // TRACEABLE
                 T = T + N;  SNIP();	                    break;	// +
-			case 004: slot = 0;						    break;	// NO:
+			case 004: slot = -1;					    break;	// NO:
 			case 005: SDUP();
 #ifdef TRACEABLE
                 Trace(New, RidT, T, R);  New=0;
@@ -311,7 +322,7 @@ LastOp:
                 Trace(New, RidT, T, T & N);  New=0;
 #endif // TRACEABLE
                 T = T & N;  SNIP();	                    break;	// AND
-			case 010: if (T!=0) slot = 0;				break;	// NIF:
+			case 010: if (T!=0) slot = -1;				break;	// NIF:
 			case 011: M = N;  SDUP();
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
@@ -327,7 +338,7 @@ LastOp:
                 Trace(New, RidT, T, T ^ N);  New=0;
 #endif // TRACEABLE
                 T = T ^ N;  SNIP();	                    break;	// XOR
-			case 014: if (T==0) slot = 0;				break;	// IF|
+			case 014: if (T==0) slot = -1;				break;	// IF|
 			case 015: SDUP();
 #ifdef TRACEABLE
                 Trace(0, RidT, T, A);
@@ -335,7 +346,7 @@ LastOp:
                 T = A;						            break;	// A
 			case 016: RDROP();				            break;	// RDROP
 
-			case 020: if (T & 0x80000000) slot = 0;		break;	// +IF:
+			case 020: if (T & 0x80000000) slot = -1;	break;	// +IF:
 			case 021: M = N & 0xFF;
                 SendAXI(T/4, M);    // T is address, N is length-1
 #ifdef TRACEABLE
@@ -346,7 +357,7 @@ LastOp:
 				T += 4 * (M + 1);			    		break;	// !AS
 			case 022: FetchX(A>>2, 0, 0xFFFFFFFF); 		break;  // @A
 			case 023: 									break;
-			case 024: if ((T&0x80000000)==0) slot = 0;  break;  // -IF:
+			case 024: if ((T&0x80000000)==0) slot = -1; break;  // -IF:
 			case 025:
 #ifdef TRACEABLE
                 Trace(New, RidT, T, T*2);  New=0;
@@ -358,7 +369,7 @@ LastOp:
 #endif // TRACEABLE
 			    A += 4;                                 break;  // @A+
 
-			case 030: if (R & 0x10000) slot = 0;
+			case 030: if (R & 0x10000) slot = -1; // skip slots if done
 #ifdef TRACEABLE
                 Trace(New, RidR, R, R-1);  New=0;
 #endif // TRACEABLE
@@ -374,7 +385,7 @@ LastOp:
                 Trace(New, RidA, A, T);  New=0;
 #endif // TRACEABLE
 			    A = T;	SDROP();		    			break;	// A!
-			case 034: if ((R&0x10000)==0) slot = 26;
+			case 034: if ((R&0x10000)==0) slot = 32;
 #ifdef TRACEABLE
                 Trace(New, RidR, R, R-1);  New=0;
 #endif // TRACEABLE
@@ -396,7 +407,7 @@ GetPointer:
 #ifdef TRACEABLE
                 Trace(New, RidA, A, M);  New=0;
 #endif // TRACEABLE
-			    A = M;  return PC;
+			    A = M;  goto ex;
 			case 041:
 #ifdef TRACEABLE
                 Trace(New, RidT, T, ~T);  New=0;
@@ -437,14 +448,14 @@ GetPointer:
                 Trace(New, RidT, T, (T<<24) | (IMM & 0xFFFFFF));  New=0;
 #endif // TRACEABLE
                 T = (T<<24) | (IMM & 0xFFFFFF);
-                return PC;                                      // SH24
+                goto ex;                                        // SH24
 			case 056: StoreX(A>>2, T, (A&3)*8, 0xFF);   break;  // C!A
 
 			case 060: M = UserFunction (T, N, IMM);             // USER
 #ifdef TRACEABLE
                 Trace(New, RidT, T, M);  New=0;
 #endif // TRACEABLE
-                T = M;  return PC;
+                T = M;  goto ex;
 
 			case 063: SNIP();							break;	// NIP
 			case 064:
@@ -453,7 +464,7 @@ GetPointer:
                 if (!Paused) cyclecount += 3;  // PC change flushes pipeline
 #endif // TRACEABLE
                 // Jumps and calls use cell addressing
-			    PC = IMM;  return PC;                           // JUMP
+			    PC = IMM;  goto ex;                           // JUMP
 
 			case 066: M = N & 0xFF;
                 ReceiveAXI(T/4, M);
@@ -467,7 +478,7 @@ GetPointer:
 #ifdef TRACEABLE
                 Trace(0, RidT, T, IMM);
 #endif // TRACEABLE
-                T = IMM;  return PC;                            // LIT
+                T = IMM;  goto ex;                            // LIT
 
 			case 072: SDROP();					        break;	// DROP
 			case 073: addr = SP & (RAMsize-1);  M = RAM[addr];  // ROT
@@ -478,13 +489,13 @@ GetPointer:
 #else
                 RAM[addr]=N;  N=T;  T=M;  break;
 #endif // TRACEABLE
-			case 074: RDUP();   slot=-1;                	    // CALL
+			case 074: RDUP();                           	    // CALL
 #ifdef TRACEABLE
                 Trace(0, RidR, R, PC);    R = PC;
-                Trace(0, RidPC, PC, IMM);  PC = IMM;  return PC;
+                Trace(0, RidPC, PC, IMM);  PC = IMM;  goto ex;
                 if (!Paused) cyclecount += 3;  // PC change flushes pipeline
 #else
-                R = PC<<2;  PC = IMM;  return PC;
+                R = PC<<2;  PC = IMM;  goto ex;
 #endif // TRACEABLE
 			case 075:
 #ifdef TRACEABLE
@@ -506,13 +517,8 @@ GetPointer:
 #endif // TRACEABLE
 			default:                           		    break;	//
 		}
-		slot -= 6;
-	}
-    if (slot == -4) {
-        opcode = IR & 3;
-        goto LastOp;
-    }
-    return PC;
+	} while (slot>=0);
+ex: return PC;
 }
 
 // write to the debug mailbox
