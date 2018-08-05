@@ -447,6 +447,7 @@ uint32_t RegRead(int ID) {
 }
 #endif // TRACEABLE
 
+int Tracing;                    // TRUE if recording trace history
 
 #ifdef TRACEABLE
 //==============================================================================
@@ -480,8 +481,6 @@ void DestroyTrace(void) {       // free memory for the trace buffer
 /// Register ID: Complement of register number if register, memory if other;
 /// Old value: 32-bit.
 /// New value: 32-bit.
-
-int Tracing;                    // TRUE if recording trace history
 
 unsigned int TraceElements (void) {     // How many elements are in the trace history?
     return ((uHead - uTail) & uMask);

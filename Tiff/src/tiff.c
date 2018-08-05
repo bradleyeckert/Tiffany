@@ -186,6 +186,10 @@ void tiffSAVEcrom (void) {
     FollowingToken(name, 32);
     SaveROMasC (name);
 }
+void tiffSAVEcaxi (void) {
+    FollowingToken(name, 32);
+    SaveAXIasC (name, 1024);
+}
 
 void benchmark(void) {
     long now = getMicrotime();
@@ -302,6 +306,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("see",     tiffSEE);
     AddKeyword("replace-xt", ReplaceXTs);   // Replace XTs  ( NewXT OldXT -- )
     AddKeyword("save-rom", tiffSAVEcrom);
+    AddKeyword("save-flash", tiffSAVEcaxi);
     AddKeyword("iwords",  ListKeywords);    // internal words, after the dictionary
 
 //    AddKeyword("hex", tiffHEX);

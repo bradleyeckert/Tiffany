@@ -129,7 +129,7 @@ int EraseAXI4K(uint32_t address) { // EXPORTED
     uint32_t addr = address / 4;
     int i;
     if (address & 3) return -23;        // alignment problem
-    if (addr >= (AXIsize-1024)) return -9;   // out of range
+    if (addr > (AXIsize-1024)) return -9;   // out of range
     for (i=0; i<1024; i++) {            // erase 4KB sector
         AXI[addr+i] = 0xFFFFFFFF;
     }
