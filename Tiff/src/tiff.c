@@ -5,6 +5,7 @@
 #include "tiff.h"
 #include "vmaccess.h"
 #include "compile.h"
+#include "fileio.h"
 #include <string.h>
 #include <ctype.h>
 #include <sys/time.h>
@@ -181,6 +182,10 @@ void tiffXWORDS (void) {
     FollowingToken(name, 32);
     tiffWords (name, 1);
 }
+void tiffSAVEcrom (void) {
+    FollowingToken(name, 32);
+    SaveROMasC (name);
+}
 
 void benchmark(void) {
     long now = getMicrotime();
@@ -259,6 +264,14 @@ void AddKeyword(char *name, void (*func)()) {
     } else printf("\nPlease increase MaxKeywords and rebuild.");
 }
 
+void ListKeywords(void) {
+    int i;
+    for (i=0; i<keywords; i++) {
+        printf("%s ", HostWord[i].name);
+    }   printed = 1;
+}
+
+
 void LoadKeywords(void) {               // populate the list of gator brain functions
     keywords = 0;                       // start empty
     AddKeyword("bye",     tiffBYE);
@@ -288,6 +301,8 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("anonymous", tiffANON);
     AddKeyword("see",     tiffSEE);
     AddKeyword("replace-xt", ReplaceXTs);   // Replace XTs  ( NewXT OldXT -- )
+    AddKeyword("save-rom", tiffSAVEcrom);
+    AddKeyword("iwords",  ListKeywords);    // internal words, after the dictionary
 
 //    AddKeyword("hex", tiffHEX);
 //    AddKeyword("decimal", tiffDECIMAL);
