@@ -29,16 +29,21 @@ ALU operations take their operands from registers for minimum input delay. Since
 
 Preliminary opcodes in 2-digit octal format:
 
-|   | 0     | 1    | 2    | 3   | 4    | 5    | 6     | 7    |
-|:-:|:-----:|:----:|:----:|:---:|:----:|:----:|:-----:|:----:|
-| 0 | nop   | dup  | exit | +   | no:  | r@   | exit: | and  |
-| 1 | nif:  | over | r>   | xor | if:  | a    | rdrop | ---  |
-| 2 | +if:  | !as  | @a   | --- | -if: | 2*   | @a+   | ---  |
-| 3 | next: | u2/  | w@a  | a!  | rept | 2/   | c@a   | b!   |
-| 4 | sp    | com  | !a   | rp! | rp   | port | !b+   | sp!  |
-| 5 | up    | ---  | w!a  | up! | sh24 | ---  | c!a   | ---  |
-| 6 | user  | ---  | ---  | nip | jump | ---  | @as   | ---  |
-| 7 | lit   | ---  | drop | rot | call | 1+   | >r    | swap |
+|       | 0        | 1    | 2    | 3   | 4        | 5    | 6     | 7    |
+|:-----:|:--------:|:----:|:----:|:---:|:--------:|:----:|:-----:|:----:|
+| **0** | nop      | dup  | exit | +   | *no:*    | r@   | exit: | and  |
+| **1** | *nif:*   | over | r>   | xor | *if:*    | a    | rdrop | ---  |
+| **2** | *+if:*   | !as  | @a   | --- | *-if:*   | 2*   | @a+   | ---  |
+| **3** | *next:*  | u2/  | w@a  | a!  | rept     | 2/   | c@a   | b!   |
+| **4** | **sp**   | com  | !a   | rp! | **rp**   | port | !b+   | sp!  |
+| **5** | **up**   | ---  | w!a  | up! | **sh24** | ---  | c!a   | ---  |
+| **6** | **user** | ---  | ---  | nip | **jump** | ---  | @as   | ---  |
+| **7** | **lit**  | qlit | drop | rot | **call** | 1+   | >r    | swap |
+
+- opcode *conditionally skips the rest of the slots*
+- opcode **uses the rest of the slots as unsigned immediate data**
+
+With all of these slots available, it seems a waste to throw away a bunch when only a short literal is needed. Since the architecture supports it, a quick lit can take a signed 6-bit (or 3-bit) value from the next slot.
 
 ### Opcodes (proposed)
 
@@ -56,7 +61,7 @@ RP    RP+IMM → A                  B = {T, B+4}
 UP    UP+IMM → A                  IMM is always unsigned.
 USER  User defined API or HW function, T = func(IMM, T) or func(IMM, T, N)
 JUMP  IMM → PC
-LIT   IMM → T → N  → RAM[--SP]	
+LIT   IMM → T → N  → RAM[--SP]
 CALL  IMM → PC → R → RAM[--RP]
 DUP          T → N → RAM[--SP]
 R        R → T → N → RAM[--SP]
@@ -97,6 +102,7 @@ UP!   RAM[SP++] → N → T → UP
 NIP   RAM[SP++] → N
 DROP  RAM[SP++] → N → T
 >R    RAM[SP++] → N → T → PC → R → RAM[--RP]
+QLIT  QIMM → T → N  → RAM[--SP]   QIMM =s sign-extended next slot
 
 |	Begin a new opcode group
 ```
