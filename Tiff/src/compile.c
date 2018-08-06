@@ -16,12 +16,26 @@ static void FlushLit (void);            // forward reference
 uint32_t DbgPC;                         // shared with vmaccess.c
 uint32_t OpcodeCount[64];               // static instruction count
 
+static char names[64][6] = {
+    "nop",   "dup",  "exit", "+",   "no:",   "r@",   "exit:", "and",
+    "nif:",  "over", "r>",   "xor", "if:",   "a",    "rdrop", "---",
+    "+if:",  "!as",  "@a",   "---", "-if:",  "2*",   "@a+",   "---",
+    "next:", "u2/",  "w@a",  "a!",  "rept",  "2/",   "c@a",   "b!",
+    "sp",    "com",  "!a",   "rp!", "rp",    "port", "!b+",   "sp!",
+    "up",    "---",  "w!a",  "up!", "sh24",  "---",  "c!a",   "---",
+    "user",  "---",  "---",  "nip", "jump",  "---",  "@as",   "---",
+    "lit",   "---", "drop", "rot", "call",  "1+",   ">r",    "swap"
+};
+
+char * OpName(unsigned int opcode) {
+    return names[opcode&0x3F];
+}
+
 void ListOpcodeCounts(void) {           // list the static profile
-    int i;
+    int i;                              // in csv format
     for (i=0; i<64; i++){
-        if ((i&7)==0) printf("\n");
-        printf("%X: %d, ", i, OpcodeCount[i]);
-    }
+        printf("\n%d,\"%s\",%d", i, OpName(i), OpcodeCount[i]);
+    }   printed = 1;
 }
 
 void InitIR (void) {                    // initialize the IR

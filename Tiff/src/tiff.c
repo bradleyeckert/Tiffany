@@ -127,7 +127,7 @@ void tiffINCLUDED (char *name) {
     File.fp = fopen(name, "r");
 #ifdef VERBOSE
     printf("\nOpening file %s, handle 0x%X\n", name, (uint32_t)File.fp);
-#endif 
+#endif
     File.LineNumber = 0;
     File.Line[0] = 0;
     File.FID = FileID;
@@ -285,7 +285,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("//",      tiffCOMMENT); // too much cog dis switching between C and Forth
     AddKeyword(".",       tiffDOT);
     AddKeyword("stats",   tiffSTATS);
-    AddKeyword(".opcodes",  ListOpcodeCounts);
+    AddKeyword(".static",  ListOpcodeCounts);
     AddKeyword("+cpu",    tiffCPUon);
     AddKeyword("-cpu",    tiffCPUoff);
     AddKeyword("cpu",     tiffCPUgo);
@@ -388,7 +388,7 @@ void tiffINTERPRET(void) {
         printf("\nFind:|%s| at >IN=%X, STATE=%d ", name, FetchCell(TOIN), FetchCell(STATE));
         PushNum(tempAddr);
         PushNum(tempLen);
-#endif 
+#endif
         uint32_t ht = tiffFIND();     // search for keyword in the dictionary
         if (ht) {  // ( 0 ht )
             PopNum();
@@ -418,19 +418,19 @@ void tiffINTERPRET(void) {
                     if (FetchCell(STATE)) {
 #ifdef VERBOSE
                         printf(", Literal %d\n", (int32_t)x);  printed = 1;
-#endif 
+#endif
                         Literal(x);
                     } else {
 #ifdef VERBOSE
                         printf(", Push %d\n", (int32_t)x);  printed = 1;
-#endif 
+#endif
                         PushNum((uint32_t)x);
                     }
                 }
             }
 #ifdef VERBOSE
             else printf(" <<< Local Keyword\n");
-#endif 
+#endif
             if (Sdepth()<0) {
                 tiffIOR = -4;
             }
@@ -477,7 +477,7 @@ void tiffQUIT (char *cmdline) {
                         printf("%d\nAttempting to include file ", tiffIOR);
                         printf(DefaultFile);
                         printf("\n");  printed = 1;
-#endif 
+#endif
                         FILE *test = fopen(DefaultFile, "r");
                         if (test != NULL) {
                             fclose(test);           // if default file exists
@@ -509,7 +509,7 @@ void tiffQUIT (char *cmdline) {
                     if (length < 0) {  // EOF
 #ifdef VERBOSE
                         printf("Closing file handle 0x%X\n", (uint32_t)File.fp);
-#endif 
+#endif
                         fclose (File.fp);
                         filedepth--;
                         if (filedepth == 0) {
@@ -534,7 +534,7 @@ void tiffQUIT (char *cmdline) {
 #ifdef VERBOSE
             FetchString(name, FetchCell(TIBB), (uint8_t)FetchCell(TIBS));
             printf("ior before Interpret of |%s| is %d\n", name, tiffIOR);
-#endif 
+#endif
             tiffINTERPRET();            // interpret the TIBB until it's exhausted
             if (tiffIOR) break;
             switch (FetchCell(SOURCEID)) {

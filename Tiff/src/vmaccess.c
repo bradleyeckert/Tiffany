@@ -704,16 +704,6 @@ void DumpReturnStack(void){
 void DisassembleIR(uint32_t IR) {
     int slot = 26;  // 26 20 14 8 2
     int opcode;
-    char name[64][6] = {
-    "nop",   "dup",  "exit", "+",   "no:",   "r@",   "exit:", "and",
-    "nif:",  "over", "r>",   "xor", "if:",   "a",    "rdrop", "---",
-    "+if:",  "!as",  "@a",   "---", "-if:",  "2*",   "@a+",   "---",
-    "next:", "u2/",  "w@a",  "a!",  "rept",  "2/",   "c@a",   "b!",
-    "sp",    "com",  "!a",   "rp!", "rp",    "port", "!b+",   "sp!",
-    "up",    "---",  "w!a",  "up!", "sh24",  "---",  "c!a",   "---",
-    "user",  "---",  "---",  "nip", "jump",  "---",  "@as",   "---",
-    "lit",   "---", "drop", "rot", "call",  "1+",   ">r",    "swap"
-    };
     while (slot>=0) {
         opcode = (IR >> slot) & 0x3F;
 NextOp: if (opcode>31) {
@@ -722,7 +712,7 @@ NextOp: if (opcode>31) {
                 slot=0;
             }
         }
-        printf("%s ", name[opcode]);
+        printf("%s ", OpName(opcode));
         slot -= 6;
     }
     if (slot == -4) {
