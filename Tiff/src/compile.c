@@ -12,8 +12,17 @@
 /// so that executable code can take over later by redirecting
 /// the header's xtc and xte.
 
-static void FlushLit (void);
-uint32_t DbgPC; // shared with vmaccess.c
+static void FlushLit (void);            // forward reference
+uint32_t DbgPC;                         // shared with vmaccess.c
+uint32_t OpcodeCount[64];               // static instruction count
+
+void ListOpcodeCounts(void) {           // list the static profile
+    int i;
+    for (i=0; i<64; i++){
+        if ((i&7)==0) printf("\n");
+        printf("%X: %d, ", i, OpcodeCount[i]);
+    }
+}
 
 void InitIR (void) {                    // initialize the IR
     StoreCell(0, IRACC);
@@ -21,10 +30,11 @@ void InitIR (void) {                    // initialize the IR
     StoreByte(0, CALLED);
 }
 
-static void AppendIR (int opcode, uint32_t imm) {
+static void AppendIR (unsigned int opcode, uint32_t imm) {
     uint32_t ir = FetchCell(IRACC);
     ir = ir + (opcode << FetchByte(SLOT)) + imm;
     StoreCell(ir, IRACC);
+    OpcodeCount[opcode&0x3F]++;
 }
 
 // Append a zero-operand opcode
@@ -301,6 +311,7 @@ static void AddEqu(uint32_t n, char *name) {
 }
 void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     InitIR();
+    memset(OpcodeCount, 0, 64);         // clear static opcode counters
     CommaHeader("|", ~4, ~8, 0, 0);     // skip to new opcode group
     AddImplicit(opNOP    , "nop");
     AddImplicit(opDUP    , "dup");

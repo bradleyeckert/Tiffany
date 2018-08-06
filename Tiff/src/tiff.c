@@ -285,6 +285,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("//",      tiffCOMMENT); // too much cog dis switching between C and Forth
     AddKeyword(".",       tiffDOT);
     AddKeyword("stats",   tiffSTATS);
+    AddKeyword(".opcodes",  ListOpcodeCounts);
     AddKeyword("+cpu",    tiffCPUon);
     AddKeyword("-cpu",    tiffCPUoff);
     AddKeyword("cpu",     tiffCPUgo);
