@@ -343,11 +343,11 @@ void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     AddImplicit(opTwoStar, "2*");
     AddImplicit(opFetchAplus, "@a+");
     AddImplicit(opRSHIFT1, "u2/");
-    AddImplicit(opWfetchA, "w@a");
+//    AddImplicit(opWfetchA, "w@a");
     AddImplicit(opSetA   , "a!");
     AddImplicit(opREPT   , "rept");
     AddImplicit(opTwoDiv , "2/");
-    AddImplicit(opCfetchA, "c@a");
+//    AddImplicit(opCfetchA, "c@a");
     AddImplicit(opSetB   , "b!");
     AddExplicit(opSP     , "sp");
     AddImplicit(opCOM    , "com");
@@ -358,10 +358,10 @@ void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     AddImplicit(opStoreBplus, "!b+");
     AddImplicit(opSetSP  , "sp!");
     AddExplicit(opUP     , "up");
-    AddImplicit(opWstoreA, "w!a");
+//    AddImplicit(opWstoreA, "w!a");
     AddImplicit(opSetUP  , "up!");
     AddExplicit(opShift24, "sh24");
-    AddImplicit(opCstoreA, "c!a");
+//    AddImplicit(opCstoreA, "c!a");
     AddExplicit(opUSER   , "user");
     AddImplicit(opNIP    , "nip");
     AddExplicit(opJUMP   , "jump");

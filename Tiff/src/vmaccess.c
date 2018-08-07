@@ -15,6 +15,9 @@
 /// VMstep() and DebugReg.
 /// Even if TRACEABLE allows easier access, it isn't used here.
 
+/// Bytes are read and written using cell operations so that the VM needn't
+/// implement byte memory operations.
+
 int CaseInsensitive = 1;
 
 uint32_t DbgPC; // last PC returned by VMstep
@@ -37,14 +40,10 @@ uint32_t FetchCell (uint32_t addr) {    // Read from RAM or ROM
     return DbgGroup(opFetchA, opPORT, opDROP, opSetA, opNOP);
 }
 uint8_t FetchByte (uint32_t addr) {     // Read from RAM or ROM
-    SetDbgReg(addr);
-    DbgGroup(opA, opDUP, opPORT, opSetA, opNOP);
-    return (uint8_t) DbgGroup(opCfetchA, opPORT, opDROP, opSetA, opNOP);;
+    return (uint8_t) 0xFF & (FetchCell(addr) >> (8*(addr&3)));
 }
 uint16_t FetchHalf (uint32_t addr) {    // Read from RAM or ROM
-    SetDbgReg(addr);
-    DbgGroup(opA, opDUP, opPORT, opSetA, opNOP);
-    return (uint16_t) DbgGroup(opWfetchA, opPORT, opDROP, opSetA, opNOP);
+    return (uint16_t) 0xFFFF & (FetchCell(addr) >> (8*(addr&2)));
 }
 void StoreCell (uint32_t N, uint32_t addr) {  // Write to RAM
     SetDbgReg(addr);
@@ -52,17 +51,23 @@ void StoreCell (uint32_t N, uint32_t addr) {  // Write to RAM
     SetDbgReg(N);
     DbgGroup(opDUP, opPORT, opStoreA, opSetA, opNOP);
 }
-void StoreHalf (uint16_t N, uint32_t addr) {  // Write to RAM
+void StoreHalf (uint16_t N, uint32_t addr) {  // Write half with cell rd/wr
+    int shift = 8 * (addr & 2);
     SetDbgReg(addr);
-    DbgGroup(opA, opDUP, opPORT, opSetA, opNOP);
-    SetDbgReg(N);
-    DbgGroup(opDUP, opPORT, opWstoreA, opSetA, opNOP);
+    DbgGroup(opA, opDUP, opPORT, opSetA, opFetchA); // ( oldA oldX )
+    SetDbgReg(~(0xFFFF << shift));
+    DbgGroup(opDUP, opPORT, opAND, opNOP, opNOP);  //
+    SetDbgReg(N << shift);
+    DbgGroup(opDUP, opPORT, opADD, opStoreA, opSetA);
 }
-void StoreByte (uint8_t N, uint32_t addr) {  // Write to RAM
+void StoreByte (uint8_t N, uint32_t addr) {  // Write byte with cell rd/wr
+    int shift = 8 * (addr & 3);
     SetDbgReg(addr);
-    DbgGroup(opA, opDUP, opPORT, opSetA, opNOP);
-    SetDbgReg(N);
-    DbgGroup(opDUP, opPORT, opCstoreA, opSetA, opNOP);
+    DbgGroup(opA, opDUP, opPORT, opSetA, opFetchA); // ( oldA oldX )
+    SetDbgReg(~(0xFF << shift));
+    DbgGroup(opDUP, opPORT, opAND, opNOP, opNOP);  //
+    SetDbgReg(N << shift);
+    DbgGroup(opDUP, opPORT, opADD, opStoreA, opSetA);
 }
 void SetPCreg (uint32_t PC) {           // Set new PC
     SetDbgReg(PC);
