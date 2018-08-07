@@ -140,7 +140,7 @@ static void CompileMacro(uint32_t addr) { // compile as a macro
 // 4. if COLONDEF, resolve the code length.
 // 5. Return to EXECUTE mode.
 
-void Semicolon (void) {  /*EXPORT*/
+void SemiExit (void) {  /*EXPORT*/
 	if (FetchByte(CALLED)) {            // ca = packed slot and address
         uint32_t ca = FetchCell(CALLADDR);
         uint32_t addr = ca & 0xFFFFFF;
@@ -151,8 +151,11 @@ void Semicolon (void) {  /*EXPORT*/
         StoreByte(0, CALLED);
 	} else {
 	    Implicit(opEXIT);
-	    NewGroup();
 	}
+}
+
+void Semicolon (void) {  /*EXPORT*/
+    SemiExit();  NewGroup();
 	uint32_t wid = FetchCell(CURRENT);
 	wid = FetchCell(wid);               // -> current definition
     uint32_t name = FetchCell(wid + 4);
@@ -329,7 +332,7 @@ void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     CommaHeader("|", ~4, ~8, 0, 0);     // skip to new opcode group
     AddImplicit(opNOP    , "nop");
     AddImplicit(opDUP    , "dup");
-    AddImplicit(opEXIT   , "exit");
+//    AddImplicit(opEXIT   , "exit");
     AddImplicit(opADD    , "+");
     AddImplicit(opR      , "r@");
     AddImplicit(opAND    , "and");
@@ -379,11 +382,11 @@ void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     AddSkip    (opSKIPMI , "+if:");
     AddSkip    (opSKIPGE , "-if:");
     AddSkip    (opNEXT   , "next");
-    AddHardSkip(opSKIP   , "no|");
-    AddHardSkip(opSKIPNZ , "nif|");
-    AddHardSkip(opSKIPZ  , "if|");
-    AddHardSkip(opSKIPMI , "+if|");
-    AddHardSkip(opSKIPGE , "-if|");
+    AddHardSkip(opSKIP   , "|no");
+    AddHardSkip(opSKIPNZ , "|nif");
+    AddHardSkip(opSKIPZ  , "|if");
+    AddHardSkip(opSKIPMI , "|+if");
+    AddHardSkip(opSKIPGE , "|-if");
     AddEqu     (HeadPointerOrigin, "hp0");  // bottom of head space
     AddEqu     (BASE     , "base");         // tiff.h variable names
     AddEqu     (HP       , "hp");

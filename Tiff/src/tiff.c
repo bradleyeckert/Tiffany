@@ -297,6 +297,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword(":noname", tiffNONAME);
     AddKeyword(":",       tiffCOLON);
     AddKeyword(";",       Semicolon);
+    AddKeyword("exit",    SemiExit);
     AddKeyword("rom!",    tiffROMstore);
     AddKeyword("bench",   benchmark);
     AddKeyword("h'",      tiffHTICK);
@@ -484,7 +485,7 @@ void tiffQUIT (char *cmdline) {
                             tiffINCLUDED(DefaultFile);
                         }
                         loaded = 1;
-                        NoHi = 1;       // tell not to say "ok"
+//                        NoHi = 1;       // tell not to say "ok"
                         break;
                     }
                     if (cmdline) {      // first time through use command line

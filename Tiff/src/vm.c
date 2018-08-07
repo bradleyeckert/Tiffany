@@ -322,7 +322,7 @@ LastOp:
                 Trace(New, RidT, T, T & N);  New=0;
 #endif // TRACEABLE
                 T = T & N;  SNIP();	                    break;	// AND
-			case 010: if (T!=0) slot = -1;				break;	// NIF:
+			case 010: if (T != 0) slot = -1;  SDROP();	break;	// NIF:
 			case 011: M = N;  SDUP();
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
@@ -338,7 +338,7 @@ LastOp:
                 Trace(New, RidT, T, T ^ N);  New=0;
 #endif // TRACEABLE
                 T = T ^ N;  SNIP();	                    break;	// XOR
-			case 014: if (T==0) slot = -1;				break;	// IF|
+			case 014: if (T == 0) slot = -1;  SDROP();	break;	// IF:
 			case 015: SDUP();
 #ifdef TRACEABLE
                 Trace(0, RidT, T, A);
@@ -346,7 +346,8 @@ LastOp:
                 T = A;						            break;	// A
 			case 016: RDROP();				            break;	// RDROP
 
-			case 020: if ((signed)T < 0)  slot = -1;	break;	// +IF:
+			case 020: if ((signed)T < 0)  slot = -1;
+                SDROP();                                break;	// +IF:
 			case 021: M = N & 0xFF;
                 SendAXI(T/4, M);    // T is address, N is length-1
 #ifdef TRACEABLE
@@ -357,7 +358,8 @@ LastOp:
 				T += 4 * (M + 1);			    		break;	// !AS
 			case 022: FetchX(A>>2, 0, 0xFFFFFFFF); 		break;  // @A
 			case 023: 									break;
-			case 024: if ((signed)T >= 0) slot = -1;    break;  // -IF:
+			case 024: if ((signed)T >= 0) slot = -1;
+                SDROP();                                break;  // -IF:
 			case 025:
 #ifdef TRACEABLE
                 Trace(New, RidT, T, T*2);  New=0;
@@ -464,7 +466,7 @@ GetPointer:
                 if (!Paused) cyclecount += 3;  // PC change flushes pipeline
 #endif // TRACEABLE
                 // Jumps and calls use cell addressing
-			    PC = IMM;  goto ex;                           // JUMP
+			    PC = IMM;  goto ex;                             // JUMP
 
 			case 066: M = N & 0xFF;
                 ReceiveAXI(T/4, M);
@@ -478,7 +480,7 @@ GetPointer:
 #ifdef TRACEABLE
                 Trace(0, RidT, T, IMM);
 #endif // TRACEABLE
-                T = IMM;  goto ex;                            // LIT
+                T = IMM;  goto ex;                              // LIT
 
 			case 072: SDROP();					        break;	// DROP
 			case 073: addr = SP & (RAMsize-1);  M = RAM[addr];  // ROT
