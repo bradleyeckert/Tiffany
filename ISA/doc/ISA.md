@@ -23,85 +23,90 @@ The ISA uses 6-bit opcodes in a 32-bit instruction group. Opcodes that use immed
 | 4    | 7:2   | 0 to 63 |
 | 5    | 1:0   | 0 to 3 |
 
-Slot 5 only fits 4 opcodes. The opcode map supports {NOP, DUP, EXIT, +} as per Phil Koopman’s research on dynamic instruction frequencies. Immediate data is unsigned, used for creating literals and performing branches and calls. The number of bits depends on the slot position or the opcode. It can be 26, 20, 14, 8, or 2 bits. 
+Slot 5 only fits 4 opcodes. The opcode map supports {NOP, DUP, EXIT, +} as per Phil Koopman’s research on dynamic instruction frequencies. Immediate data is unsigned, used for creating literals and performing branches and calls. The number of bits depends on the slot position or the opcode. It can be 26, 20, 14, 8, or 2 bits.
 
 ALU operations take their operands from registers for minimum input delay. Since the RAM is synchronous read/write, the opcode must be pre-decoded. The pre-decoder initiates reads. The main decoder has a registered opcode to work with, so the decode delay isn’t so bad. Opcodes that read from RAM should be grouped together for easy decoding from the opcode, which is already delayed by a logic level. So, for example, rd_enable is opcode[5] and the rd_addr mux is controlled by opcode[4:1]. Non-reading opcodes are decoded from a registered opcode. The pre-read stage of the pipeline allows time for immediate data to be registered, so the execute stage see no delay. Opcodes have time to add the immediate data to registers, for more complex operations. One can index into the stack, for example.
 
 Preliminary opcodes in 2-digit octal format:
 
-|       | 0        | 1    | 2    | 3   | 4        | 5    | 6     | 7    |
-|:-----:|:--------:|:----:|:----:|:---:|:--------:|:----:|:-----:|:----:|
-| **0** | nop      | dup  | exit | +   | *no:*    | r@   | exit: | and  |
-| **1** | *nif:*   | over | r>   | xor | *if:*    | a    | rdrop | ---  |
-| **2** | *+if:*   | !as  | @a   | --- | *-if:*   | 2*   | @a+   | ---  |
-| **3** | *next:*  | u2/  | w@a  | a!  | rept     | 2/   | c@a   | b!   |
-| **4** | **sp**   | com  | !a   | rp! | **rp**   | port | !b+   | sp!  |
-| **5** | **up**   | ---  | w!a  | up! | **sh24** | ---  | c!a   | ---  |
-| **6** | **user** | ---  | ---  | nip | **jump** | ---  | @as   | ---  |
-| **7** | **lit**  | ---  | drop | rot | **call** | 1+   | >r    | swap |
+|       | 0        | 1      | 2    | 3   | 4        | 5    | 6     | 7     |
+|:-----:|:--------:|:------:|:----:|:---:|:--------:|:----:|:-----:|:-----:|
+| **0** | nop      | dup    | exit | +   | *no:*    | r@   | exit: | and   |
+| **1** | 0        | over   | r>   | xor | carry    | a    | rdrop | *if:* |
+| **2** | 0=       | invert | @a   | --- | 0<       | 2*   | @a+   | ---   |
+| **3** | *next:*  | u2/    | w@a  | a!  | rept     | 2/   | c@a   | b!    |
+| **4** | **sp**   | ---    | !a   | rp! | **rp**   | port | !b+   | sp!   |
+| **5** | **up**   | ---    | w!a  | up! | **sh24** | ---  | c!a   | ---   |
+| **6** | **user** | !as    | ---  | nip | **jump** | ---  | @as   | ---   |
+| **7** | **lit**  | ---    | drop | rot | **call** | 1+   | >r    | swap  |
 
 - *opcode conditionally skips the rest of the slots*
 - **opcode uses the rest of the slots as unsigned immediate data**
+- Any kind of stack/RAM read must be in columns 2, 3, 6, or 7.
 
 ### Opcodes (proposed)
 
 ```
-NOP   skip never						Do nothing
-NO|   skip always
-NIF|  skip if T<>0
-IF|   skip if T=0
-+IF|  skip if T<0
--IF|  skip if T>=0
-NEXT| skip if R<0, R-1 → R
-REPT  if R>=0, 0 → slot | R-1 → R
-SP    SP+IMM → A                  A = {SP+IMM, RP+IMM, UP+IMM, ~IMM, A+k2}
-RP    RP+IMM → A                  B = {T, B+4}
-UP    UP+IMM → A                  IMM is always unsigned.
-USER  User defined API or HW function, T = func(IMM, T) or func(IMM, T, N)
-JUMP  IMM → PC
-LIT   IMM → T → N  → RAM[--SP]
-CALL  IMM → PC → R → RAM[--RP]
-DUP          T → N → RAM[--SP]
-R        R → T → N → RAM[--SP]
-OVER     N → T → N → RAM[--SP]
-A        A → T → N → RAM[--SP]	
-COM   ~T → T
-PORT  Swap T, Debug Register
-U2/   T>>1 → T
+nop   skip never						Do nothing
+no:   skip always
+if:   skip if T=0, swallow T
+next: skip if R<0, R-1 → R
+rept  if R>=0, 0 → slot | R-1 → R
+sp    SP+IMM → A                  A = {SP+IMM, RP+IMM, UP+IMM, ~IMM, A+k2}
+rp    RP+IMM → A                  B = {T, B+4}
+up    UP+IMM → A                  IMM is always unsigned.
+user  User defined API or HW function, T = func(IMM, T) or func(IMM, T, N)
+jump  IMM → PC
+lit   IMM → T → N  → RAM[--SP]
+call  IMM → PC → R → RAM[--RP]
+dup          T → N → RAM[--SP]
+r        R → T → N → RAM[--SP]
+over     N → T → N → RAM[--SP]
+a        A → T → N → RAM[--SP]
+0        0 → T → N → RAM[--SP]
+carry   CY → T → N → RAM[--SP]
+com   ~T → T
+port  Swap T, Debug Register
+0=    (T=0) → T
+0<    (T<0) → T
+u2/   T>>1 → T
 2/    T/2 → T
 2*    T*2 → T
-.*    cn:W = T+S+1 | if (cn|c) R ← W | c,W,T ← W,T,(c|cn)  Multiply step
-./    cn:W = T+S+1 | if (cn|c) R ← W | c,W,T ← W,T,(c|cn)  Divide step
-!AS   ReadData → RAM[A] | A+4 → A, R=length	Stream from AXI bus to RAM
-SWAP  N → T → N                         N = {T, N, RAM}
+!as   ReadData → RAM[A] | A+4 → A, R=length	Stream from AXI bus to RAM
+swap  N → T → N                         N = {T, N, RAM}
 1+    T+1 → T
 ;     RAM[RP++] → R → PC
-;|    RAM[RP++] → R → PC                Early exit: Does not flush the IR.
-R>    RAM[RP++] → R → T → N → RAM[--SP]
-RDROP RAM[RP++] → R
-@A    RAM[A] → T → N → RAM[--SP]
-@AC   RAM[A] → T → N → RAM[--SP]        Extract 8-bit from byte lane
-@AW   RAM[A] → T → N → RAM[--SP]        Extract 16-bit from byte lanes
-!A    RAM[SP++] → N → T → RAM[A] | A+4 → A
-C!A   RAM[SP++] → N → T → RAM[A] | A+1 → A  Shift 8-bit onto the correct byte lane
-W!A   RAM[SP++] → N → T → RAM[A] | A+2 → A  Shift 16-bit onto the correct byte lanes
-UNIP  RAM[SP++]						( a b c – b c ) = ROT DROP
-@BS   RAM[B] → WriteData | R=length     Stream from RAM to AXI bus
-@B    RAM[B] → T → N → RAM[--SP] | B+4 → B
-ROT   RAM[SP] → T → N → RAM[SP]
+;|    RAM[RP++] → R → PC                Early exit: Does not flush the IR. Maybe useless.
+r>    RAM[RP++] → R → T → N → RAM[--SP]
+rdrop RAM[RP++] → R
+@a    RAM[A] → T → N → RAM[--SP]
+@ac   RAM[A] → T → N → RAM[--SP]        Extract 8-bit from byte lane
+@aw   RAM[A] → T → N → RAM[--SP]        Extract 16-bit from byte lanes
+!a    RAM[SP++] → N → T → RAM[A] | A+4 → A
+c!a   RAM[SP++] → N → T → RAM[A] | A+1 → A  Shift 8-bit onto the correct byte lane
+w!a   RAM[SP++] → N → T → RAM[A] | A+2 → A  Shift 16-bit onto the correct byte lanes
+unip  RAM[SP++]						( a b c – b c ) = ROT DROP
+@bs   RAM[B] → WriteData | R=length     Stream from RAM to AXI bus
+@b    RAM[B] → T → N → RAM[--SP] | B+4 → B
+rot   RAM[SP] → T → N → RAM[SP]
 +     RAM[SP++] → N | (T + N) → T
-AND   RAM[SP++] → N | (T & N) → T
-XOR   RAM[SP++] → N | (T ^ N) → T
-A!    RAM[SP++] → N → T → A             A and B are index registers
-B!    RAM[SP++] → N → T → B
-RP!   RAM[SP++] → N → T → RP
-SP!  	RAM[SP++] → N → T → SP
-UP!   RAM[SP++] → N → T → UP
-NIP   RAM[SP++] → N
-DROP  RAM[SP++] → N → T
->R    RAM[SP++] → N → T → PC → R → RAM[--RP]
+and   RAM[SP++] → N | (T & N) → T
+xor   RAM[SP++] → N | (T ^ N) → T
+a!    RAM[SP++] → N → T → A             A and B are index registers
+b!    RAM[SP++] → N → T → B
+rp!   RAM[SP++] → N → T → RP
+sp!   RAM[SP++] → N → T → SP
+up!   RAM[SP++] → N → T → UP
+nip   RAM[SP++] → N
+drop  RAM[SP++] → N → T
+>r    RAM[SP++] → N → T → PC → R → RAM[--RP]
 
-|	Begin a new opcode group
+|	  Begin a new opcode group
+
+Nice to haves:
+.*    cn:W = T+S+1 | if (cn|c) R ← W | c,W,T ← W,T,(c|cn)  Multiply step
+./    cn:W = T+S+1 | if (cn|c) R ← W | c,W,T ← W,T,(c|cn)  Divide step
+
 ```
 
 ### Sample usage
