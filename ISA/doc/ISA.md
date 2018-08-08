@@ -2,6 +2,8 @@
 
 The MachineForth paradigm, discovered by the late Jeff Fox, is a method for programming Forth stack machines in the most direct way possible, by making machine opcodes a part of the high level language. The programmer is writing to an actual machine rather than a virtual one. It’s a different way of programming. With the right ISA, optimizations are minimal so this virtualization is unnecessary. An ISA for a dialect of MachineForth is presented. The ISA lends itself to very fast instruction set simulation on a PC or MCU, so the binary-compatible model is portable across platforms. This reduced abstraction puts the fun back in Forth.
 
+eForth is used as a guide to which opcodes to implement. A multitasker is also supported.
+
 ## The ISA
 
 The stack machine used by MachineForth is based on small, zero-operand opcodes operating on the tops of stacks and corresponding to Forth names. This is different from Novix-style stack machines, which use wide instructions equivalent to stack machine microcode executing in one cycle. While this tends to be efficient, it requires virtualization of the language just like any other machine. When it comes to executing an application in a modern stack machine, instruction execution time is even more meaningless than it classically has been. When your computer consists of Verilog or VHDL code, the compute-intensive parts of the application are in hardware. RTL is the new machine code. The compiler is simple enough that you can trivially add custom opcodes.
@@ -37,27 +39,17 @@ Preliminary opcodes in 2-digit octal format:
 - **opcode uses the rest of the slots as immediate data**
 - Any kind of stack/RAM read must be in columns 2, 3, 6, or 7.
 
-### Immediate data formats
+### Immediate data format
 
 Immediate data is taken from the remainder of the IR. These opcodes may be in slots 0, 1 or 2. Slot 3 is possible to use.
 IR[0] will still be evaluated, so `lit` will see -1. IR[0]: sign of data, 1s complement if '1'.
 
-- `jump`, `call`, `0bran`, `next`:  IMM[0]: 0=absolute, 1=relative.
+- `jump`, `call`, `-bran`, `next`:  IMM[0]: 0=absolute, 1=relative.
 - `lit`, `user`, `reg!`, `reg@`:  IMM is literal, function select, or index.
-
-Immediate data is formed from a LUT4 with inputs of {IR[x], slot[1:0], IR[0]}.
-
-### The non-obvious opcodes
-
-- `><` ( n1 -- n2 ) swaps the upper and lower bytes of T[15:0].
-- `user` ( n1 -- n2 ) is a user defined function of T, N, and R.
 - `reg@` ( -- n ) fetches from an internal register.
 - `reg!` ( n -- ) stores to an internal register.
-- `next` ( -- ) branches if R < 0; R = R - 1.
 
-`><` is used with bytes, but also to create long literals. "HiPart lit >< LoPart lit +".
-
-`0=` is a critical path with LUT4s (3 levels of logic), so it's the only zero test. `if` uses `0=` and `-bran`.
+Immediate data is formed from a LUT4 with inputs of {IR[x], slot[1:0], IR[0]}.
 
 `reg@` pushes register data based on immediate index that feeds mux select lines:
 
@@ -76,10 +68,26 @@ Immediate data is formed from a LUT4 with inputs of {IR[x], slot[1:0], IR[0]}.
 - -2: Store to SP
 - -3: Store to RP
 - -4: Store to UP
-- -6: Store to page
+- -6: Store to page register (AXI bus upper address)
 - -7: Store to debugport
 - -8: Fetch T cells from AXI space
 - -9: Store T cells to AXI space
+
+The non-obvious opcodes:
+
+- `><` ( n1 -- n2 ) swaps the upper and lower bytes of T[15:0].
+- `user` ( n1 -- n2 ) is a user defined function of T, N, and R.
+- `next` ( -- ) branches if R < 0; R = R - 1. For doing something 0 or more times.
+
+`><` is used with bytes, but also to create long literals. "HiPart lit >< LoPart lit +".
+
+`0=` is a critical path with LUT4s (3 levels of logic), so it's the only zero test. `if` uses `0=` and `-bran`.
+`next` tests R instead of T. Since most `for` loops have a trivial case to test for, the `next` forward branch
+is placed at the beginning of a loop. The end of loop uses a backward jump. Post-loop cleanup would be `nop r> drop`.
+
+`lshift` etc. can use a relative jump into a sets of 2* opcodes. For example, a relative jump is:
+
+`: exec  ( offset -- )  r> + >r ; call-only`
 
 ### Opcodes (proposed)
 
@@ -97,7 +105,7 @@ u2/   T>>1 → T
 !as   ReadData → RAM[A] | A+4 → A, R=length	Stream from AXI bus to RAM
 swap  N → T → N                         N = {T, N, RAM}
 1+    T+1 → T
-;     RAM[RP++] → R → PC
+exit  RAM[RP++] → R → PC
 r>    RAM[RP++] → R → T → N → RAM[--SP]
 @a    RAM[A] → T → N → RAM[--SP]
 !a    RAM[SP++] → N → T → RAM[A] | A+4 → A
@@ -117,11 +125,9 @@ drop  RAM[SP++] → N → T
 
 ### Sample usage
 
-The SP, RP, and UP instructions are used to address PICK, Local, and USER variables respectively.
-
 The RAM used by the CPU core is relatively small. To access more memory, you would connect the AXI4 bus to other memory types such as single-port SRAM or a DRAM controller. Burst transfers use a !AS or @AS instruction to issue the address (with burst length=R) and stream that many words to/from external memory. Code is fetched from the AXI4 bus when outside of the internal ROM space. Depending on the implementation, AXI has excess latency to contend with. This doesn’t matter if most time is spent in internal ROM. The page register extends the address space of AXI to 32-bit. AXI data width is 32-bit, but only 18 bits are used.
 
 In a hardware implementation, the instruction group provides natural protection of atomic operations from interrupts, since the ISR is held off until the group is finished. A nice way of handling interrupts in a Forth system, since calls and returns are so frequent, is to redirect return instructions to take an interrupt-hardware-generated address instead of popping the PC from the return stack. This is a great benefit in hardware verification, as verifying asynchronous interrupts is much more involved. As a case in point, the RTX2000 had an interrupt bug.
 
-Hardware multiply and divide, if provided, are accessed via the USER instruction.
+Hardware multiply and divide, if provided, are accessed via the USER instruction. The basic opcodes support the slow eForth methods.
 
