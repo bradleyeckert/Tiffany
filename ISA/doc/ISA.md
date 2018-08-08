@@ -8,7 +8,7 @@ eForth is used as a guide to which opcodes to implement. A multitasker is also s
 
 The stack machine used by MachineForth is based on small, zero-operand opcodes operating on the tops of stacks and corresponding to Forth names. This is different from Novix-style stack machines, which use wide instructions equivalent to stack machine microcode executing in one cycle. While this tends to be efficient, it requires virtualization of the language just like any other machine. When it comes to executing an application in a modern stack machine, instruction execution time is even more meaningless than it classically has been. When your computer consists of Verilog or VHDL code, the compute-intensive parts of the application are in hardware. RTL is the new machine code. The compiler is simple enough that you can trivially add custom opcodes.
 
-MISC computers are minimal instruction set computers. They were pioneered by Chuck Moore, Jeff Fox, and GreenArrays using an asynchronous design flow. Since industry design flows are based on synchronous logic, a practical stack machine should use leverage synchronous memories. This affects the ISA. With synchronous memories, you need to start a read a cycle before it’s needed. This forces an extra pipeline stage, but also affords more sophisticated decoding.
+MISC computers are minimal instruction set computers. They were pioneered by Chuck Moore, Jeff Fox, and GreenArrays using an asynchronous design flow. Since industry design flows are based on synchronous logic, a practical stack machine should use leverage synchronous memories. This affects the ISA. With synchronous memories, you need to start a read a cycle before it’s needed. This forces an extra pipeline stage, but also affords more sophisticated decoding. For example, the opcode is registered at the same time as signed immediate data. Some of that immediate data can extend the opcode.
 
 The MISC paradigm executes small instructions fast, from an instruction group. The instruction group is fetched from memory, and then the opcodes are executed in sequence within the group.
 
@@ -32,9 +32,9 @@ Preliminary opcodes in 2-digit octal format:
 |       | 0        |1         | 2        | 3        | 4        | 5        | 6         | 7        |
 |:-----:|:--------:|:--------:|:--------:|:--------:|:--------:|:--------:|:---------:|:--------:|
 | **0** | nop      | 0=       | a!       | +        | **jump** | **call** | **-bran** | **lit**  |
-| **1** | dup      | over     | >r       | and      | **user** | **reg!** | **next**  | **reg@** |
-| **2** | 2*       | 2/       | r>       | xor      | 1+       | ><       | @a        | !a       |
-| **3** | r@       | u2/      | exit     | drop     | swap     | invert   | @a+       | !b+      |
+| **1** | dup      | 1+       | >r       | and      | **user** | **next** | **reg!**  | **reg@** |
+| **2** | 2*       | 2/       | exit     | xor      | over     | ><       | !a        | @a       |
+| **3** | r@       | u2/      | r>       | drop     | swap     | invert   | !b+       | @a+      |
 
 - **opcode uses the rest of the slots as immediate data**
 - Any kind of stack/RAM read must be in columns 2, 3, 6, or 7.
@@ -130,4 +130,22 @@ The RAM used by the CPU core is relatively small. To access more memory, you wou
 In a hardware implementation, the instruction group provides natural protection of atomic operations from interrupts, since the ISR is held off until the group is finished. A nice way of handling interrupts in a Forth system, since calls and returns are so frequent, is to redirect return instructions to take an interrupt-hardware-generated address instead of popping the PC from the return stack. This is a great benefit in hardware verification, as verifying asynchronous interrupts is much more involved. As a case in point, the RTX2000 had an interrupt bug.
 
 Hardware multiply and divide, if provided, are accessed via the USER instruction. The basic opcodes support the slow eForth methods.
+
+### T input
+
+The T mux has 15 inputs picked by a 5-bit opcodes, but synthesis should be able to exploit "don't care" states to lay out a cascade of muxes to balance the timing. Or, columns 1 and 3 could be handled by a 16:1 mux whose select lines are opcode[4:1] if opcode[0]='1', else the following lookup table:
+
+opcode[4:1]: {-,-,-,3,-,-,-,3,13,-,3,3,1,1,3,3}. So, the critical paths see the registered opcode come through a 2:1 mux to address the 16:1 mux. Slower paths, like R, N and 2* read, have an extra LUT4 lookup stage.
+
+|       | 0        |1         | 2        | 3        |
+|:-----:|:--------:|:--------:|:--------:|:--------:|
+| **0** |          | 0=       |          | +        |
+| **1** |          |   (R)    | N        | imm      |
+| **2** |          | 1+       |          | and      |
+| **3** |          |   (N)    | N        | regs     |
+| **4** | 2*       | 2/       |          | xor      |
+| **5** | N        | ><       | N        | Mem      |
+| **6** | R        | u2/      | R        |   (2*)   |
+| **7** | N        | invert   | N        | Mem      |
+
 
