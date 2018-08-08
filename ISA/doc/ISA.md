@@ -29,10 +29,10 @@ Preliminary opcodes in 2-digit octal format:
 
 |       | 0        |1         | 2        | 3        | 4        | 5        | 6         | 7        |
 |:-----:|:--------:|:--------:|:--------:|:--------:|:--------:|:--------:|:---------:|:--------:|
-| **0** | nop      | invert   | exit     | +        | **jump** | **call** | **0bran** | **lit**  |
+| **0** | nop      | invert   | a!       | +        | **jump** | **call** | **0bran** | **lit**  |
 | **1** | dup      | over     | >r       | and      | **user** | **reg!** | **next**  | **reg@** |
 | **2** | 2*       | 2/       | r>       | xor      | 1+       | ><       | @a        | !a       |
-| **3** | r@       | u2/      | a!       | drop     | swap     | a        | @a+       | !b+      |
+| **3** | r@       | u2/      | exit     | drop     | swap     | a        | @a+       | !b+      |
 
 - **opcode uses the rest of the slots as unsigned (or signed if 0bran or next) immediate data**
 - Any kind of stack/RAM read must be in columns 2, 3, 6, or 7.
@@ -58,12 +58,8 @@ The non-obvious opcodes are:
 
 `reg!` loads a register based on two 3-bit octal digits. The lower digit is:
 
-- 0: Store to SP
-- 1: Store to RP
-- 2: Store to UP
-- 3: Store to B
-- 4: Store to debug port
-- 5: Fetch/Store T cells to/from AXI space
+- 0: Store to {B, SP, RP, UP. page, debugport}
+- 1: Fetch/Store T cells to/from AXI space
 
 ### Opcodes (proposed)
 
