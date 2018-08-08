@@ -3,6 +3,7 @@
 The MachineForth paradigm, discovered by the late Jeff Fox, is a method for programming Forth stack machines in the most direct way possible, by making machine opcodes a part of the high level language. The programmer is writing to an actual machine rather than a virtual one. It’s a different way of programming. With the right ISA, optimizations are minimal so this virtualization is unnecessary. An ISA for a dialect of MachineForth is presented.
 
 ## The ISA
+
 The stack machine used by MachineForth is based on small, zero-operand opcodes operating on the tops of stacks and corresponding to Forth names. This is different from Novix-style stack machines, which use wide instructions equivalent to stack machine microcode executing in one cycle. While this tends to be efficient, it requires virtualization of the language just like any other machine. When it comes to executing an application in a modern stack machine, instruction execution time is even more meaningless than it classically has been. When your computer consists of Verilog or VHDL code, the compute-intensive parts of the application are in hardware. RTL is the new machine code. The compiler is simple enough that you can trivially add custom opcodes.
 
 MISC computers are minimal instruction set computers. They were pioneered by Chuck Moore, Jeff Fox, and GreenArrays using an asynchronous design flow. Since industry design flows are based on synchronous logic, a practical stack machine should use leverage synchronous memories. This affects the ISA. With synchronous memories, you need to start a read a cycle before it’s needed. This forces an extra pipeline stage, but also affords more sophisticated decoding.
@@ -29,7 +30,7 @@ Preliminary opcodes in 2-digit octal format:
 |       | 0        |1         | 2        | 3        | 4        | 5        | 6         | 7        |
 |:-----:|:--------:|:--------:|:--------:|:--------:|:--------:|:--------:|:---------:|:--------:|
 | **0** | nop      | invert   | exit     | +        | **jump** | **call** | **0bran** | **lit**  |
-| **1** | dup      | over     | >r       | and      | **user** | **next** | **reg!**  | **reg@** |
+| **1** | dup      | over     | >r       | and      | **user** | **reg!** | **next**  | **reg@** |
 | **2** | 2*       | 2/       | r>       | xor      | 1+       | ><       | @a        | !a       |
 | **3** | r@       | u2/      | a!       | drop     | swap     | a        | @a+       | !b+      |
 
@@ -52,7 +53,7 @@ The non-obvious opcodes are:
 - 0: Fetch from SP, add U offset
 - 1: Fetch from RP, add U offset
 - 2: Fetch from UP, add U offset
-- 3: Fetch from carry (out of + or 2*)
+- 3: Fetch from flags[U]: {0, -1, carry (out of + or 2*), NoCarry, T[17], ~T[17], T=0, T<>0}
 - 4: Fetch from debug port
 
 `reg!` loads a register based on two 3-bit octal digits. The lower digit is:
@@ -67,9 +68,6 @@ The non-obvious opcodes are:
 ### Opcodes (proposed)
 
 ```
-nop   skip never						Do nothing
-no:   skip always
-if:   skip if T=0, swallow T
 jump  IMM → PC
 lit   IMM →  T → N → RAM[--SP]
 call  IMM → PC → R → RAM[--RP]
@@ -110,3 +108,4 @@ The RAM used by the CPU core is relatively small. To access more memory, you wou
 In a hardware implementation, the instruction group provides natural protection of atomic operations from interrupts, since the ISR is held off until the group is finished. A nice way of handling interrupts in a Forth system, since calls and returns are so frequent, is to redirect return instructions to take an interrupt-hardware-generated address instead of popping the PC from the return stack. This is a great benefit in hardware verification, as verifying asynchronous interrupts is much more involved. As a case in point, the RTX2000 had an interrupt bug.
 
 Hardware multiply and divide, if provided, are accessed via the USER instruction.
+
