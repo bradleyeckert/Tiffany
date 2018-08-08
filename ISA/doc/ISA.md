@@ -1,6 +1,6 @@
 # MachineForth ISA
 
-The MachineForth paradigm, discovered by the late Jeff Fox, is a method for programming Forth stack machines in the most direct way possible, by making machine opcodes a part of the high level language. The programmer is writing to an actual machine rather than a virtual one. It’s a different way of programming. With the right ISA, optimizations are minimal so this virtualization is unnecessary. An ISA for a dialect of MachineForth is presented.
+The MachineForth paradigm, discovered by the late Jeff Fox, is a method for programming Forth stack machines in the most direct way possible, by making machine opcodes a part of the high level language. The programmer is writing to an actual machine rather than a virtual one. It’s a different way of programming. With the right ISA, optimizations are minimal so this virtualization is unnecessary. An ISA for a dialect of MachineForth is presented. The ISA lends itself to very fast instruction set simulation on a PC or MCU, so the binary-compatible model is portable across platforms. This reduced abstraction puts the fun back in Forth.
 
 ## The ISA
 
@@ -8,9 +8,9 @@ The stack machine used by MachineForth is based on small, zero-operand opcodes o
 
 MISC computers are minimal instruction set computers. They were pioneered by Chuck Moore, Jeff Fox, and GreenArrays using an asynchronous design flow. Since industry design flows are based on synchronous logic, a practical stack machine should use leverage synchronous memories. This affects the ISA. With synchronous memories, you need to start a read a cycle before it’s needed. This forces an extra pipeline stage, but also affords more sophisticated decoding.
 
-The MISC paradigm executes small instructions very fast, from an instruction group. The instruction group is fetched from memory, and then the opcodes are executed in sequence within the group. The ISA lends itself to very fast instruction set simulation on a PC or MCU, so the binary-compatible model is portable across platforms. This reduced abstraction puts the fun back in Forth.
+The MISC paradigm executes small instructions fast, from an instruction group. The instruction group is fetched from memory, and then the opcodes are executed in sequence within the group.
 
-The best instruction word size is 18 bits, to fit FPGA RAM. This allows 256K addresses.
+The best instruction word size is 18 bits, to fit FPGA RAM. 256K 18-bit words amounts to 576K bytes of code space. Data space can be bigger due to a page register.
 
 ### Instruction Group
 
@@ -29,37 +29,57 @@ Preliminary opcodes in 2-digit octal format:
 
 |       | 0        |1         | 2        | 3        | 4        | 5        | 6         | 7        |
 |:-----:|:--------:|:--------:|:--------:|:--------:|:--------:|:--------:|:---------:|:--------:|
-| **0** | nop      | invert   | a!       | +        | **jump** | **call** | **0bran** | **lit**  |
+| **0** | nop      | 0=       | a!       | +        | **jump** | **call** | **-bran** | **lit**  |
 | **1** | dup      | over     | >r       | and      | **user** | **reg!** | **next**  | **reg@** |
 | **2** | 2*       | 2/       | r>       | xor      | 1+       | ><       | @a        | !a       |
-| **3** | r@       | u2/      | exit     | drop     | swap     | a        | @a+       | !b+      |
+| **3** | r@       | u2/      | exit     | drop     | swap     | invert   | @a+       | !b+      |
 
-- **opcode uses the rest of the slots as unsigned (or signed if 0bran or next) immediate data**
+- **opcode uses the rest of the slots as immediate data**
 - Any kind of stack/RAM read must be in columns 2, 3, 6, or 7.
 
-The non-obvious opcodes are:
+### Immediate data formats
 
-- `><` ( n1 -- n2 ) swaps the upper and lower 9-bit chars of T.
+Immediate data is taken from the remainder of the IR. These opcodes may be in slots 0, 1 or 2. Slot 3 is possible to use.
+IR[0] will still be evaluated, so `lit` will see -1. IR[0]: sign of data, 1s complement if '1'.
+
+- `jump`, `call`, `0bran`, `next`:  IMM[0]: 0=absolute, 1=relative.
+- `lit`, `user`, `reg!`, `reg@`:  IMM is literal, function select, or index.
+
+Immediate data is formed from a LUT4 with inputs of {IR[x], slot[1:0], IR[0]}.
+
+### The non-obvious opcodes
+
+- `><` ( n1 -- n2 ) swaps the upper and lower bytes of T[15:0].
 - `user` ( n1 -- n2 ) is a user defined function of T, N, and R.
 - `reg@` ( -- n ) fetches from an internal register.
 - `reg!` ( n -- ) stores to an internal register.
-- `next`  ( -- ) adds signed displacement to PC if R >= 0; R = R - 1.
-- `0bran`  ( flag -- ) adds signed displacement to PC if T = 0.
+- `next` ( -- ) branches if R < 0; R = R - 1.
 
 `><` is used with bytes, but also to create long literals. "HiPart lit >< LoPart lit +".
 
-`reg@` pushes data based on two 3-bit octal digits U,L. The lower digit is:
+`0=` is a critical path with LUT4s (3 levels of logic), so it's the only zero test. `if` uses `0=` and `-bran`.
 
-- 0: Fetch from SP, add U offset
-- 1: Fetch from RP, add U offset
-- 2: Fetch from UP, add U offset
-- 3: Fetch from flags[U]: {0, -1, carry (out of + or 2*), NoCarry, T[17], ~T[17], T=0, T<>0}
-- 4: Fetch from debug port
+`reg@` pushes register data based on immediate index that feeds mux select lines:
 
-`reg!` loads a register based on two 3-bit octal digits. The lower digit is:
+- -1: Fetch from A
+- -2: Fetch from SP
+- -3: Fetch from RP
+- -4: Fetch from UP
+- -6: Fetch from carry (out of + or 2*)
+- -7: Fetch from debug port
+- -8: Fetch flag T[17]
+- -9: Fetch flag ~T[17]
 
-- 0: Store to {B, SP, RP, UP. page, debugport}
-- 1: Fetch/Store T cells to/from AXI space
+`reg!` loads a register based on immediate index:
+
+- -1: Store to B
+- -2: Store to SP
+- -3: Store to RP
+- -4: Store to UP
+- -6: Store to page
+- -7: Store to debugport
+- -8: Fetch T cells from AXI space
+- -9: Store T cells to AXI space
 
 ### Opcodes (proposed)
 
@@ -99,7 +119,7 @@ drop  RAM[SP++] → N → T
 
 The SP, RP, and UP instructions are used to address PICK, Local, and USER variables respectively.
 
-The RAM used by the CPU core is relatively small. To access more memory, you would connect the AXI4 bus to other memory types such as single-port SRAM or a DRAM controller. Burst transfers use a !AS or @AS instruction to issue the address (with burst length=R) and stream that many words to/from external memory. Code is fetched from the AXI4 bus when outside of the internal ROM space. Depending on the implementation, AXI has excess latency to contend with. This doesn’t matter if most time is spent in internal ROM.
+The RAM used by the CPU core is relatively small. To access more memory, you would connect the AXI4 bus to other memory types such as single-port SRAM or a DRAM controller. Burst transfers use a !AS or @AS instruction to issue the address (with burst length=R) and stream that many words to/from external memory. Code is fetched from the AXI4 bus when outside of the internal ROM space. Depending on the implementation, AXI has excess latency to contend with. This doesn’t matter if most time is spent in internal ROM. The page register extends the address space of AXI to 32-bit. AXI data width is 32-bit, but only 18 bits are used.
 
 In a hardware implementation, the instruction group provides natural protection of atomic operations from interrupts, since the ISR is held off until the group is finished. A nice way of handling interrupts in a Forth system, since calls and returns are so frequent, is to redirect return instructions to take an interrupt-hardware-generated address instead of popping the PC from the return stack. This is a great benefit in hardware verification, as verifying asynchronous interrupts is much more involved. As a case in point, the RTX2000 had an interrupt bug.
 
