@@ -52,7 +52,7 @@ The non-obvious opcodes are:
 - 0: Fetch from SP, add U offset
 - 1: Fetch from RP, add U offset
 - 2: Fetch from UP, add U offset
-- 3: Fetch from carry (out of +)
+- 3: Fetch from carry (out of + or 2*)
 - 4: Fetch from debug port
 
 `reg!` loads a register based on two 3-bit octal digits. The lower digit is:
