@@ -35,7 +35,7 @@ Preliminary opcodes:
 - **opcode uses the rest of the slots as immediate data**
 - The opcode map is oriented toward a 16-wide T mux.
 
-|   T:  | 0         | 1        | 2        | 3       |
+|       | 0         | 1        | 2        | 3       |
 |:-----:|:---------:|:--------:|:--------:|:-------:|
 | **0** | nop       | dup      | +        | exit    |
 | **1** | 2*        | over     | and      | r@      |
