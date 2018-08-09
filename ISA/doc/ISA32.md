@@ -32,7 +32,7 @@ Immediate data is registered, so there is time to sign it. Immediate data is tak
 Preliminary opcodes:
 
 - *opcode conditionally skips the rest of the slots*
-- **opcode uses the rest of the slots as unsigned immediate data**
+- **opcode uses the rest of the slots as immediate data**
 - The opcode map is oriented toward a 16-wide T mux.
 
 |   T:  | 0         | 1        | 2        | 3       |
