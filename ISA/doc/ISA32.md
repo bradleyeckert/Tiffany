@@ -27,93 +27,44 @@ Slot 5 only fits 4 opcodes. The opcode map supports {NOP, DUP, EXIT, +} as per P
 
 ALU operations take their operands from registers for minimum input delay. Since the RAM is synchronous read/write, the opcode must be pre-decoded. The pre-decoder initiates reads. The main decoder has a registered opcode to work with, so the decode delay isn’t so bad. Opcodes that read from RAM should be grouped together for easy decoding from the opcode, which is already delayed by a logic level. So, for example, rd_enable is opcode[5] and the rd_addr mux is controlled by opcode[4:1]. Non-reading opcodes are decoded from a registered opcode. The pre-read stage of the pipeline allows time for immediate data to be registered, so the execute stage see no delay. Opcodes have time to add the immediate data to registers, for more complex operations. One can index into the stack, for example.
 
-Preliminary opcodes in 2-digit octal format:
+Immediate data is registered, so there is time to sign it. Immediate data is taken from the remainder of the IR. IMM = IR[?:1]; IR[0]: sign of data, 1s complement if '1'.
 
-|       | 0        | 1      | 2    | 3   | 4        | 5    | 6     | 7     |
-|:-----:|:--------:|:------:|:----:|:---:|:--------:|:----:|:-----:|:-----:|
-| **0** | nop      | dup    | exit | +   | *no:*    | r@   | exit: | and   |
-| **1** | 0        | over   | r>   | xor | carry    | a    | rdrop | *if:* |
-| **2** | 0=       | invert | @a   | --- | 0<       | 2*   | @a+   | ---   |
-| **3** | *next:*  | u2/    | w@a  | a!  | rept     | 2/   | c@a   | b!    |
-| **4** | **sp**   | ---    | !a   | rp! | **rp**   | port | !b+   | sp!   |
-| **5** | **up**   | ---    | w!a  | up! | **sh24** | ---  | c!a   | ---   |
-| **6** | **user** | !as    | ---  | nip | **jump** | ---  | @as   | ---   |
-| **7** | **lit**  | ---    | drop | rot | **call** | 1+   | >r    | swap  |
+Preliminary opcodes:
 
 - *opcode conditionally skips the rest of the slots*
 - **opcode uses the rest of the slots as unsigned immediate data**
-- Any kind of stack/RAM read must be in columns 2, 3, 6, or 7.
+- The opcode map is oriented toward a 16-wide T mux.
 
-### Opcodes (proposed)
+|   T:  | 0         | 1        | 2        | 3       |
+|:-----:|:---------:|:--------:|:--------:|:-------:|
+| **0** | nop       | dup      | +        | exit    |
+| **1** | 2*        | over     | and      | r@      |
+| **2** | u2/       |          | xor      | r>      |
+| **3** | 2/        | swap     | user     | rdrop   |
+| **4** | 0<        |          | invert   | *+skip* |
+| **5** |           | drop     | 0=       | *-skip* |
+| **6** | rept      | nip      | !as      |         |
+| **7** | port      | >r       | @as      | *skip*  |
+| **8** | **jmp**   | sp!      | **sp**   | @       |
+| **9** | **rjmp**  | !+       | 4+       | @+      |
+| **A** | **call**  | rp!      | **rp**   | w@      |
+| **B** | **rcall** |          |          | w@+     |
+| **C** | **next**  | up!      | **up**   | c@      |
+| **D** |           |          | 1+       | c@+     |
+| **E** | **lit**   | **-jmp** | **sh24** | c!+     |
+| **F** | carry     |          | 0        | rot     |
 
 ```
-nop   skip never						Do nothing
-no:   skip always
-if:   skip if T=0, swallow T
-next: skip if R<0, R-1 → R
-rept  if R>=0, 0 → slot | R-1 → R
-sp    SP+IMM → A                  A = {SP+IMM, RP+IMM, UP+IMM, ~IMM, A+k2}
-rp    RP+IMM → A                  B = {T, B+4}
-up    UP+IMM → A                  IMM is always unsigned.
-user  User defined API or HW function, T = func(IMM, T) or func(IMM, T, N)
-jump  IMM → PC
-lit   IMM → T → N  → RAM[--SP]
-call  IMM → PC → R → RAM[--RP]
-dup          T → N → RAM[--SP]
-r        R → T → N → RAM[--SP]
-over     N → T → N → RAM[--SP]
-a        A → T → N → RAM[--SP]
-0        0 → T → N → RAM[--SP]
-carry   CY → T → N → RAM[--SP]
-com   ~T → T
-port  Swap T, Debug Register
-0=    (T=0) → T
-0<    (T<0) → T
-u2/   T>>1 → T
-2/    T/2 → T
-2*    T*2 → T
-!as   ReadData → RAM[A] | A+4 → A, R=length	Stream from AXI bus to RAM
-swap  N → T → N                         N = {T, N, RAM}
-1+    T+1 → T
-;     RAM[RP++] → R → PC
-;|    RAM[RP++] → R → PC                Early exit: Does not flush the IR. Maybe useless.
-r>    RAM[RP++] → R → T → N → RAM[--SP]
-rdrop RAM[RP++] → R
-@a    RAM[A] → T → N → RAM[--SP]
-@ac   RAM[A] → T → N → RAM[--SP]        Extract 8-bit from byte lane
-@aw   RAM[A] → T → N → RAM[--SP]        Extract 16-bit from byte lanes
-!a    RAM[SP++] → N → T → RAM[A] | A+4 → A
-c!a   RAM[SP++] → N → T → RAM[A] | A+1 → A  Shift 8-bit onto the correct byte lane
-w!a   RAM[SP++] → N → T → RAM[A] | A+2 → A  Shift 16-bit onto the correct byte lanes
-unip  RAM[SP++]						( a b c – b c ) = ROT DROP
-@bs   RAM[B] → WriteData | R=length     Stream from RAM to AXI bus
-@b    RAM[B] → T → N → RAM[--SP] | B+4 → B
-rot   RAM[SP] → T → N → RAM[SP]
-+     RAM[SP++] → N | (T + N) → T
-and   RAM[SP++] → N | (T & N) → T
-xor   RAM[SP++] → N | (T ^ N) → T
-a!    RAM[SP++] → N → T → A             A and B are index registers
-b!    RAM[SP++] → N → T → B
-rp!   RAM[SP++] → N → T → RP
-sp!   RAM[SP++] → N → T → SP
-up!   RAM[SP++] → N → T → UP
-nip   RAM[SP++] → N
-drop  RAM[SP++] → N → T
->r    RAM[SP++] → N → T → PC → R → RAM[--RP]
-
-|	  Begin a new opcode group
-
-Nice to haves:
-.*    cn:W = T+S+1 | if (cn|c) R ← W | c,W,T ← W,T,(c|cn)  Multiply step
-./    cn:W = T+S+1 | if (cn|c) R ← W | c,W,T ← W,T,(c|cn)  Divide step
-
+!+  ( n a -- a+4 )  T = T+4,  N = mem
+@+  ( a -- a+4 n )  T = mem,  N = T+4
+@   ( a -- n )      T = mem
 ```
 
 ### Sample usage
-- Local fetch: Lit_Offset RP @A
-- User variable fetch: Lit_Uservar UP @A
-- User variable store:  Lit_Uservar UP !A
-- ABS: -IF| COM 1+ |
+- Local fetch: Lit_Offset RP @
+- User variable fetch: Lit_Uservar UP @
+- User variable store:  Lit_Uservar UP !+ DROP
+- ABS: -IF| INVERT 1+ |
 
 Conditional skip instructions skip the remainder of the instruction group, which could be up to 5 slots. This eliminates the branch overhead for short IF THEN statements and allows for more complex combinations of conditional branches and calls. The syntax of the skip instructions uses vertical bars to delineate the opcodes that are intended to fit in one instruction group. The compiler will skip to the next group if there are insufficient slots to fit it, or complain if it’s too big.
 
