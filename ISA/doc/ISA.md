@@ -31,10 +31,10 @@ Preliminary opcodes in 2-digit octal format:
 
 |       | 0        |1         | 2        | 3        | 4        | 5        | 6         | 7        |
 |:-----:|:--------:|:--------:|:--------:|:--------:|:--------:|:--------:|:---------:|:--------:|
-| **0** | nop      | 0=       | a!       | +        | **jump** | **call** | **-bran** | **lit**  |
-| **1** | dup      | 1+       | >r       | and      | **user** | **next** | **reg!**  | **reg@** |
-| **2** | 2*       | 2/       | exit     | xor      | over     | ><       | !a        | @a       |
-| **3** | r@       | u2/      | r>       | drop     | swap     | invert   | !b+       | @a+      |
+| **0** | nop      | dup      | jmp      | call     | user     | reg@     | -bran     | drop     |
+| **1** | xor      | invert   | and      | 0=       | +        | +c       | u2/       | c2/      |
+| **2** | exit     | r>       | >r       | over     | next     | r@       | swap      | reg!     |
+| **3** | !+       | @+       | @        | lit      | c!+      | c@+      | c@        | rot      |
 
 - **opcode uses the rest of the slots as immediate data**
 - Any kind of stack/RAM read must be in columns 2, 3, 6, or 7.
@@ -44,7 +44,7 @@ Preliminary opcodes in 2-digit octal format:
 Immediate data is taken from the remainder of the IR. These opcodes may be in slots 0, 1 or 2. Slot 3 is possible to use.
 IR[0] will still be evaluated, so `lit` will see -1. IR[0]: sign of data, 1s complement if '1'.
 
-- `jump`, `call`, `-bran`, `next`:  IMM[0]: 0=absolute, 1=relative.
+- `jmp`, `call`, `-bran`, `next`:  IMM[0]: 0=absolute, 1=relative.
 - `lit`, `user`, `reg!`, `reg@`:  IMM is literal, function select, or index.
 - `reg@` ( -- n ) fetches from an internal register.
 - `reg!` ( n -- ) stores to an internal register.
@@ -53,75 +53,35 @@ Immediate data is formed from a LUT4 with inputs of {IR[x], slot[1:0], IR[0]}.
 
 `reg@` pushes register data based on immediate index that feeds mux select lines:
 
-- -1: Fetch from A
-- -2: Fetch from SP
-- -3: Fetch from RP
-- -4: Fetch from UP
-- -6: Fetch from carry (out of + or 2*)
-- -7: Fetch from debug port
-- -8: Fetch flag T[17]
-- -9: Fetch flag ~T[17]
+- -2: Fetch flag ~T[17]
+- -1: Fetch flag T[17]
+- 0: Fetch from SP
+- 1: Fetch from RP
+- 2: Fetch from UP
+- 3: Fetch from debug port
 
 `reg!` loads a register based on immediate index:
 
-- -1: Store to B
-- -2: Store to SP
-- -3: Store to RP
-- -4: Store to UP
-- -6: Store to page register (AXI bus upper address)
-- -7: Store to debugport
-- -8: Fetch T cells from AXI space
-- -9: Store T cells to AXI space
+- -1: Store to SP
+- 0: Store to RP
+- 1: Store to UP
+- 2: Store to page register (AXI bus upper address)
+- 3: Store to debugport
+- 4: Fetch N cells from AXI space starting at address T
+- 5: Store N cells to AXI space starting at address T
 
 The non-obvious opcodes:
 
-- `><` ( n1 -- n2 ) swaps the upper and lower bytes of T[15:0].
 - `user` ( n1 -- n2 ) is a user defined function of T, N, and R.
-- `next` ( -- ) branches if R < 0; R = R - 1. For doing something 0 or more times.
-
-`><` is used with bytes, but also to create long literals. "HiPart lit >< LoPart lit +".
+- `next` is for loops. Jump if R >= 0; R = R - 1.
 
 `0=` is a critical path with LUT4s (3 levels of logic), so it's the only zero test. `if` uses `0=` and `-bran`.
 `next` tests R instead of T. Since most `for` loops have a trivial case to test for, the `next` forward branch
 is placed at the beginning of a loop. The end of loop uses a backward jump. Post-loop cleanup would be `nop r> drop`.
 
-`lshift` etc. can use a relative jump into a sets of 2* opcodes. For example, a relative jump is:
+`lshift` etc. can use a relative jump into a sets of DUP + opcodes. For example, a relative jump is:
 
 `: exec  ( offset -- )  r> + >r ; call-only`
-
-### Opcodes (proposed)
-
-```
-jump  IMM → PC
-lit   IMM →  T → N → RAM[--SP]
-call  IMM → PC → R → RAM[--RP]
-dup          T → N → RAM[--SP]
-over     N → T → N → RAM[--SP]
-a        A → T → N → RAM[--SP]
-invert ~T → T
-u2/   T>>1 → T
-2/    T/2 → T
-2*    T*2 → T
-!as   ReadData → RAM[A] | A+4 → A, R=length	Stream from AXI bus to RAM
-swap  N → T → N                         N = {T, N, RAM}
-1+    T+1 → T
-exit  RAM[RP++] → R → PC
-r>    RAM[RP++] → R → T → N → RAM[--SP]
-@a    RAM[A] → T → N → RAM[--SP]
-!a    RAM[SP++] → N → T → RAM[A] | A+4 → A
-@as   RAM[A] → WriteData | R=length     Stream from RAM to AXI bus
-@b    RAM[B] → T → N → RAM[--SP] | B+4 → B
-rot   RAM[SP] → T → N → RAM[SP]
-+     RAM[SP++] → N | (T + N) → T
-and   RAM[SP++] → N | (T & N) → T
-xor   RAM[SP++] → N | (T ^ N) → T
-a!    RAM[SP++] → N → T → A             A and B are index registers
-b!    RAM[SP++] → N → T → B
-drop  RAM[SP++] → N → T
->r    RAM[SP++] → N → T → PC → R → RAM[--RP]
-
-|	  Begin a new opcode group
-```
 
 ### Sample usage
 
@@ -131,21 +91,25 @@ In a hardware implementation, the instruction group provides natural protection 
 
 Hardware multiply and divide, if provided, are accessed via the USER instruction. The basic opcodes support the slow eForth methods.
 
-### T input
+## Comparison to Bernd Paysan's B16
 
-The T mux has 15 inputs picked by a 5-bit opcodes, but synthesis should be able to exploit "don't care" states to lay out a cascade of muxes to balance the timing. Or, columns 1 and 3 could be handled by a 16:1 mux whose select lines are opcode[4:1] if opcode[0]='1', else the following lookup table:
+A lot of thought went into the B16. It has some useful features. For example, divide and multiply steps. I figure those steps can be managed in hardware. Since I'm shamelessly using block RAM for stacks, it's going to be a bit different. But for reference, here is the B16 ISA:
 
-opcode[4:1]: {-,-,-,3,-,-,-,3,13,-,3,3,1,1,3,3}. So, the critical paths see the registered opcode come through a 2:1 mux to address the 16:1 mux. Slower paths, like R, N and 2* read, have an extra LUT4 lookup stage.
+```
+### B16 reduced instruction set:
+1, 5, 5, 5 bits
+|       | 0        |1         | 2        | 3        | 4        | 5        | 6         | 7        |
+|:-----:|:--------:|:--------:|:--------:|:--------:|:--------:|:--------:|:---------:|:--------:|
+| **0** | nop      | call     | jmp      | ret      | *jz*     | *jnz*    | jc        | jnc      | (if slot 3, use 16-bit next word as data)
+| **1** | *xor*    | invert   | *and*    | *or*     | *+*      | *+c*     | u2/       | c2/      |
+| **2** | *!+*     | *@+*     | *@*      | lit      | *c!+*    | *c@+*    | *c@*      | *litc*   | (if slot 1, don't post-increment address)
+| **3** | *nip*    | *drop*   | over     | dup      | *>r*     | *r>*     |           |          |
+```
 
-|       | 0        |1         | 2        | 3        |
-|:-----:|:--------:|:--------:|:--------:|:--------:|
-| **0** |          | 0=       |          | +        |
-| **1** |          |   (R)    | N        | imm      |
-| **2** |          | 1+       |          | and      |
-| **3** |          |   (N)    | N        | regs     |
-| **4** | 2*       | 2/       |          | xor      |
-| **5** | N        | ><       | N        | Mem      |
-| **6** | R        | u2/      | R        |   (2*)   |
-| **7** | N        | invert   | N        | Mem      |
+- @+  ( a -- a' n )
+- !+  ( n a -- a' )
+- MOVE step:  ( a1 a2 ) >r @+ r> !+
+
+
 
 
