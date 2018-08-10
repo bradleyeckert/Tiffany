@@ -19,6 +19,13 @@ Shift picks shift functions {2/}
 Regs picks register: {SP+IMM, RP+IMM, UP+IMM, R}
 
 T inputs: {
-opcd[5:3] |       | T +- N | XP + IMM | T+offset | 0=     | logic   | user    | shifts |
-          |       | op[0]  |          | op[2:0]  |        | op[1:0] |         | op[0]  |
+opcd[5:3] |       | T +- N | XP + IMM | T+offset | 0=/0<  | logic   | user    | mem   |
+          |       | op[0]  | op[1:0]  | op[2:0]  | op[0]  | op[2:0] |         | op[0] |
 
+T +- N   | T+N, T-N
+XP + IMM | {RP/UP}+IMM
+T+offset | offset = 1, 2, or 4
+0=/0<    | 0=, 0<
+logic    | and, xor, N, invert, R, 2/, u2/, ? |
+user     | 
+mem      | @, @+, w@, w@+, c@, c@+
