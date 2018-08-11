@@ -37,28 +37,28 @@ Preliminary opcodes:
 op[5:3] |           | T+offset  | XP / N    | T +- N    | user      | 0= / N    | mem       | logic     |
 |       | 0         | 1  / imm  | 2         | 3         | 4         | 5         | 6         | 7         |
 |:-----:|:---------:|:---------:|:---------:|:---------:|:---------:|:---------:|:---------:|:---------:|
-| **0** | nop       | **lit**   | exit      | **jmp**   | user      | drop      | r>        | 2/        |
-| **1** | exit      | 1+        | >r        | **call**  |           | c!+       | c@+       | u2/       |
-| **2** | no:       | 2+        | over      | +         |           | w!+       | w@+       | and       |
-| **3** | +rept     | **litx**  | swap      | -         |           | 0=        | w@        | xor       |
-| **4** | rept      | 4+        | **-bran** | **@as**   |           | !+        | @+        | 2*        |
-| **5** | port      |           | rp        | **!as**   |           | rp!       | @         | d2*       |
-| **6** | -if:      | dup       | sp        |           |           | sp!       | c@        |           |
-| **7** | +if:      |           | up        |           |           | up!       | r@        | invert    |
+| **0** | nop       | dup       | exit      | +         | user      | drop      | r>        | 2/        |
+| **1** |           | 1+        | swap      | -         |           | c!+       | c@+       | u2/       |
+| **2** | no:       | 2+        | **-bran** | **jmp**   |           | w!+       | w@+       | and       |
+| **3** |           | **litx**  | >r        | **call**  |           | 0=        | w@        | xor       |
+| **4** | rept      | 4+        | over      | +c        |           | !+        | @+        | 2*        |
+| **5** | +rept     |           | rp        | -c        |           | rp!       | @         | d2*       |
+| **6** | -if:      |           | sp        | **@as**   |           | sp!       | c@        | port      |
+| **7** | +if:      | **lit**   | up        | **!as**   |           | up!       | r@        | invert    |
 
-The opcode map is optimized for LUT4 implementation. opcode[5:3] selects T from a 7:1 mux (column).
-opcode[2:0] selects the row within the column, sometimes with some decoding.
+The opcode map is optimized for LUT4 implementation. opcode[2:0] selects T from a 7:1 mux (column).
+opcode[5:3] selects the row within the column, sometimes with some decoding.
 There are 2 or 3 levels of logic between registers and the T mux.
 
 Group 1: 32-bit Adder/Subtractor
 
 Group 2: Level 1 is 10-bit adder and mux-select decode, level 2 is 2:1 mux {sum, imm}.
 
-Group 3: Levels 1 to 2 are a 4:1 mux {RP,SP,UP,N}.
+Group 3: Levels 1&2 are a 4:1 mux {RP,SP,UP,N}.
 
 Group 4: User.
 
-Group 5: Level 1 is logic {and,xor,or,invert} and mux-select decode, level 2 is 4:1 mux: {logic, 2/, 2*}.
+Group 5: Level 1 is logic {and,xor,or,invert} and mux-select decode, level 2 is 4:1 mux: {logic, port, 2/, 2*}.
 
 Group 6: Levels 1&2 are T's zero test (2-bit result) and mux select decode, level 3 is 2:1 mux {0=, N}.
 
