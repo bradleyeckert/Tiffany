@@ -27,39 +27,39 @@ Slot 5 only fits 4 opcodes. Immediate data is registered, so there is time to si
 Immediate data is taken from the remainder of the IR. IMM = IR[?:1]; IR[0]: sign of data, 1s complement if '1'.
 The number of bits depends on the slot position or the opcode. It can be 26, 20, 14, 8, or 2 bits.
 
-ALU operations take their operands from registers for minimum input delay. Since the RAM is synchronous read/write, the opcode must be pre-decoded. The pre-decoder initiates reads. The main decoder has a registered opcode to work with, so the decode delay isn’t so bad. Opcodes that read from RAM should be grouped together for easy decoding from the opcode, which is already delayed by a logic level. So, for example, rd_enable is opcode[5] and the rd_addr mux is controlled by opcode[4:1]. Non-reading opcodes are decoded from a registered opcode. The pre-read stage of the pipeline allows time for immediate data to be registered, so the execute stage see no delay. Opcodes have time to add the immediate data to registers, for more complex operations. One can index into the stack, for example.
+ALU operations take their operands from registers for minimum input delay. Since the RAM is synchronous read/write, the opcode must be pre-decoded. The pre-decoder initiates reads. The main decoder has a registered opcode to work with, so the decode delay isn’t so bad. The pre-read stage of the pipeline allows time for immediate data to be registered, so the execute stage sees no delay. Opcodes have time to add the immediate data to registers, for more complex operations. One can index into the stack, for example.
 
 Preliminary opcodes:
 
 - *opcode conditionally skips the rest of the slots*
 - **opcode uses the rest of the slots as signed immediate data**
 
-op[5:3] |           | T +- N    | XP + IMM  | T+offset  | logic     | 0= / N    | user      | mem       |
-|       | 0         | 1         | 2         | 3    / N  | 4         | 5         | 6         | 7         |
+op[5:3] |           | T +- N    | T+offset  | XP + IMM  | logic     | user      | 0= / N    | mem       |
+|       | 0         | 1         | 2    / N  | 3         | 4         | 5         | 6         | 7         |
 |:-----:|:---------:|:---------:|:---------:|:---------:|:---------:|:---------:|:---------:|:---------:|
-| **0** | nop       | +         | dup       | over      | and       | up!       | user      | rot       |
-| **1** | skip      | -         |           | 1+        | xor       | c!+       | 2/        | c@+       |
-| **2** | +skip     |           | rp        | 2+        | or        | w!+       | sp        | w@+       |
-| **3** | -skip     |           | up        | swap      | invert    | 0=        | carry     | w@        |
-| **4** | rjmp      | jmp       | rept      | 4+        | r@        | !+        |           | @+        |
-| **5** | exit      |           | next      |           | r>        | rp!       | u2/       | @         |
-| **6** | rcall     | call      |           | >r        | lit       | sp!       | @as       | c@        |
-| **7** |           |           | port      | -bran     | litx      | drop      | !as       |           |
+| **0** | nop       | +         | over      | dup       | r@        | user      | drop      | rot       |
+| **1** | exit      | **jmp**   | 1+        | **call**  | r>        | 2/        | c!+       | c@+       |
+| **2** | no:       | -         | 2+        | rp        | and       | sp        | w!+       | w@+       |
+| **3** | +rept     |           | swap      | up        | xor       | carry     | 0=        | w@        |
+| **4** | rept      | **@as**   | 4+        | **!as**   | **lit**   |           | !+        | @+        |
+| **5** | port      | **rjmp**  | >r        | **rcall** | **litx**  | u2/       | rp!       | @         |
+| **6** | -if:      |           |           |           | or        |           | sp!       | c@        |
+| **7** | +if:      |           | **-bran** |           | invert    |           | up!       |           |
 
 The opcode map is optimized for LUT4 implementation. opcode[5:3] selects from a 7:1 mux (column).
 opcode[2:0] selects the row within the column, sometimes with some decoding.
 
 Group 1: 32-bit Adder/Subtractor
 
-Group 2: Level 1 is 2:1 mux {RP,UP}, level 2 is 10-bit adder.
+Group 2: Level 1 is 10-bit adder and mux select decode, level 2 is 2:1 mux {sum, N}.
 
-Group 3: Level 1 is 10-bit adder and mux select decode, level 2 is 2:1 mux {sum, N}.
+Group 3: Level 1 is 2:1 mux {RP,UP}, level 2 is 10-bit adder.
 
-Group 4: Level 1 is logic {and,xor,or,invert}, level 2 is 4:1 mux: {logic, port, imm, R}.
+Group 4: Level 1 is logic {and,xor,or,invert}, level 2 is 4:1 mux: {logic, imm, immx, R}.
 
-Group 5: Levels 1&2 are T's zero test (2-bit result) and mux select decode, level 3 is 2:1 mux {0=, N}.
+Group 5: 4:1 mux: {user, 2/, sp, carry}
 
-Group 6: 4:1 mux: {user, 2/, sp, carry}
+Group 6: Levels 1&2 are T's zero test (2-bit result) and mux select decode, level 3 is 2:1 mux {0=, N}.
 
 Group 7: Memory read result
 
@@ -69,6 +69,65 @@ Group 7: Memory read result
 @   ( a -- n )      T = mem
 ```
 
+### Summary
+
+- `+`     ( n m -- n+m )
+- `over`  ( n m -- n m n )
+- `dup`   ( x -- x x )
+- `r@`    ( -- x )
+- `user`  ( n -- m )
+- `drop`  ( x -- )
+- `rot`   ( j k n -- k n j )
+- `exit`  Pop PC from return stack.
+- `jmp`   PC = imm.
+- `1+`    ( n -- n+1 )
+- `call`  ( R: -- PC ) PC = imm.
+- `r>`    ( -- x ) ( R: x -- )
+- `2/`    ( n -- m )
+- `c!+`   ( n a -- a+1 )
+- `c@+`   ( a -- a+1 n )
+- `no:`   Skip the rest of the slots.
+- `-`     ( n1 n2 -- n1-n2 )
+- `2+`    ( n -- m )
+- `rp`    ( -- a )
+- `lit`   ( -- x )
+- `sp`    ( -- a )
+- `w!+`   ( n a -- a+2 )
+- `w@+`   ( a -- a+2 n )
+- `swap`  ( n m -- m n )
+- `up`    ( -- a )
+- `litx`  ( x -- x<<23 + imm )
+- `carry` ( -- 0/1 )
+- `0=`    ( n -- flag )
+- `w@`    ( a -- n )
+- `4+`    ( n -- m )
+- `rept`  Set slot=0.
+- `and`   ( n m -- n&m )
+- `!+`    ( n a -- a+4 )
+- `@+`    ( a -- a+4 n )
+- `-if:`  Skip slots if T>=0.
+- `+rept` Set slot=0 if T>=0.
+- `xor`   ( n m -- n^m )
+- `u2/`   ( n -- m )
+- `rp!`   ( a -- )
+- `@`     ( a -- n )
+- `port`  ( n ? -- m ? )
+- `rjmp`  PC = imm.
+- `>r`    ( x -- ) ( R: -- x )
+- `rcall` ( R: -- PC ) PC = PC + imm.
+- `or`    ( n m -- n|m )
+- `@as`   ( asrc adest -- asrc adest ) Imm = burst length.
+- `sp!`   ( a -- )
+- `c@`    ( a -- c )
+- `+if:`  Skip slots if T<0.
+- `-bran` ( flag -- )
+- `invert`( n -- ~n )
+- `!as`   ( asrc adest -- asrc adest ) Imm = burst length.
+- `up!`   ( a -- )
+
+### Registers
+
+Reg@ and reg! are pretty cheap due to LUT RAM. A small LUT RAM is addressed by IMM.
 
 ### Sample usage
 - Local fetch: Lit_Offset RP @
@@ -82,7 +141,7 @@ The SP, RP, and UP instructions are used to address PICK, Local, and USER variab
 
 Jumps and calls use unsigned absolute addresses of width 2, 8, 14, 20, or 26 bits, corresponding to an addressable space of 16, 1K, 64K, 4M, or 256M bytes. Most applications will be under 64K bytes, leaving the first three slots available for other opcodes. Many calls will be into the “reptilian brain” part of the kernel, in the lower 1K bytes. That leaves four slots for other opcodes.
 
-The RAM used by the CPU core is relatively small. To access more memory, you would connect the AXI4 bus to other memory types such as single-port SRAM or a DRAM controller. Burst transfers use a !AS or @BS instruction to issue the address (with burst length=R) and stream that many words to/from external memory. Code is fetched from the AXI4 bus when outside of the internal ROM space. Depending on the implementation, AXI has excess latency to contend with. This doesn’t matter if most time is spent in internal ROM.
+The RAM used by the CPU core is relatively small. To access more memory, you would connect the AXI4 bus to other memory types such as single-port SRAM or a DRAM controller. Burst transfers use a !AS or @AS instruction to issue the address (with burst length=R) and stream that many words to/from external memory. Code is fetched from the AXI4 bus when outside of the internal ROM space. Depending on the implementation, AXI has excess latency to contend with. This doesn’t matter if most time is spent in internal ROM.
 
 In a hardware implementation, the instruction group provides natural protection of atomic operations from interrupts, since the ISR is held off until the group is finished. A nice way of handling interrupts in a Forth system, since calls and returns are so frequent, is to redirect return instructions to take an interrupt-hardware-generated address instead of popping the PC from the return stack. This is a great benefit in hardware verification, as verifying asynchronous interrupts is much more involved. As a case in point, the RTX2000 had an interrupt bug.
 
