@@ -31,59 +31,67 @@ uint32_t UserFunction (uint32_t T, uint32_t N, int fn );
 void tiffQUIT(char *s);                                    // The C-side QUIT loop
 
 //================================================================================
-#define opNOP        (000)
-#define opDUP        (001)
-#define opEXIT       (002)
-#define opADD        (003)
-#define opSKIP       (004)
-#define opR          (005)
-#define opEXITE      (006)
-#define opAND        (007)
-#define opSKIPNZ     (010)
-#define opOVER       (011)
-#define opPOP        (012)
-#define opXOR        (013)
-#define opSKIPZ      (014)
-#define opA          (015)
-#define opRDROP      (016)
-#define opSKIPMI     (020)
-#define opStoreAS    (021)
-#define opFetchA     (022)
-#define opSKIPGE     (024)
-#define opTwoStar    (025)
-#define opFetchAplus (026)
-#define opNEXT       (030)
-#define opRSHIFT1    (031)
-//#define opWfetchA    (032)
-#define opSetA       (033)
-#define opREPT       (034)
-#define opTwoDiv     (035)
-//#define opCfetchA    (036)
-#define opSetB       (037)
 
-#define opSP         (040)
-#define opCOM        (041)
-#define opStoreA     (042)
-#define opSetRP      (043)
-#define opRP         (044)
-#define opPORT       (045)
-#define opStoreBplus (046)
-#define opSetSP      (047)
-#define opUP         (050)
-//#define opWstoreA    (052)
-#define opSetUP      (053)
-#define opShift24    (054)
-//#define opCstoreA    (056)
-#define opUSER       (060)
-#define opNIP        (063)
-#define opJUMP       (064)
-#define opFetchAS    (066)
-#define opLIT        (070)
-#define opDROP       (072)
-#define opROT        (073)
-#define opCALL       (074)
-#define opOnePlus    (075)
-#define opPUSH       (076)
-#define opSWAP       (077)
+#define opNOP        (000)
+#define opDUP        (001)  // dup
+#define opEXIT       (002)  // exit
+#define opADD        (003)  // +
+#define opUSER       (004)  // user
+#define opDROP       (005)  // drop
+#define opPOP        (006)  // r>
+#define opTwoDiv     (007)  // 2/
+
+#define opOnePlus    (011)  // 1+
+#define opPUSH       (012)  // >r
+#define opSUB        (013)  // -
+#define opCstorePlus (015)  // c!+  ( c a -- a+1 )
+#define opCfetchPlus (016)  // c@+  ( a -- a+1 c )
+#define opUtwoDiv    (017)  // u2/
+
+#define opSKIP       (020)  // no:  skip remaining slots
+#define opTwoPlus    (021)  // 2+
+#define opOVER       (022)  // over
+#define opJUMP       (023)  // jmp
+#define opWstorePlus (025)  // w!+  ( n a -- a+2 )
+#define opWfetchPlus (026)  // w@+  ( a -- a+2 n )
+#define opAND        (027)  // and
+
+#define opLitX       (031)  // litx
+#define opSWAP       (032)  // swap
+#define opCALL       (033)  // call
+#define opZeroEquals (035)  // 0=
+#define opWfetch     (036)  // w@  ( a -- n )
+#define opXOR        (037)  // xor
+
+#define opREPT       (040)  // rept  slot=0
+#define opFourPlus   (041)  // 4+
+#define opMiBran     (042)  // -bran
+#define opADDC       (043)  // +  with carry in
+#define opStorePlus  (045)  // !+  ( n a -- a+4 )
+#define opFetchPlus  (046)  // @+  ( a -- a+4 n )
+#define opTwoStar    (047)  // 2*
+
+#define opMiREPT     (050)  // -rept  slot=0 if T < 0
+#define opRP         (052)  // rp
+#define opSUBC       (053)  // -c  subtract with borrow
+#define opSetRP      (055)  // rp!
+#define opFetch      (056)  // @
+#define opDtwoStar   (057)  // d2*
+
+#define opSKIPGE     (060)  // -if:  slot=end if T >= 0
+#define opSP         (062)  // sp
+#define opFetchAS    (063)  // @as
+#define opSetSP      (065)  // sp!
+#define opCfetch     (066)  // c@
+#define opPORT       (067)  // port  ( n -- m ) swap T with port
+
+#define opSKIPLT     (070)  // +if:  slot=end if T < 0
+#define opLIT        (071)  // lit
+#define opUP         (072)  // up
+#define opStoreAS    (073)  // !as
+#define opSetUP      (075)  // up!
+#define opRfetch     (076)  // r@
+#define opCOM        (077)  // com
 
 #endif
+

@@ -36,8 +36,7 @@ void PushNum (uint32_t N) {             // Push to the stack
 }
 uint32_t FetchCell (uint32_t addr) {    // Read from RAM or ROM
     SetDbgReg(addr);
-    DbgGroup(opA, opDUP, opPORT, opSetA, opNOP);
-    return DbgGroup(opFetchA, opPORT, opDROP, opSetA, opNOP);
+    return DbgGroup(opDUP, opPORT, opFetch, opPORT, opDROP);
 }
 uint8_t FetchByte (uint32_t addr) {     // Read from RAM or ROM
     return (uint8_t) 0xFF & (FetchCell(addr) >> (8*(addr&3)));
@@ -46,28 +45,22 @@ uint16_t FetchHalf (uint32_t addr) {    // Read from RAM or ROM
     return (uint16_t) 0xFFFF & (FetchCell(addr) >> (8*(addr&2)));
 }
 void StoreCell (uint32_t N, uint32_t addr) {  // Write to RAM
-    SetDbgReg(addr);
-    DbgGroup(opA, opDUP, opPORT, opSetA, opNOP);
     SetDbgReg(N);
-    DbgGroup(opDUP, opPORT, opStoreA, opSetA, opNOP);
+    DbgGroup(opDUP, opPORT, opDUP, opSKIP, opNOP);
+    SetDbgReg(addr);
+    DbgGroup(opPORT, opStorePlus, opDROP, opSKIP, opNOP);
 }
 void StoreHalf (uint16_t N, uint32_t addr) {  // Write half with cell rd/wr
-    int shift = 8 * (addr & 2);
+    SetDbgReg(N);
+    DbgGroup(opDUP, opPORT, opDUP, opSKIP, opNOP);
     SetDbgReg(addr);
-    DbgGroup(opA, opDUP, opPORT, opSetA, opFetchA); // ( oldA oldX )
-    SetDbgReg(~(0xFFFF << shift));
-    DbgGroup(opDUP, opPORT, opAND, opNOP, opNOP);  //
-    SetDbgReg(N << shift);
-    DbgGroup(opDUP, opPORT, opADD, opStoreA, opSetA);
+    DbgGroup(opPORT, opWstorePlus, opDROP, opSKIP, opNOP);
 }
 void StoreByte (uint8_t N, uint32_t addr) {  // Write byte with cell rd/wr
-    int shift = 8 * (addr & 3);
+    SetDbgReg(N);
+    DbgGroup(opDUP, opPORT, opDUP, opSKIP, opNOP);
     SetDbgReg(addr);
-    DbgGroup(opA, opDUP, opPORT, opSetA, opFetchA); // ( oldA oldX )
-    SetDbgReg(~(0xFF << shift));
-    DbgGroup(opDUP, opPORT, opAND, opNOP, opNOP);  //
-    SetDbgReg(N << shift);
-    DbgGroup(opDUP, opPORT, opADD, opStoreA, opSetA);
+    DbgGroup(opPORT, opCstorePlus, opDROP, opSKIP, opNOP);
 }
 void SetPCreg (uint32_t PC) {           // Set new PC
     SetDbgReg(PC);
@@ -79,11 +72,11 @@ void SetPCreg (uint32_t PC) {           // Set new PC
 // to SPI flash through the debug interface when brain dead
 // Store data to a temporary cell at the top of RAM, which gets trashed.
 static void WriteAXI(uint32_t data, uint32_t address) {
-    SetDbgReg(data);
     VMstep((uint32_t)opLIT*0x100000 + ((ROMsize+RAMsize-1)*4), 1);
-    DbgGroup(opSetA, opDUP, opPORT, opStoreA, opDUP); // save in temp
+    SetDbgReg(data);
+    DbgGroup(opDUP, opPORT, opOVER, opStorePlus, opDROP); // save in temp
     SetDbgReg(address);
-    DbgGroup(opDUP, opXOR, opDUP, opPORT, opStoreAS); // 1 word to AXI
+    DbgGroup(opDUP, opPORT, opLIT, opNOP, opNOP); // 1 word to AXI
     DbgGroup(opDROP, opDROP, opSKIP, opNOP, opNOP);
 }
 
@@ -702,8 +695,6 @@ void DumpReturnStack(void){
             printf("  %08X", FetchCell(rp0 - 4*depth + i*4));
         }
     }
-    SetCursorPosition(ReturnStackCol, row++);
-    printf("R %d", RegRead(2));
 }
 
 void DisassembleIR(uint32_t IR) {
@@ -781,7 +772,7 @@ void DumpROM(void) {
 
 void DumpRegs(void) {
     int row = 2;
-    char name[9][4] = {" T", " N", " R", " A", " B", "RP", "SP", "UP", "PC"};
+    char name[7][4] = {" T", " N", "RP", "SP", "UP", "PC", "DB"};
     char term[12][10] = {"STATUS", "FOLLOWER", "SP0", "RP0", "HANDLER", "BASE",
                         "Head: HP", "Code: CP", "Data: DP", "STATE", "CURRENT", "SOURCEID"};
     uint32_t i;
@@ -795,7 +786,7 @@ void DumpRegs(void) {
 
     DumpDataStack();
     DumpReturnStack();
-    for (i=3; i<9; i++) {               // internal VM registers
+    for (i=2; i<6; i++) {               // internal VM registers
 #ifndef TRACEABLE
         if (i != 4) {  // can't read B so skip it
 #endif

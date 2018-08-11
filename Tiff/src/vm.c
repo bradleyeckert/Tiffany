@@ -30,23 +30,18 @@
 #ifdef TRACEABLE
     #define T VMreg[0]
     #define N VMreg[1]
-    #define R VMreg[2]
-    #define A VMreg[3]
-    #define B VMreg[4]
-    #define RP VMreg[5]
-    #define SP VMreg[6]
-    #define UP VMreg[7]
-    #define PC VMreg[8]
-    #define DebugReg VMreg[9]
-    #define RidT  (-1)
-    #define RidN  (-2)
-    #define RidR  (-3)
-    #define RidA  (-4)
-    #define RidB  (-5)
-    #define RidRP (-6)
-    #define RidSP (-7)
-    #define RidUP (-8)
-    #define RidPC (-9)
+    #define RP VMreg[2]
+    #define SP VMreg[3]
+    #define UP VMreg[4]
+    #define PC VMreg[5]
+    #define DebugReg VMreg[6]
+    #define RidT   (-1)
+    #define RidN   (-2)
+    #define RidRP  (-3)
+    #define RidSP  (-4)
+    #define RidUP  (-5)
+    #define RidPC  (-6)
+    #define RidDbg (-7)
     #define VMregs 10
 
     uint32_t VMreg[VMregs];     // registers with undo capability
@@ -77,23 +72,21 @@
                        N = RAM[SP & (RAMsize-1)];
         Trace(0,RidSP, SP,SP+1);
                        SP++; }
-    static void RDUP(void)  {
+    static void RDUP(uint32_t x)  {
         Trace(New,RidRP,RP,RP-1); New=0;
                        --RP;
-        Trace(0,RP & (RAMsize-1),RAM[RP & (RAMsize-1)],  R);
-                                 RAM[RP & (RAMsize-1)] = R; }
-    static void RDROP(void) {
-        Trace(New,RidR,R,  RAM[RP & (RAMsize-1)]);  New=0;
-                       R = RAM[RP & (RAMsize-1)];
-        Trace(0,RidRP, RP,RP+1);
-                       RP++; }
+        Trace(0,RP & (RAMsize-1),RAM[RP & (RAMsize-1)],  x);
+                                 RAM[RP & (RAMsize-1)] = x; }
+    static uint32_t RDROP(void) {
+        uint32_t r = RAM[RP & (RAMsize-1)];
+        Trace(New,RidRP, RP,RP+1);  New=0;
+                         RP++;  return r; }
 
 #else
     static uint32_t T;	 static uint32_t RP = 64;
     static uint32_t N;	 static uint32_t SP = 32;
-    static uint32_t R;	 static uint32_t UP = 64;
-    static uint32_t A;   static uint32_t DebugReg;
-    static uint32_t B;	 static uint32_t PC;
+    static uint32_t PC;  static uint32_t UP = 64;
+                         static uint32_t DebugReg;
 
     static uint32_t RAM[RAMsize];
     static uint32_t ROM[ROMsize];
@@ -102,8 +95,8 @@
     static void SDUP(void)  { RAM[--SP & (RAMsize-1)] = N;  N = T; }
     static void SDROP(void) { T = N;  N = RAM[SP++ & (RAMsize-1)]; }
     static void SNIP(void)  { N = RAM[SP++ & (RAMsize-1)]; }
-    static void RDUP(void)  { RAM[--RP & (RAMsize-1)] = R; }
-    static void RDROP(void) { R = RAM[RP++ & (RAMsize-1)]; }
+    static void RDUP(uint32_t x)  { RAM[--RP & (RAMsize-1)] = x; }
+    static uint32_t RDROP(void) { return RAM[RP++ & (RAMsize-1)]; }
 
 #endif // TRACEABLE
 
@@ -147,8 +140,7 @@ int EraseAXI4K(uint32_t address) { // EXPORTED
 // The only thing on the AXI bus here is SPI flash.
 // An external function could be added in the future for other stuff.
 // dest is a cell address, length is 0 to 255 meaning 1 to 256 words.
-static void SendAXI(unsigned int dest, unsigned int length) {
-    int32_t src = (A / 4) - ROMsize;
+static void SendAXI(int src, unsigned int dest, uint8_t length) {
     uint32_t old, data;     int i;
     if (src < 0) goto bogus;            // below RAM address
     if (src >= (RAMsize-length)) goto bogus;
@@ -169,8 +161,8 @@ bogus: tiffIOR = -9;                    // out of range
 // The only thing on the AXI bus here is SPI flash.
 // An external function could be added in the future for other stuff.
 // src is a cell address, length is 0 to 255 meaning 1 to 256 words.
-static void ReceiveAXI(unsigned int src, unsigned int length) {
-    int32_t dest = (A / 4) - ROMsize;
+static void ReceiveAXI(unsigned int src, int dest, uint8_t length) {
+    dest -= ROMsize;
     if (dest < 0) goto bogus;            // below RAM address
     if (dest >= (RAMsize-length)) goto bogus;
     if (src >= (AXIsize-length)) goto bogus;
@@ -179,33 +171,17 @@ static void ReceiveAXI(unsigned int src, unsigned int length) {
 bogus: tiffIOR = -9;                    // out of range
 }
 
-// Generic fetch from ROM or RAM: ROM is at the bottom, RAM wraps.
-static void FetchX (int32_t addr, int shift, int mask) {
-    SDUP();                     // push memory location onto stack
-#ifdef TRACEABLE
-    int32_t temp;
+// Generic fetch from ROM or RAM: ROM is at the bottom, RAM is in middle, AXI is at top
+static int32_t FetchX (int32_t addr, int shift, int mask) {
     if (addr < ROMsize) {
-        temp = (ROM[addr] >> shift) & mask;
+        return (ROM[addr] >> shift) & mask;
     } else {
         if (addr < (ROMsize + RAMsize)) {
-            temp = (RAM[addr-ROMsize] >> shift) & mask;
+            return (RAM[addr-ROMsize] >> shift) & mask;
         } else if (addr < AXIsize) {
-            temp = (AXI[addr] >> shift) & mask;
-        } else temp = 0;
+            return (AXI[addr] >> shift) & mask;
+        } else return 0;
     }
-    Trace(0, RidT, T, temp);
-    T = temp;
-#else
-    if (addr < ROMsize) {
-        T = (ROM[addr] >> shift) & mask;
-    } else {
-        if (addr < (ROMsize + RAMsize)) {
-            T = (RAM[addr-ROMsize] >> shift) & mask;
-        } else if (addr < AXIsize) {
-            T = (AXI[addr] >> shift) & mask;
-        } else T = 0;
-    }
-#endif // TRACEABLE
 }
 
 // Generic store to RAM: ROM is at the bottom, RAM wraps.
@@ -252,7 +228,7 @@ void VMpor(void) {  // EXPORTED
     cyclecount = 0;                     // cycles since POR
 #endif // TRACEABLE
     PC = 0;  RP = 64;  SP = 32;  UP = 64;
-    T=0;  N=0;  R=0;  A=0;  B=0;  DebugReg = 0;
+    T=0;  N=0;  DebugReg = 0;
     memset(RAM, 0, RAMsize);            // clear RAM
 }
 
@@ -291,232 +267,258 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 LastOp:
 #endif // TRACEABLE
         switch (opcode) {
-			case 000:									break;	// NOP
-			case 001: SDUP();							break;	// DUP
-			case 002:
+			case opNOP:									break;	// nop
+			case opDUP: SDUP();							break;	// dup
+			case opEXIT:
+                M = RDROP() >> 2;
 #ifdef TRACEABLE
-                Trace(New, RidPC, PC, R>>2);  New=0;
+                Trace(New, RidPC, PC, M);  New=0;
                 if (!Paused) cyclecount += 3;  // PC change flushes pipeline
 #endif // TRACEABLE
                 // PC is a cell address. The return stack works in bytes.
-                PC = R>>2;  RDROP();  slot = -1;        break;	// ;
-			case 003:
+                PC = M;  goto ex;                   	        // exit
+			case opADD:
 #ifdef TRACEABLE
                 Trace(New, RidT, T, T + N);  New=0;
 #endif // TRACEABLE
                 T = T + N;  SNIP();	                    break;	// +
-			case 004: slot = -1;					    break;	// NO:
-			case 005: SDUP();
-#ifdef TRACEABLE
-                Trace(New, RidT, T, R);  New=0;
-#endif // TRACEABLE
-                T = R;					                break;	// R@
-			case 006:
-#ifdef TRACEABLE
-                Trace(New, RidPC, PC, R);  New=0;
-                if (!Paused) cyclecount += 3;  // PC change flushes pipeline
-#endif // TRACEABLE
-                PC = R>>2;	 RDROP();      			    break;	// ;|
-			case 007:
-#ifdef TRACEABLE
-                Trace(New, RidT, T, T & N);  New=0;
-#endif // TRACEABLE
-                T = T & N;  SNIP();	                    break;	// AND
-			case 010: if (T != 0) slot = -1;  SDROP();	break;	// NIF:
-			case 011: M = N;  SDUP();
-#ifdef TRACEABLE
-                Trace(0, RidT, T, M);
-#endif // TRACEABLE
-                T = M;				                    break;	// OVER
-			case 012: SDUP();
-#ifdef TRACEABLE
-                Trace(0, RidT, T, R);
-#endif // TRACEABLE
-			    T = R;  RDROP();				        break;	// R>
-			case 013:
-#ifdef TRACEABLE
-                Trace(New, RidT, T, T ^ N);  New=0;
-#endif // TRACEABLE
-                T = T ^ N;  SNIP();	                    break;	// XOR
-			case 014: if (T == 0) slot = -1;  SDROP();	break;	// IF:
-			case 015: SDUP();
-#ifdef TRACEABLE
-                Trace(0, RidT, T, A);
-#endif // TRACEABLE
-                T = A;						            break;	// A
-			case 016: RDROP();				            break;	// RDROP
-
-			case 020: if ((signed)T < 0)  slot = -1;
-                SDROP();                                break;	// +IF:
-			case 021: M = N & 0xFF;
-                SendAXI(T/4, M);    // T is address, N is length-1
-#ifdef TRACEABLE
-                Trace(New, RidA, A, A + 4 * (M + 1));  New=0;
-                Trace(0, RidA, T, T + 4 * (M + 1));
-#endif // TRACEABLE
-				A += 4 * (M + 1);
-				T += 4 * (M + 1);			    		break;	// !AS
-			case 022: FetchX(A>>2, 0, 0xFFFFFFFF); 		break;  // @A
-			case 023: 									break;
-			case 024: if ((signed)T >= 0) slot = -1;
-                SDROP();                                break;  // -IF:
-			case 025:
-#ifdef TRACEABLE
-                Trace(New, RidT, T, T*2);  New=0;
-#endif // TRACEABLE
-                T = T*2;	        				    break;	// 2*
-			case 026: FetchX(A>>2, 0, 0xFFFFFFFF);
-#ifdef TRACEABLE
-                Trace(0, RidA, A, A+4);
-#endif // TRACEABLE
-			    A += 4;                                 break;  // @A+
-
-			case 030: if (R & 0x10000) slot = -1; // skip slots if done
-#ifdef TRACEABLE
-                Trace(New, RidR, R, R-1);  New=0;
-#endif // TRACEABLE
-                R--;		                            break;	// NEXT
-			case 031:
-#ifdef TRACEABLE
-                Trace(New, RidT, T, (unsigned) T / 2);  New=0;
-#endif // TRACEABLE
-			    T = T / 2;                              break;	// U2/
-			case 032: FetchX(A>>2, (A&2) * 8, 0xFFFF);  break;  // W@A
-			case 033:
-#ifdef TRACEABLE
-                Trace(New, RidA, A, T);  New=0;
-#endif // TRACEABLE
-			    A = T;	SDROP();		    			break;	// A!
-			case 034: if ((R&0x10000)==0) slot = 32;
-#ifdef TRACEABLE
-                Trace(New, RidR, R, R-1);  New=0;
-#endif // TRACEABLE
-                R--;		                            break;	// REPT
-			case 035:
-#ifdef TRACEABLE
-                Trace(New, RidT, T, T / 2);  New=0;
-#endif // TRACEABLE
-			    T = (signed)T / 2;                      break;	// 2/
-			case 036: FetchX(A>>2, (A&3) * 8, 0xFF);    break;  // C@A
-			case 037:
-#ifdef TRACEABLE
-                Trace(New, RidB, B, T);  New=0;
-#endif // TRACEABLE
-			    B = T;	SDROP();		    			break;	// B!
-
-			case 040: M = (IMM + SP + ROMsize)*4;               // SP
-GetPointer:
-#ifdef TRACEABLE
-                Trace(New, RidA, A, M);  New=0;
-#endif // TRACEABLE
-			    A = M;  goto ex;
-			case 041:
-#ifdef TRACEABLE
-                Trace(New, RidT, T, ~T);  New=0;
-#endif // TRACEABLE
-			    T = ~T;                                 break;	// COM
-			case 042: StoreX(A>>2, T, 0, 0xFFFFFFFF);   break;  // !A
-			case 043:
-#ifdef TRACEABLE
-                Trace(New, RidRP, RP, T>>2);  New=0;
-#endif // TRACEABLE
-			    RP = (uint8_t) (T>>2);  SDROP();    	break;	// RP!
-			case 044: M = (IMM + RP + ROMsize)*4;               // RP
-                goto GetPointer;
-			case 045: M = T; T=DebugReg; DebugReg=M;	break;	// PORT
-			case 046: StoreX(B>>2, T, 0, 0xFFFFFFFF); 		    // !B+
-#ifdef TRACEABLE
-                Trace(0, RidB, B, B + 4);
-#endif // TRACEABLE
-				B += 4;                                 break;
-			case 047:
-#ifdef TRACEABLE
-                Trace(New, RidSP, SP, T>>2);  New=0;
-#endif // TRACEABLE
-                // SP! does not post-drop
-			    SP = (uint8_t) (T>>2);          	    break;	// SP!
-
-			case 050: M = (IMM + UP + ROMsize)*4;  	            // UP
-                goto GetPointer;
-
-			case 052: StoreX(A>>2, T, (A&2)*8, 0xFFFF); break;  // W!A
-			case 053:
-#ifdef TRACEABLE
-                Trace(New, RidUP, UP, T>>2);  New=0;
-#endif // TRACEABLE
-			    UP = (uint8_t) (T>>2);  SDROP();	    break;	// UP!
-            case 054:
-#ifdef TRACEABLE
-                Trace(New, RidT, T, (T<<24) | (IMM & 0xFFFFFF));  New=0;
-#endif // TRACEABLE
-                T = (T<<24) | (IMM & 0xFFFFFF);
-                goto ex;                                        // SH24
-			case 056: StoreX(A>>2, T, (A&3)*8, 0xFF);   break;  // C!A
-
-			case 060: M = UserFunction (T, N, IMM);             // USER
+			case opSKIP: slot = -1;					    break;	// no:
+			case opUSER: M = UserFunction (T, N, IMM);          // user
 #ifdef TRACEABLE
                 Trace(New, RidT, T, M);  New=0;
 #endif // TRACEABLE
                 T = M;  goto ex;
-
-			case 063: SNIP();							break;	// NIP
-			case 064:
+			case opDROP: SDROP();		    	        break;	// drop
+			case opPOP:  SDUP();  M = RDROP();
 #ifdef TRACEABLE
-                Trace(New, ~9, PC, IMM);  New=0;
-                if (!Paused) cyclecount += 3;  // PC change flushes pipeline
+                Trace(0, RidT, T, M);
 #endif // TRACEABLE
-                // Jumps and calls use cell addressing
-			    PC = IMM;  goto ex;                             // JUMP
-
-			case 066: M = N & 0xFF;
-                ReceiveAXI(T/4, M);
+			    T = M;      				            break;	// r>
+			case opTwoDiv:
 #ifdef TRACEABLE
-                Trace(New, RidA, A, A + 4 * (M + 1));  New=0;
-                Trace(0, RidA, T, T + 4 * (M + 1));
+                Trace(New, RidT, T, T / 2);  New=0;
 #endif // TRACEABLE
-				A += 4 * (M + 1);
-				T += 4 * (M + 1);			    		break;	// @AS
-			case 070: SDUP();
-#ifdef TRACEABLE
-                Trace(0, RidT, T, IMM);
-#endif // TRACEABLE
-                T = IMM;  goto ex;                              // LIT
-
-			case 072: SDROP();					        break;	// DROP
-			case 073: addr = SP & (RAMsize-1);  M = RAM[addr];  // ROT
-#ifdef TRACEABLE
-                Trace(New, addr, RAM[addr], N);  RAM[addr]=N;
-                Trace(0, RidN, N, T);    N = T;
-                Trace(0, RidT, T, M);    T = M;  New=0; break;
-#else
-                RAM[addr]=N;  N=T;  T=M;  break;
-#endif // TRACEABLE
-			case 074: RDUP();                           	    // CALL
-#ifdef TRACEABLE
-                Trace(0, RidR, R, PC);    R = PC;
-                Trace(0, RidPC, PC, IMM);  PC = IMM;  goto ex;
-                if (!Paused) cyclecount += 3;  // PC change flushes pipeline
-#else
-                R = PC<<2;  PC = IMM;  goto ex;
-#endif // TRACEABLE
-			case 075:
+			    T = (signed)T / 2;                      break;	// 2/
+			case opOnePlus:
 #ifdef TRACEABLE
                 Trace(New, RidT, T, T + 1);  New=0;
 #endif // TRACEABLE
 			    T = T + 1;                              break;	// 1+
-			case 076: RDUP();	                                // R>
+			case opPUSH:  RDUP(T);  SDROP();            break;  // >r
+			case opSUB:
 #ifdef TRACEABLE
-                Trace(0, RidR, R, T);
+                Trace(New, RidT, T, T - N);  New=0;
 #endif // TRACEABLE
-                R = T;
-                SDROP();      	                        break;
-			case 077: M = N;  	                                // SWAP
+                T = T - N;  SNIP();	                    break;	// -
+			case opCstorePlus:    /* ( n a -- a' ) */
+                StoreX(T>>2, N, (T&3)*8, 0xFF);
+#ifdef TRACEABLE
+                Trace(0, RidT, T, T+1);
+#endif // TRACEABLE
+                T += 1;   SNIP();                       break;  // c!+
+			case opCfetchPlus:  SDUP();  /* ( a -- a' c ) */
+                M = FetchX(N>>2, (N&3) * 8, 0xFF);
+#ifdef TRACEABLE
+                Trace(0, RidT, T, M);
+                Trace(0, RidN, N, N+1);
+#endif // TRACEABLE
+                T = M;
+                N += 1;                                 break;  // c@+
+			case opUtwoDiv:
+#ifdef TRACEABLE
+                Trace(New, RidT, T, (unsigned) T / 2);  New=0;
+#endif // TRACEABLE
+			    T = T / 2;                              break;	// u2/
+			case opTwoPlus:
+#ifdef TRACEABLE
+                Trace(New, RidT, T, T + 2);  New=0;
+#endif // TRACEABLE
+			    T = T + 2;                              break;	// 2+
+			case opOVER: M = N;  SDUP();
+#ifdef TRACEABLE
+                Trace(0, RidT, T, M);
+#endif // TRACEABLE
+                T = M;				                    break;	// over
+			case opJUMP:
+#ifdef TRACEABLE
+                Trace(New, RidPC, PC, IMM);  New=0;
+                if (!Paused) cyclecount += 3;  // PC change flushes pipeline
+#endif // TRACEABLE
+                // Jumps and calls use cell addressing
+			    PC = IMM;  goto ex;                             // jump
+			case opWstorePlus:    /* ( n a -- a' ) */
+                StoreX(T>>2, N, (T&2)*8, 0xFFFF);
+#ifdef TRACEABLE
+                Trace(0, RidT, T, T+2);
+#endif // TRACEABLE
+                T += 2;   SNIP();                       break;  // w!+
+			case opWfetchPlus:  SDUP();  /* ( a -- a' c ) */
+                M = FetchX(N>>2, (N&2) * 8, 0xFFFF);
+#ifdef TRACEABLE
+                Trace(0, RidT, T, M);
+                Trace(0, RidN, N, N+2);
+#endif // TRACEABLE
+                T = M;
+                N += 2;                                 break;  // w@+
+			case opAND:
+#ifdef TRACEABLE
+                Trace(New, RidT, T, T & N);  New=0;
+#endif // TRACEABLE
+                T = T & N;  SNIP();	                    break;	// and
+            case opLitX:
+#ifdef TRACEABLE
+                Trace(New, RidT, T, (T<<24) | (IMM & 0xFFFFFF));  New=0;
+#endif // TRACEABLE
+                T = (T<<24) | (IMM & 0xFFFFFF);
+                goto ex;                                        // litx
+			case opSWAP: M = N;                                 // swap
 #ifdef TRACEABLE
                 Trace(New, RidN, N, T);  N = T;  New=0;
                 Trace(0, RidT, T, M);    T = M;         break;
 #else
                 N = T;  T = M;  break;
 #endif // TRACEABLE
+			case opCALL:  RDUP(PC<<2);                        	// call
+#ifdef TRACEABLE
+                Trace(0, RidPC, PC, IMM);  PC = IMM;
+                if (!Paused) cyclecount += 3;  // PC change flushes pipeline
+                goto ex;
+#else
+                PC = IMM;  goto ex;
+#endif // TRACEABLE
+            case opZeroEquals:
+                M=0;  if (T=0) M=-1;
+#ifdef TRACEABLE
+                Trace(New, RidT, T, M);  New=0;
+#endif // TRACEABLE
+                T = M;                                  break;  // 0=
+			case opWfetch:  /* ( a -- w ) */
+                M = FetchX(N>>2, (N&2) * 8, 0xFFFF);
+#ifdef TRACEABLE
+                Trace(0, RidT, T, M);
+#endif // TRACEABLE
+                T = M;                                  break;  // w@
+			case opXOR:
+#ifdef TRACEABLE
+                Trace(New, RidT, T, T ^ N);  New=0;
+#endif // TRACEABLE
+                T = T ^ N;  SNIP();	                    break;	// xor
+			case opREPT:  slot = 0;                     break;	// rept
+			case opFourPlus:
+#ifdef TRACEABLE
+                Trace(New, RidT, T, T + 4);  New=0;
+#endif // TRACEABLE
+			    T = T + 4;                              break;	// 4+
+            case opMiBran:
+                if ((signed)T < 0) PC = IMM; SDROP(); goto ex;  // -bran
+			case opADDC:  // todo: add carry
+                M = N;
+#ifdef TRACEABLE
+                Trace(New, RidT, T, T + M);  New=0;
+#endif // TRACEABLE
+                T = T + M;  SNIP();	                    break;	// +c
+			case opStorePlus:    /* ( n a -- a' ) */
+                StoreX(T>>2, N, 0, 0xFFFFFFFF);
+#ifdef TRACEABLE
+                Trace(0, RidT, T, T+4);
+#endif // TRACEABLE
+                T += 4;   SNIP();                       break;  // !+
+			case opFetchPlus:  SDUP();  /* ( a -- a' c ) */
+                M = FetchX(N>>2, 0, 0xFFFFFFFF);
+#ifdef TRACEABLE
+                Trace(0, RidT, T, M);
+                Trace(0, RidN, N, N+4);
+#endif // TRACEABLE
+                T = M;
+                N += 4;                                 break;  // @+
+			case opTwoStar:
+#ifdef TRACEABLE
+                Trace(New, RidT, T, T * 2);  New=0;
+#endif // TRACEABLE
+                T = T * 2;	        				    break;	// 2*
+			case opMiREPT:
+                if ((T&0x10000)==0) slot = 0;           break;	// -rept
+			case opRP: M = (RP + ROMsize)*4;                    // rp
+                goto GetPointer;
+			case opSUBC:
+                M = N;  // todo: add carry
+#ifdef TRACEABLE
+                Trace(New, RidT, T, T - M);  New=0;
+#endif // TRACEABLE
+                T = T - M;  SNIP();	                    break;	// -c
+			case opSetRP:
+#ifdef TRACEABLE
+                Trace(New, RidRP, RP, T>>2);  New=0;
+#endif // TRACEABLE
+			    RP = (uint8_t) (T>>2);  SDROP();    	break;	// rp!
+			case opFetch:  /* ( a -- n ) */
+                M = FetchX(N>>2, 0, 0xFFFFFFFF);
+#ifdef TRACEABLE
+                Trace(0, RidT, T, M);
+#endif // TRACEABLE
+                T = M;                                  break;  // @
+            case opDtwoStar:
+#ifdef TRACEABLE
+                Trace(0, RidN, N, N*2);
+                Trace(0, RidT, T, (T*2) | ((N>>31)&1));
+#endif // TRACEABLE
+                N = N * 2;
+                T = (T*2) | ((N>>31)&1);                break;  // d2*
+			case opSKIPGE:
+                if ((T & 0x10000)==0)  slot = -1;       break;  // -if:
+			case opSP: M = (SP + ROMsize)*4;                    // sp
+GetPointer:     SDUP();
+#ifdef TRACEABLE
+                Trace(0, RidT, T, M);
+#endif // TRACEABLE
+			    T = M;                                  break;
+			case opFetchAS:
+                ReceiveAXI(N/4, T/4, IMM);              break;	// @as
+			case opSetSP:
+                M = (T>>2) & (RAMsize-1);
+#ifdef TRACEABLE
+                Trace(New, RidSP, SP, M);  New=0;
+#endif // TRACEABLE
+                // SP! does not post-drop
+			    SP = M;         	                    break;	// sp!
+			case opCfetch:  /* ( a -- w ) */
+                M = FetchX(N>>2, (N&3) * 8, 0xFF);
+#ifdef TRACEABLE
+                Trace(0, RidT, T, M);
+#endif // TRACEABLE
+                T = M;                                  break;  // c@
+			case opPORT: M = T;
+#ifdef TRACEABLE
+                Trace(0, RidT, T, DebugReg);
+                Trace(0, RidDbg, DebugReg, M);
+#endif // TRACEABLE
+                T=DebugReg;  DebugReg=M;	            break;	// port
+			case opSKIPLT: if (T & 0x10000) slot = -1;	break;	// +if:
+			case opLIT: SDUP();
+#ifdef TRACEABLE
+                Trace(0, RidT, T, IMM);
+#endif // TRACEABLE
+                T = IMM;  goto ex;                              // lit
+			case opUP: M = (UP + ROMsize)*4;  	                // up
+                goto GetPointer;
+			case opStoreAS:  // ( src dest -- src dest ) imm length
+                SendAXI(N/4, T/4, IMM);  goto ex;           	// !as
+			case opSetUP:
+#ifdef TRACEABLE
+                Trace(New, RidUP, UP, T>>2);  New=0;
+#endif // TRACEABLE
+			    UP = (uint8_t) (T>>2);  SDROP();	    break;	// up!
+			case opRfetch: SDUP();
+                M = RAM[RP & (RAMsize-1)];
+#ifdef TRACEABLE
+                Trace(New, RidT, T, M);  New=0;
+#endif // TRACEABLE
+                T = M;					                break;	// r@
+			case opCOM:
+#ifdef TRACEABLE
+                Trace(New, RidT, T, ~T);  New=0;
+#endif // TRACEABLE
+			    T = ~T;                                 break;	// com
 			default:                           		    break;	//
 		}
 	} while (slot>=0);

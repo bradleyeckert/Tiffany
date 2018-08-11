@@ -42,7 +42,7 @@ op[5:3] |           | T+offset  | XP / N    | T +- N    | user      | 0= / N    
 | **2** | no:       | 2+        | **-bran** | **jmp**   |           | w!+       | w@+       | and       |
 | **3** |           | **litx**  | >r        | **call**  |           | 0=        | w@        | xor       |
 | **4** | rept      | 4+        | over      | +c        |           | !+        | @+        | 2*        |
-| **5** | +rept     |           | rp        | -c        |           | rp!       | @         | d2*       |
+| **5** | -rept     |           | rp        | -c        |           | rp!       | @         | d2*       |
 | **6** | -if:      |           | sp        | **@as**   |           | sp!       | c@        | port      |
 | **7** | +if:      | **lit**   | up        | **!as**   |           | up!       | r@        | invert    |
 

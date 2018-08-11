@@ -17,15 +17,26 @@ uint32_t DbgPC;                         // shared with vmaccess.c
 uint32_t OpcodeCount[64];               // static instruction count
 
 static char names[64][6] = {
-    "nop",   "dup",  "exit", "+",   "no:",   "r@",   "exit:", "and",
-    "nif:",  "over", "r>",   "xor", "if:",   "a",    "rdrop", "---",
-    "+if:",  "!as",  "@a",   "---", "-if:",  "2*",   "@a+",   "---",
-    "next:", "u2/",  "w@a",  "a!",  "rept",  "2/",   "c@a",   "b!",
-    "sp",    "com",  "!a",   "rp!", "rp",    "port", "!b+",   "sp!",
-    "up",    "---",  "w!a",  "up!", "sh24",  "---",  "c!a",   "---",
-    "user",  "---",  "---",  "nip", "jump",  "---",  "@as",   "---",
-    "lit",   "---", "drop", "rot", "call",  "1+",   ">r",    "swap"
+    "nop",   "dup",  "exit",  "+",    "user", "drop", "r>",  "2/",
+    "?",     "1+",   "swap",  "-",    "?",    "c!+",  "c@+", "u2/",
+    "no:",   "2+",   "-bran", "jmp",  "?",    "w!+",  "w@+", "and",
+    "?",     "litx", ">r",    "call", "?",    "0=",   "w@",  "xor",
+    "rept",  "4+",   "over",  "?",    "?",    "!+",   "@+",  "2*",
+    "-rept", "?",    "rp",    "?",    "?",    "rp!",  "@",   "d2*",
+    "-if:",  "?",    "sp",    "@as",  "?",    "sp!",  "c@",  "port",
+    "+if",   "lit",  "up",    "!as",  "?",    "up!",  "r@",  "com"
 };
+
+/*
+| **0** | nop       | dup       | exit      | +         | user      | drop      | r>        | 2/        |
+| **1** |           | 1+        | swap      | -         |           | c!+       | c@+       | u2/       |
+| **2** | no:       | 2+        | **-bran** | **jmp**   |           | w!+       | w@+       | and       |
+| **3** |           | **litx**  | >r        | **call**  |           | 0=        | w@        | xor       |
+| **4** | rept      | 4+        | over      | +c        |           | !+        | @+        | 2*        |
+| **5** | -rept     |           | rp        | -c        |           | rp!       | @         | d2*       |
+| **6** | -if:      |           | sp        | **@as**   |           | sp!       | c@        | port      |
+| **7** | +if:      | **lit**   | up        | **!as**   |           | up!       | r@        | invert    |
+ */
 
 char * OpName(unsigned int opcode) {
     return names[opcode&0x3F];
@@ -205,7 +216,7 @@ static void HardLit (int32_t N) {
         }
     } else {
         Explicit(opLIT, (N>>24));       // split into 8 and 24
-        Explicit(opShift24, (N & 0xFFFFFF));
+        Explicit(opLitX, (N & 0xFFFFFF));
     }
 }
 
@@ -334,58 +345,47 @@ void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     AddImplicit(opDUP    , "dup");
 //    AddImplicit(opEXIT   , "exit");
     AddImplicit(opADD    , "+");
-    AddImplicit(opR      , "r@");
+    AddImplicit(opRfetch , "r@");
     AddImplicit(opAND    , "and");
     AddImplicit(opOVER   , "over");
     AddImplicit(opPOP    , "r>");
     AddImplicit(opXOR    , "xor");
-    AddImplicit(opA      , "a");
-    AddImplicit(opRDROP  , "rdrop");
     AddImplicit(opStoreAS, "!as");
-    AddImplicit(opFetchA , "@a");
     AddImplicit(opTwoStar, "2*");
-    AddImplicit(opFetchAplus, "@a+");
-    AddImplicit(opRSHIFT1, "u2/");
+    AddImplicit(opCfetchPlus, "c@+");
+    AddImplicit(opCfetch , "c@");
+    AddImplicit(opWfetchPlus, "w@+");
+    AddImplicit(opWfetch , "w@");
+    AddImplicit(opUtwoDiv, "u2/");
 //    AddImplicit(opWfetchA, "w@a");
-    AddImplicit(opSetA   , "a!");
     AddImplicit(opREPT   , "rept");
     AddImplicit(opTwoDiv , "2/");
 //    AddImplicit(opCfetchA, "c@a");
-    AddImplicit(opSetB   , "b!");
     AddExplicit(opSP     , "sp");
     AddImplicit(opCOM    , "com");
-    AddImplicit(opStoreA , "!a");
     AddImplicit(opSetRP  , "rp!");
     AddExplicit(opRP     , "rp");
     AddImplicit(opPORT   , "port");
-    AddImplicit(opStoreBplus, "!b+");
     AddImplicit(opSetSP  , "sp!");
     AddExplicit(opUP     , "up");
 //    AddImplicit(opWstoreA, "w!a");
     AddImplicit(opSetUP  , "up!");
-    AddExplicit(opShift24, "sh24");
+    AddExplicit(opLitX   , "litx");
 //    AddImplicit(opCstoreA, "c!a");
     AddExplicit(opUSER   , "user");
-    AddImplicit(opNIP    , "nip");
     AddExplicit(opJUMP   , "jump");
     AddImplicit(opFetchAS, "@as");
     AddExplicit(opLIT    , "lit");
     AddImplicit(opDROP   , "drop");
-    AddImplicit(opROT    , "rot");
     AddExplicit(opCALL   , "call");
     AddImplicit(opOnePlus, "1+");
     AddImplicit(opPUSH   , ">r");
     AddImplicit(opSWAP   , "swap");
     AddSkip    (opSKIP   , "no:");
-    AddSkip    (opSKIPNZ , "nif:");
-    AddSkip    (opSKIPZ  , "if:");
-    AddSkip    (opSKIPMI , "+if:");
+    AddSkip    (opSKIPLT , "+if:");
     AddSkip    (opSKIPGE , "-if:");
-    AddSkip    (opNEXT   , "next");
     AddHardSkip(opSKIP   , "|no");
-    AddHardSkip(opSKIPNZ , "|nif");
-    AddHardSkip(opSKIPZ  , "|if");
-    AddHardSkip(opSKIPMI , "|+if");
+    AddHardSkip(opSKIPLT , "|+if");
     AddHardSkip(opSKIPGE , "|-if");
     AddEqu     (HeadPointerOrigin, "hp0");  // bottom of head space
     AddEqu     (BASE     , "base");         // tiff.h variable names

@@ -57,7 +57,9 @@ int main(int argc, char *argv[]) {
             } else goto go;
         } else goto go;
     }
-go: if (argc>Arg) {
+go:
+    vmTEST();  goto bye;
+    if (argc>Arg) {
         tiffQUIT(argv[Arg]);
     } else {
         tiffQUIT(NULL);
