@@ -234,7 +234,7 @@ void VMpor(void) {  // EXPORTED
 
 uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 	uint32_t M;  int slot;
-	unsigned int opcode, addr;
+	unsigned int opcode;
 // The PC is incremented at the same time the IR is loaded. Slot0 is next clock.
 // The instruction group returned from memory will be latched in after the final
 // slot executes. In the VM, that is simulated by a return from this function.
@@ -387,7 +387,7 @@ LastOp:
                 PC = IMM;  goto ex;
 #endif // TRACEABLE
             case opZeroEquals:
-                M=0;  if (T=0) M=-1;
+                M=0;  if (T==0) M=-1;
 #ifdef TRACEABLE
                 Trace(New, RidT, T, M);  New=0;
 #endif // TRACEABLE
@@ -470,7 +470,7 @@ LastOp:
                 N = N * 2;
                 T = (T*2) | ((N>>31)&1);                break;  // d2*
 			case opSKIPGE:
-                if ((T & 0x10000)==0)  goto ex;         break;  // -if:
+                if ((T & 0x10000)==0)  goto ex;                 // -if:
 			case opSP: M = (SP + ROMsize)*4;                    // sp
 GetPointer:     SDUP();
 #ifdef TRACEABLE

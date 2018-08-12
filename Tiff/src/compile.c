@@ -409,10 +409,6 @@ static void AddHardSkip(int opcode, char *name) {
     CommaH(opcode);
     CommaHeader(name, ~4, ~7, 0, 0);
 }
-static void AddEqu(uint32_t n, char *name) {
-    CommaH(n);
-    CommaHeader(name, ~0, ~1, 0, 0x40); // not anonymous header
-}
 void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     InitIR();
     memset(OpcodeCount, 0, 64);         // clear static opcode counters
