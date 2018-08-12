@@ -17,7 +17,6 @@ void tiffMACRO (void);                  // convert current definition to a macro
 void tiffCALLONLY (void);                 // tag current definition as call-only
 void tiffANON (void);                     // tag current definition as anonymous
 void ListOpcodeCounts(void);             // list the static opcode count profile
-//char * OpName(unsigned int opcode);                     // return name of opcode
 void DisassembleIR(uint32_t IR);             // disassemble an instruction group
 void CompIf (void);
 void CompThen (void);

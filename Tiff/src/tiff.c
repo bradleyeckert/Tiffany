@@ -10,7 +10,7 @@
 #include <ctype.h>
 #include <sys/time.h>
 
-#define MaxKeywords 50
+#define MaxKeywords 256
 #define MaxFiles 20
 #define File FileStack[filedepth]
 
@@ -56,6 +56,13 @@ void tiffCPUon (void) {                 // enable CPU display mode
 void tiffCPUoff (void) {                // disable CPU display mode
     ShowCPU = 0;
 }
+void tiffCISon (void) {                 // enable CPU display mode
+    CaseInsensitive = 1;
+}
+void tiffCISoff (void) {                // disable CPU display mode
+    CaseInsensitive = 0;
+}
+
 void tiffCPUgo (void) {                 // Enter the single stepper
     ShowCPU = 1;
     vmTEST();
@@ -241,7 +248,7 @@ void tiffSEE (void) {                   // disassemble word
     uint32_t ht = Htick();
     uint32_t addr =  FetchCell(ht-4) & 0xFFFFFF;
     uint8_t length = FetchByte(ht+3);
-    Disassemble(addr, length);
+    if (ht) Disassemble(addr, length);
 }
 
 void tiffSTATS (void) {
@@ -258,12 +265,6 @@ void tiffSTATS (void) {
            hp, AXIsize*4, hp-HeadPointerOrigin, AXIsize*4-HeadPointerOrigin);
 }
 
-// void tiffHEX (void) {                   // base 16
-//     StoreCell(16, BASE);
-// }
-// void tiffDECIMAL (void) {               // base 16
-//     StoreCell(10, BASE);
-// }
 
 int keywords = 0;                       // # of keywords added at startup
 typedef void (*VoidFn)();
@@ -271,13 +272,29 @@ typedef void (*VoidFn)();
 struct Keyword {                        // host keywords only have
     char  name[24];                     // a name and
     VoidFn Function;                    // a C function
+    uint32_t w;                         // optional data
 };
 struct Keyword HostWord[MaxKeywords];
+
+int thisKeyword;                        // index of keyword being executed
+
+void tiffEquate(void) {                 // runtime part of equates
+    uint32_t x = HostWord[thisKeyword].w;
+    if (FetchCell(STATE)) Literal(x);
+    else PushNum(x);
+}
 
 void AddKeyword(char *name, void (*func)()) {
     if (keywords<MaxKeywords){          // ignore new keywords if full
         strcpy (HostWord[keywords].name, name);
         HostWord[keywords++].Function = func;
+    } else printf("\nPlease increase MaxKeywords and rebuild.");
+}
+void AddEquate(char *name, uint32_t value) {
+    if (keywords<MaxKeywords){          // ignore new keywords if full
+        strcpy (HostWord[keywords].name, name);
+        HostWord[keywords].w = value;
+        HostWord[keywords++].Function = tiffEquate;
     } else printf("\nPlease increase MaxKeywords and rebuild.");
 }
 
@@ -303,6 +320,8 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("-cpu",    tiffCPUoff);
     AddKeyword("cpu",     tiffCPUgo);
     AddKeyword("cls",     tiffCLS);
+    AddKeyword("CaseSensitive",   tiffCISoff);
+    AddKeyword("CaseInsensitive", tiffCISon);
     AddKeyword("include", tiffINCLUDE);
     AddKeyword("equ",     tiffEQU);
     AddKeyword("words",   tiffWORDS);
@@ -327,15 +346,89 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("save-rom", tiffSAVEcrom);
     AddKeyword("save-flash", tiffSAVEcaxi);
     AddKeyword("iwords",  ListKeywords);    // internal words, after the dictionary
+    AddEquate ("op_dup",   opDUP);
+    AddEquate ("op_exit",  opEXIT);
+    AddEquate ("op_+",     opADD);
+    AddEquate ("op_user",  opUSER);
+    AddEquate ("op_drop",  opDROP);
+    AddEquate ("op_r>",    opPOP);
+    AddEquate ("op_2/",    opTwoDiv);
+    AddEquate ("op_1+",    opOnePlus);
+    AddEquate ("op_swap",  opSWAP);
+    AddEquate ("op_-",     opSUB);
+    AddEquate ("op_c!+",   opCstorePlus);
+    AddEquate ("op_c@+",   opCfetchPlus);
+    AddEquate ("op_u2/",   opUtwoDiv);
+    AddEquate ("op_no:",   opSKIP);
+    AddEquate ("op_2+",    opTwoPlus);
+    AddEquate ("op_-bran", opMiBran);
+    AddEquate ("op_jmp",   opJUMP);
+    AddEquate ("op_w!+",   opWstorePlus);
+    AddEquate ("op_w@+",   opWfetchPlus);
+    AddEquate ("op_and",   opAND);
+    AddEquate ("op_litx",  opLitX);
+    AddEquate ("op_>r",    opPUSH);
+    AddEquate ("op_call",  opCALL);
+    AddEquate ("op_0=",    opZeroEquals);
+    AddEquate ("op_w@",    opWfetch);
+    AddEquate ("op_xor",   opXOR);
+    AddEquate ("op_rept",  opREPT);
+    AddEquate ("op_4+",    opFourPlus);
+    AddEquate ("op_over",  opOVER);
+    AddEquate ("op_+",     opADDC);
+    AddEquate ("op_!+",    opStorePlus);
+    AddEquate ("op_@+",    opFetchPlus);
+    AddEquate ("op_2*",    opTwoStar);
+    AddEquate ("op_-rept", opMiREPT);
+    AddEquate ("op_rp",    opRP);
+    AddEquate ("op_-c",    opSUBC);
+    AddEquate ("op_rp!",   opSetRP);
+    AddEquate ("op_@",     opFetch);
+    AddEquate ("op_-if:",  opSKIPGE);
+    AddEquate ("op_sp",    opSP);
+    AddEquate ("op_@as",   opFetchAS);
+    AddEquate ("op_sp!",   opSetSP);
+    AddEquate ("op_c@",    opCfetch);
+    AddEquate ("op_port",  opPORT);
+    AddEquate ("op_+if:",  opSKIPLT);
+    AddEquate ("op_lit",   opLIT);
+    AddEquate ("op_up",    opUP);
+    AddEquate ("op_!as",   opStoreAS);
+    AddEquate ("op_up!",   opSetUP);
+    AddEquate ("op_r@",    opRfetch);
+    AddEquate ("op_com",   opCOM);
+    AddEquate ("hp0", HeadPointerOrigin);  // bottom of head space
+    AddEquate ("base",       BASE);         // tiff.h variable names
+    AddEquate ("hp",         HP);
+    AddEquate ("cp",         CP);
+    AddEquate ("dp",         DP);
+    AddEquate ("state",      STATE);
+    AddEquate ("current",    CURRENT);
+    AddEquate ("source-id",  SOURCEID);
+    AddEquate ("personality",PERSONALITY);
+    AddEquate ("tibs",       TIBS);
+    AddEquate ("tibb",       TIBB);
+    AddEquate (">in",        TOIN);
+    AddEquate ("c_wids",     WIDS);
+    AddEquate ("c_called",   CALLED);
+    AddEquate ("c_slot",     SLOT);
+    AddEquate ("c_litpend",  LITPEND);
+    AddEquate ("c_colondef", COLONDEF);
+    AddEquate ("calladdr",   CALLADDR);
+    AddEquate ("nextlit",    NEXTLIT);
+    AddEquate ("iracc",      IRACC);
+    AddEquate ("context",    CONTEXT);
+    AddEquate ("forthwid",   FORTHWID);
+    AddEquate ("tib",        TIB);
+    AddEquate ("head",       HEAD);
 
-//    AddKeyword("hex", tiffHEX);
-//    AddKeyword("decimal", tiffDECIMAL);
 }
 
 int NotKeyword (char *key) {            // do a command, return 0 if found
     int i = 0;
     for (i=0; i<keywords; i++) {        // scan the list
         if (strcmp(key, HostWord[i].name) == 0) {
+            thisKeyword = i;
             HostWord[i].Function();
             return 0;
         }

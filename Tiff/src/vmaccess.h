@@ -2,12 +2,12 @@
 #include <stdint.h>
 #include "config.h"
 
-extern uint32_t DbgPC; // last PC returned by VMstep
+extern uint32_t DbgPC;                             // last PC returned by VMstep
+extern int CaseInsensitive;                               // 0 if case sensitive
 
 uint32_t DbgGroup (uint32_t op0, uint32_t op1,   // Execute an instruction group
                    uint32_t op2, uint32_t op3, uint32_t op4);
 
-uint32_t FetchSP (void);                                    // Get stack pointer
 uint32_t PopNum (void);                                    // Pop from the stack
 void PushNum (uint32_t N);                                  // Push to the stack
 void StoreROM (uint32_t N, uint32_t addr);                       // Write to ROM
@@ -33,7 +33,9 @@ void CommaHeader (char *name, uint32_t xte, uint32_t xtc, int Size, int flags);
 
 uint32_t SearchWordlist(char *name, uint32_t WID);
 uint32_t tiffFIND (void);                     // ( addr len -- addr len | 0 ht )
-void tiffWords (char *substring, int verbosity);
+void tiffWords (char *substring, int verbosity);   // list words in search order
+char *GetXtName(uint32_t xt);                              // look up name of xt
+
 void ReplaceXTs(void);    // Replace XTs with executable code ( NewXT OldXT -- )
 
 void CreateTrace(void);                  // allocate memory for the trace buffer

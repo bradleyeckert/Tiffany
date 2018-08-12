@@ -29,6 +29,8 @@
 #define ErrorColor      "\033[1;31m"
 #define FilePathColor   "\033[1;34m"
 #define FileLineColor   "\033[1;32m"
+#define DisJumpColor    "\033[1;31m"
+#define DisImmedColor   "\033[1;35m"
 #define AnonAttribute   "\033[1;4m"
 #define NoJumpAttribute "\033[1;34m"
 #endif

@@ -40,6 +40,15 @@ static int isImmediate(unsigned int opcode) {
         default: return 0;
     }
 }
+// Determine if opcode uses immediate address
+static int isImmAddress(unsigned int opcode) {
+    switch (opcode) {
+        case opMiBran:
+        case opCALL:
+        case opJUMP: return 1;
+        default: return 0;
+    }
+}
 
 void DisassembleIR(uint32_t IR) {
     int slot = 26;  // 26 20 14 8 2
@@ -47,9 +56,31 @@ void DisassembleIR(uint32_t IR) {
     while (slot>=0) {
         opcode = (IR >> slot) & 0x3F;
         NextOp: if (isImmediate(opcode)) {
-            printf("0x%X ", IR & ~(0xFFFFFFFF << slot));
+            uint32_t imm = IR & ~(0xFFFFFFFF << slot);
+            if (isImmAddress(opcode)) {
+                char *name = GetXtName(imm<<2);
+                if (name) {
+#ifdef DisJumpColor
+                    printf(DisJumpColor);
+#endif
+                    printf("%s ", name);
+                } else {
+#ifdef DisImmedColor
+                    printf(DisImmedColor);
+#endif
+                    printf("0x%X ", imm<<2);
+                }
+            } else {
+#ifdef FileLineColor
+                printf(FileLineColor);
+#endif
+                printf("0x%X ", imm);
+            }
             slot=0;
         }
+#ifdef InterpretColor
+        printf(InterpretColor);
+#endif
         printf("%s ", OpName(opcode));
         slot -= 6;
     }
@@ -437,28 +468,6 @@ void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     AddHardSkip(opSKIP   , "|no");
     AddHardSkip(opSKIPLT , "|+if");
     AddHardSkip(opSKIPGE , "|-if");
-    AddEqu     (HeadPointerOrigin, "hp0");  // bottom of head space
-    AddEqu     (BASE     , "base");         // tiff.h variable names
-    AddEqu     (HP       , "hp");
-    AddEqu     (CP       , "cp");
-    AddEqu     (DP       , "dp");
-    AddEqu     (STATE    , "state");
-    AddEqu     (CURRENT  , "current");
-    AddEqu     (SOURCEID , "source-id");
-    AddEqu     (PERSONALITY, "personality");
-    AddEqu     (TIBS     , "tibs");
-    AddEqu     (TIBB     , "tibb");
-    AddEqu     (TOIN     , ">in");
-    AddEqu     (WIDS     , "c_wids");
-    AddEqu     (CALLED   , "c_called");
-    AddEqu     (SLOT     , "c_slot");
-    AddEqu     (LITPEND  , "c_litpend");
-    AddEqu     (COLONDEF , "c_colondef");
-    AddEqu     (CALLADDR , "calladdr");
-    AddEqu     (NEXTLIT  , "nextlit");
-    AddEqu     (IRACC    , "iracc");
-    AddEqu     (CONTEXT  , "context");
-    AddEqu     (FORTHWID , "forthwid");
-    AddEqu     (TIB      , "tib");
-    AddEqu     (HEAD     , "head");
+    AddImplicit(opZeroEquals, "0=");
+
 }

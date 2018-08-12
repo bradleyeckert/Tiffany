@@ -100,29 +100,19 @@ void StoreString(char *s, unsigned int address){
 // Search the thread whose head pointer is at WID. Return ht if found, 0 if not.
 uint32_t SearchWordlist(char *name, uint32_t WID) {
     unsigned int length = strlen(name);
-    int i = length;  uint32_t x, mask;
-    uint32_t word = 0xFFFFFF00 + length;
     if (length>31) tiffIOR = -19;
-    if (i>3) i = 3;                      // max of 3 bytes to add to search word
-    while (i) {
-        if (CaseInsensitive)
-            x = (uint32_t)tolower(name[i-1]) << (i*8);
-        else
-            x = (uint32_t)name[i-1] << (i*8);
-        mask = ~(0xFF << (i*8));  i--;
-        word &= (mask | x);                   // build the 32-bit initial search
-    }
     do {
-        uint32_t test = FetchCell(WID+4) & ~0xC0;  // mask off jumpok and public
-        if (test == word) {    // likely candidate: length and first three match
-            if (length<4) return WID;
-            int remainder = length - 3;              // remaining chars to check
-            i = 3;                                     // starting index in name
-            uint32_t k = WID+8;                                   // RAM address
-            while (remainder--) {
+        int len = FetchByte(WID + 4) & ~0xC0;      // mask off jumpok and public
+        if (len == length) {                  // likely candidate: lengths match
+            int i = 0;                                 // starting index in name
+            uint32_t k = WID+5;                                   // RAM address
+            while (len--) {
                 char c1 = name[i++];
-                if (CaseInsensitive) c1 = tolower(c1);
-                uint8_t c2 = FetchByte(k++);
+                char c2 = FetchByte(k++);
+                if (CaseInsensitive) {
+                    c1 = tolower(c1);
+                    c2 = tolower(c2);
+                }
                 if (c1 != c2) goto next;
             }
             return WID;
@@ -698,7 +688,15 @@ void Disassemble(uint32_t addr, uint32_t length) {
     } else {
         for (i=0; i<length; i++) {
             uint32_t IR = FetchCell(addr);
-            printf("\n%04X: ", addr);  DisassembleIR(IR);
+            printf("\n%04X ", addr);
+#ifdef FilePathColor
+            printf(FilePathColor);
+#endif
+            printf("%08X ", IR);
+#ifdef InterpretColor
+            printf(InterpretColor);
+#endif
+            DisassembleIR(IR);
             addr += 4;
         }
     }
