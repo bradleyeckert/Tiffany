@@ -142,6 +142,7 @@ int EraseAXI4K(uint32_t address) { // EXPORTED
 // dest is a cell address, length is 0 to 255 meaning 1 to 256 words.
 static void SendAXI(int src, unsigned int dest, uint8_t length) {
     uint32_t old, data;     int i;
+    src -= ROMsize;
     if (src < 0) goto bogus;            // below RAM address
     if (src >= (RAMsize-length)) goto bogus;
     if (dest >= (AXIsize-length)) goto bogus;
@@ -196,7 +197,6 @@ static void StoreX (uint32_t addr, uint32_t data, int shift, int mask) {
 #else
     RAM[addr] = ((data & mask) << shift) | temp;
 #endif // TRACEABLE
-    SDROP();
 }
 
 #ifdef TRACEABLE
@@ -279,10 +279,10 @@ LastOp:
                 PC = M;  goto ex;                   	        // exit
 			case opADD:
 #ifdef TRACEABLE
-                Trace(New, RidT, T, T + N);  New=0;
+                Trace(New, RidT, T, N + T);  New=0;
 #endif // TRACEABLE
-                T = T + N;  SNIP();	                    break;	// +
-			case opSKIP: slot = -1;					    break;	// no:
+                T = N + T;  SNIP();	                    break;	// +
+			case opSKIP: goto ex;					    break;	// no:
 			case opUSER: M = UserFunction (T, N, IMM);          // user
 #ifdef TRACEABLE
                 Trace(New, RidT, T, M);  New=0;
@@ -307,9 +307,9 @@ LastOp:
 			case opPUSH:  RDUP(T);  SDROP();            break;  // >r
 			case opSUB:
 #ifdef TRACEABLE
-                Trace(New, RidT, T, T - N);  New=0;
+                Trace(New, RidT, T, N - T);  New=0;
 #endif // TRACEABLE
-                T = T - N;  SNIP();	                    break;	// -
+                T = N - T;  SNIP();	                    break;	// -
 			case opCstorePlus:    /* ( n a -- a' ) */
                 StoreX(T>>2, N, (T&3)*8, 0xFF);
 #ifdef TRACEABLE
@@ -393,7 +393,7 @@ LastOp:
 #endif // TRACEABLE
                 T = M;                                  break;  // 0=
 			case opWfetch:  /* ( a -- w ) */
-                M = FetchX(N>>2, (N&2) * 8, 0xFFFF);
+                M = FetchX(T>>2, (T&2) * 8, 0xFFFF);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
 #endif // TRACEABLE
@@ -403,7 +403,7 @@ LastOp:
                 Trace(New, RidT, T, T ^ N);  New=0;
 #endif // TRACEABLE
                 T = T ^ N;  SNIP();	                    break;	// xor
-			case opREPT:  slot = 0;                     break;	// rept
+			case opREPT:  slot = 32;                    break;	// rept
 			case opFourPlus:
 #ifdef TRACEABLE
                 Trace(New, RidT, T, T + 4);  New=0;
@@ -437,7 +437,11 @@ LastOp:
 #endif // TRACEABLE
                 T = T * 2;	        				    break;	// 2*
 			case opMiREPT:
-                if ((T&0x10000)==0) slot = 0;           break;	// -rept
+                if (N&0x8000) slot = 32;          	            // -rept
+#ifdef TRACEABLE
+                Trace(New, RidN, N, N+1);  New=0; // repeat loop uses N
+#endif // TRACEABLE                               // test and increment
+                N++;  break;
 			case opRP: M = (RP + ROMsize)*4;                    // rp
                 goto GetPointer;
 			case opSUBC:
@@ -447,12 +451,13 @@ LastOp:
 #endif // TRACEABLE
                 T = T - M;  SNIP();	                    break;	// -c
 			case opSetRP:
+                M = (T>>2) & (RAMsize-1);
 #ifdef TRACEABLE
-                Trace(New, RidRP, RP, T>>2);  New=0;
+                Trace(New, RidRP, RP, M);  New=0;
 #endif // TRACEABLE
-			    RP = (uint8_t) (T>>2);  SDROP();    	break;	// rp!
+			    RP = M;  SDROP();                       break;	// rp!
 			case opFetch:  /* ( a -- n ) */
-                M = FetchX(N>>2, 0, 0xFFFFFFFF);
+                M = FetchX(T>>2, 0, 0xFFFFFFFF);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
 #endif // TRACEABLE
@@ -465,7 +470,7 @@ LastOp:
                 N = N * 2;
                 T = (T*2) | ((N>>31)&1);                break;  // d2*
 			case opSKIPGE:
-                if ((T & 0x10000)==0)  slot = -1;       break;  // -if:
+                if ((T & 0x10000)==0)  goto ex;         break;  // -if:
 			case opSP: M = (SP + ROMsize)*4;                    // sp
 GetPointer:     SDUP();
 #ifdef TRACEABLE
@@ -473,7 +478,7 @@ GetPointer:     SDUP();
 #endif // TRACEABLE
 			    T = M;                                  break;
 			case opFetchAS:
-                ReceiveAXI(N/4, T/4, IMM);              break;	// @as
+                ReceiveAXI(N/4, T/4, IMM);  goto ex;	        // @as
 			case opSetSP:
                 M = (T>>2) & (RAMsize-1);
 #ifdef TRACEABLE
@@ -482,7 +487,7 @@ GetPointer:     SDUP();
                 // SP! does not post-drop
 			    SP = M;         	                    break;	// sp!
 			case opCfetch:  /* ( a -- w ) */
-                M = FetchX(N>>2, (N&3) * 8, 0xFF);
+                M = FetchX(T>>2, (T&3) * 8, 0xFF);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
 #endif // TRACEABLE
@@ -492,8 +497,10 @@ GetPointer:     SDUP();
                 Trace(0, RidT, T, DebugReg);
                 Trace(0, RidDbg, DebugReg, M);
 #endif // TRACEABLE
-                T=DebugReg;  DebugReg=M;	            break;	// port
-			case opSKIPLT: if (T & 0x10000) slot = -1;	break;	// +if:
+                T=DebugReg;
+                DebugReg=M;
+                break;	// port
+			case opSKIPLT: if (T & 0x10000) goto ex;	break;	// +if:
 			case opLIT: SDUP();
 #ifdef TRACEABLE
                 Trace(0, RidT, T, IMM);
@@ -502,12 +509,13 @@ GetPointer:     SDUP();
 			case opUP: M = (UP + ROMsize)*4;  	                // up
                 goto GetPointer;
 			case opStoreAS:  // ( src dest -- src dest ) imm length
-                SendAXI(N/4, T/4, IMM);  goto ex;           	// !as
+                SendAXI(N/4, T/4, IMM);  goto ex;               // !as
 			case opSetUP:
+                M = (T>>2) & (RAMsize-1);
 #ifdef TRACEABLE
-                Trace(New, RidUP, UP, T>>2);  New=0;
+                Trace(New, RidUP, UP, M);  New=0;
 #endif // TRACEABLE
-			    UP = (uint8_t) (T>>2);  SDROP();	    break;	// up!
+			    UP = M;  SDROP();	                    break;	// up!
 			case opRfetch: SDUP();
                 M = RAM[RP & (RAMsize-1)];
 #ifdef TRACEABLE

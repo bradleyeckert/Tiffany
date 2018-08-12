@@ -29,6 +29,8 @@ The number of bits depends on the slot position or the opcode. It can be 26, 20,
 
 ALU operations take their operands from registers for minimum input delay. Since the RAM is synchronous read/write, the opcode must be pre-decoded. The pre-decoder initiates reads. The main decoder has a registered opcode to work with, so the decode delay isn’t so bad. The pre-read stage of the pipeline allows time for immediate data to be registered, so the execute stage sees no delay. Opcodes have time to add the immediate data to registers, for more complex operations. One can index into the stack, for example.
 
+There is no 0BRAN because it takes a lot of LUT4 layers to test for zero. IF uses "0 -bran" instead.
+
 Preliminary opcodes:
 
 - *opcode conditionally skips the rest of the slots*
@@ -42,7 +44,7 @@ op[5:3] |           | T+offset  | XP / N    | T +- N    | user      | 0= / N    
 | **2** | no:       | 2+        | **-bran** | **jmp**   |           | w!+       | w@+       | and       |
 | **3** |           | **litx**  | >r        | **call**  |           | 0=        | w@        | xor       |
 | **4** | rept      | 4+        | over      | +c        |           | !+        | @+        | 2*        |
-| **5** | -rept     |           | rp        | -c        |           | rp!       | @         | d2*       |
+| **5** | -rept     |           | rp        | -c        |           | rp!       | @         |           |
 | **6** | -if:      |           | sp        | **@as**   |           | sp!       | c@        | port      |
 | **7** | +if:      | **lit**   | up        | **!as**   |           | up!       | r@        | invert    |
 
@@ -107,7 +109,7 @@ Group 7: Memory read result
 - `!+`    ( n a -- a+4 )
 - `@+`    ( a -- a+4 n )
 - `-if:`  Skip slots if T>=0.
-- `+rept` Set slot=0 if T>=0.
+- `-rept` Set slot=0 if N<0; N=N+1.
 - `xor`   ( n m -- n^m )
 - `u2/`   ( n -- m )
 - `rp!`   ( a -- )

@@ -9,7 +9,7 @@
 #define ROMsize   0x800                         /* must be an exact power of 2 */
 #define AXIsize   0x4000             /* SPI flash, must be a multiple of 0x400 */
 
-// Copy internal ROM writes to SPI flash
+// Copy internal ROM writes to SPI flash, Defined if SPI gets a copy of the ROM image.
 #define BootFromSPI
 
 // Default file to load from
@@ -17,13 +17,10 @@
 
 // Instruments the VM to allow Undo and Redo
 #define TRACEABLE
-#define TraceDepth 12           /* Log2 of the trace buffer size, 13*2^N bytes */
-
-// Tell TIF to copy ROM writes to SPI flash (not used yet)
-#define BootFromSPI             /* Defined if SPI gets a copy of the ROM image */
+#define TraceDepth 12               /* Log2 of the trace buffer size, 13*2^N bytes */
 
 // number of rows in the CPU register dump, minimum 9, maximum 12
-#define DumpRows         11
+#define DumpRows         10
 
 // #define MONOCHROME
 // Console color scheme, comment out if no colors.
@@ -54,6 +51,10 @@
 
 #if (ROMsize & (ROMsize-1))
 #error ROMsize must be a power of 2
+#endif
+
+#if (ROMsize & (RAMsize-1))
+#error ROMsize must be a multiple of RAMsize
 #endif
 
 #if (AXIsize & 0x3FF) // To match SPI flash sectors

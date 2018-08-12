@@ -76,7 +76,7 @@ static void WriteAXI(uint32_t data, uint32_t address) {
     SetDbgReg(data);
     DbgGroup(opDUP, opPORT, opOVER, opStorePlus, opDROP); // save in temp
     SetDbgReg(address);
-    DbgGroup(opDUP, opPORT, opLIT, opNOP, opNOP); // 1 word to AXI
+    DbgGroup(opDUP, opPORT, opStoreAS, opNOP, opNOP); // 1 word to AXI
     DbgGroup(opDROP, opDROP, opSKIP, opNOP, opNOP);
 }
 
@@ -414,14 +414,11 @@ extern uint32_t VMreg[10];
 uint32_t RegRead(int ID) {
     switch(ID) {
         case 0:
-        case 1:
+        case 1: return VMreg[ID];   // T N
         case 2:
         case 3:
-        case 4: return VMreg[ID];   // T N R A B
-        case 5:
-        case 6:
-        case 7: return 4*(VMreg[ID] + ROMsize);
-        case 8: return 4*VMreg[ID];
+        case 4: return 4*(VMreg[ID] + ROMsize);
+        case 5: return 4*VMreg[ID];
         default: return 0;
     }
 }
@@ -430,16 +427,11 @@ uint32_t RegRead(int ID) {
     switch(ID) {
         case 0: return DbgGroup(opDUP, opPORT, opDROP, opSKIP, opNOP); // T
         case 1: return DbgGroup(opOVER, opPORT, opDROP, opSKIP, opNOP);// N
-        case 2: return DbgGroup(opR, opPORT, opDROP, opSKIP, opNOP);   // R
-        case 3: return DbgGroup(opA, opPORT, opDROP, opSKIP, opNOP);   // A
-        case 5: VMstep((opA<<8) + opRP*4, 1);                           // RP
-            return DbgGroup(opA, opPORT, opDROP, opSetA, opNOP);
-        case 6: VMstep((opA<<8) + opSP*4, 1);                           // SP
-            return (DbgGroup(opA, opPORT, opDROP, opSetA, opNOP) + 4);
+        case 2: return DbgGroup(opRP, opPORT, opDROP, opSKIP, opNOP);  // RP
+        case 3: return DbgGroup(opSP, opPORT, opDROP, opSKIP, opNOP);  // SP
             // The SP is offset due to saving A on the stack
-        case 7: VMstep((opA<<8) + opUP*4, 1);                           // UP
-            return DbgGroup(opA, opPORT, opDROP, opSetA, opNOP);
-        case 8: return (DbgPC*4); // Don't make this the first RegRead  // PC
+        case 4: return DbgGroup(opUP, opPORT, opDROP, opSKIP, opNOP);  // UP
+        case 5: return (DbgPC*4); // Don't make this the first RegRead // PC
         default: return 0;
     }
 }
@@ -561,7 +553,7 @@ void TraceHist(void) {                  // dump trace history
     }
 }
 //==============================================================================
- #endif
+#endif
 
 // Initialize useful variables in the terminal task
 void InitializeTIB(void) {
@@ -572,9 +564,9 @@ void InitializeTIB(void) {
     SetDbgReg(TiffSP0);                 // reset data stack
     // T ends nonzero after this, so we clear it with XOR.
     DbgGroup(opDUP, opPORT, opSetSP, opDUP, opXOR);
-    StoreCell(STATUS, FOLLOWER);  	    // only one task
     StoreCell(TiffRP0, RP0);            // USER vars in terminal task
     StoreCell(TiffSP0, SP0);
+    StoreCell(STATUS, FOLLOWER);  	    // only one task
     StoreCell(TIB, TIBB);               // point to TIB
     StoreCell(0, STATE);
     StoreCell(0, COLONDEF);             // clear this byte and the other three
@@ -600,10 +592,11 @@ void InitializeTermTCB(void) {
 }
 
 int Rdepth(void) {                      // return stack depth
-    return (int)(FetchCell(RP0) - RegRead(5)) / 4;
+    return (int)(FetchCell(RP0) - RegRead(2)) / 4;
 }
 int Sdepth(void) {                      // data stack depth
-    return (int)(FetchCell(SP0) - RegRead(6)) / 4;
+    int foo = FetchCell(SP0);
+    return (int)(foo - RegRead(3)) / 4;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -697,26 +690,6 @@ void DumpReturnStack(void){
     }
 }
 
-void DisassembleIR(uint32_t IR) {
-    int slot = 26;  // 26 20 14 8 2
-    int opcode;
-    while (slot>=0) {
-        opcode = (IR >> slot) & 0x3F;
-NextOp: if (opcode>31) {
-            if ((opcode&3)==0) { // immediate opcode uses prefix format
-                printf("0x%X ", IR & ~(0xFFFFFFFF << slot));
-                slot=0;
-            }
-        }
-        printf("%s ", OpName(opcode));
-        slot -= 6;
-    }
-    if (slot == -4) {
-        opcode = IR & 3;
-        goto NextOp;
-    }
-}
-
 // Disassemble to screen
 void Disassemble(uint32_t addr, uint32_t length) {
     int i;
@@ -735,7 +708,7 @@ void Disassemble(uint32_t addr, uint32_t length) {
 void DumpROM(void) {
     int row = 2;  int i;
     static uint32_t ROMorigin;          // first ROM address
-    uint32_t PC = RegRead(8);
+    uint32_t PC = RegRead(5);
     uint32_t addr = ROMorigin;          // start here unless...
     if (PC < ROMorigin) {               // move backward to show PC
         addr = PC;
@@ -787,14 +760,8 @@ void DumpRegs(void) {
     DumpDataStack();
     DumpReturnStack();
     for (i=2; i<6; i++) {               // internal VM registers
-#ifndef TRACEABLE
-        if (i != 4) {  // can't read B so skip it
-#endif
-            SetCursorPosition(RegistersCol, row++);
-            printf("%s %X", name[i], RegRead(i));
-#ifndef TRACEABLE
-        }
-#endif
+        SetCursorPosition(RegistersCol, row++);
+        printf("%s %X", name[i], RegRead(i));
     }
     row = 2;
     for (i=0; i<DumpRows; i++) {        // terminal task USER variables
@@ -855,7 +822,7 @@ Re: DumpRegs();
                 case 'G': SetPCreg(Param);   goto Re;      // G = goto
                 case ' ':
                 case 's': // execute instruction from ROM  // S = Step
-                case 'S': Tracing=1;  VMstep(FetchCell(RegRead(8)),0);
+                case 'S': Tracing=1;  VMstep(FetchCell(RegRead(5)),0);
                           Tracing=0;  goto Re;
                 case 'x': // execute instruction from Param (doesn't step PC)
                 case 'X': Tracing=1;  VMstep(Param,1);     // X = Execute

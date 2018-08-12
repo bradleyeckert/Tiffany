@@ -42,7 +42,7 @@ void tiffQUIT(char *s);                                    // The C-side QUIT lo
 #define opTwoDiv     (007)  // 2/
 
 #define opOnePlus    (011)  // 1+
-#define opPUSH       (012)  // >r
+#define opSWAP       (012)  // swap
 #define opSUB        (013)  // -
 #define opCstorePlus (015)  // c!+  ( c a -- a+1 )
 #define opCfetchPlus (016)  // c@+  ( a -- a+1 c )
@@ -50,14 +50,14 @@ void tiffQUIT(char *s);                                    // The C-side QUIT lo
 
 #define opSKIP       (020)  // no:  skip remaining slots
 #define opTwoPlus    (021)  // 2+
-#define opOVER       (022)  // over
+#define opMiBran     (022)  // -bran
 #define opJUMP       (023)  // jmp
 #define opWstorePlus (025)  // w!+  ( n a -- a+2 )
 #define opWfetchPlus (026)  // w@+  ( a -- a+2 n )
 #define opAND        (027)  // and
 
 #define opLitX       (031)  // litx
-#define opSWAP       (032)  // swap
+#define opPUSH       (032)  // >r
 #define opCALL       (033)  // call
 #define opZeroEquals (035)  // 0=
 #define opWfetch     (036)  // w@  ( a -- n )
@@ -65,7 +65,7 @@ void tiffQUIT(char *s);                                    // The C-side QUIT lo
 
 #define opREPT       (040)  // rept  slot=0
 #define opFourPlus   (041)  // 4+
-#define opMiBran     (042)  // -bran
+#define opOVER       (042)  // over
 #define opADDC       (043)  // +  with carry in
 #define opStorePlus  (045)  // !+  ( n a -- a+4 )
 #define opFetchPlus  (046)  // @+  ( a -- a+4 n )

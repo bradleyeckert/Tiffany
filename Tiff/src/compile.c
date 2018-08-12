@@ -6,7 +6,7 @@
 #include "compile.h"
 #include "tiff.h"
 #include <string.h>
-#define RunLimit 10
+#define RunLimit 1000000
 
 /// The compiler keeps all state inside the VM when compiling code
 /// so that executable code can take over later by redirecting
@@ -27,19 +27,36 @@ static char names[64][6] = {
     "+if",   "lit",  "up",    "!as",  "?",    "up!",  "r@",  "com"
 };
 
-/*
-| **0** | nop       | dup       | exit      | +         | user      | drop      | r>        | 2/        |
-| **1** |           | 1+        | swap      | -         |           | c!+       | c@+       | u2/       |
-| **2** | no:       | 2+        | **-bran** | **jmp**   |           | w!+       | w@+       | and       |
-| **3** |           | **litx**  | >r        | **call**  |           | 0=        | w@        | xor       |
-| **4** | rept      | 4+        | over      | +c        |           | !+        | @+        | 2*        |
-| **5** | -rept     |           | rp        | -c        |           | rp!       | @         | d2*       |
-| **6** | -if:      |           | sp        | **@as**   |           | sp!       | c@        | port      |
-| **7** | +if:      | **lit**   | up        | **!as**   |           | up!       | r@        | invert    |
- */
-
 char * OpName(unsigned int opcode) {
     return names[opcode&0x3F];
+}
+
+// Determine if opcode uses immediate data
+static int isImmediate(unsigned int opcode) {
+    switch (opcode&7) {
+        case 1: return ((opcode & 030)==030);   // 31, 71
+        case 2: return (opcode == 022);         // 22
+        case 3: return (opcode & 020);          // 23, 33, 63, 73
+        default: return 0;
+    }
+}
+
+void DisassembleIR(uint32_t IR) {
+    int slot = 26;  // 26 20 14 8 2
+    int opcode;
+    while (slot>=0) {
+        opcode = (IR >> slot) & 0x3F;
+        NextOp: if (isImmediate(opcode)) {
+            printf("0x%X ", IR & ~(0xFFFFFFFF << slot));
+            slot=0;
+        }
+        printf("%s ", OpName(opcode));
+        slot -= 6;
+    }
+    if (slot == -4) {
+        opcode = IR & 3;
+        goto NextOp;
+    }
 }
 
 void ListOpcodeCounts(void) {           // list the static profile
@@ -314,6 +331,7 @@ void tiffFUNC (int32_t n) {   /*EXPORT*/
                 return;
             }
         }
+        printf("\nHit the RunLimit in compile.c");
 	}
 }
 
@@ -345,40 +363,45 @@ void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     AddImplicit(opDUP    , "dup");
 //    AddImplicit(opEXIT   , "exit");
     AddImplicit(opADD    , "+");
+    AddImplicit(opSUB    , "-");
     AddImplicit(opRfetch , "r@");
     AddImplicit(opAND    , "and");
     AddImplicit(opOVER   , "over");
     AddImplicit(opPOP    , "r>");
     AddImplicit(opXOR    , "xor");
-    AddImplicit(opStoreAS, "!as");
+    AddExplicit(opStoreAS, "!as");
     AddImplicit(opTwoStar, "2*");
+    AddImplicit(opCstorePlus, "c!+");
     AddImplicit(opCfetchPlus, "c@+");
-    AddImplicit(opCfetch , "c@");
+    AddImplicit(opCfetch ,    "c@");
+    AddImplicit(opWstorePlus, "w!+");
     AddImplicit(opWfetchPlus, "w@+");
-    AddImplicit(opWfetch , "w@");
+    AddImplicit(opWfetch ,    "w@");
+    AddImplicit(opStorePlus,  "!+");
+    AddImplicit(opFetchPlus,  "@+");
+    AddImplicit(opFetch  ,    "@");
     AddImplicit(opUtwoDiv, "u2/");
-//    AddImplicit(opWfetchA, "w@a");
     AddImplicit(opREPT   , "rept");
+    AddImplicit(opMiREPT , "-rept");
     AddImplicit(opTwoDiv , "2/");
-//    AddImplicit(opCfetchA, "c@a");
     AddExplicit(opSP     , "sp");
-    AddImplicit(opCOM    , "com");
+    AddImplicit(opCOM    , "invert");
     AddImplicit(opSetRP  , "rp!");
     AddExplicit(opRP     , "rp");
     AddImplicit(opPORT   , "port");
     AddImplicit(opSetSP  , "sp!");
     AddExplicit(opUP     , "up");
-//    AddImplicit(opWstoreA, "w!a");
     AddImplicit(opSetUP  , "up!");
     AddExplicit(opLitX   , "litx");
-//    AddImplicit(opCstoreA, "c!a");
     AddExplicit(opUSER   , "user");
     AddExplicit(opJUMP   , "jump");
-    AddImplicit(opFetchAS, "@as");
+    AddExplicit(opFetchAS, "@as");
     AddExplicit(opLIT    , "lit");
     AddImplicit(opDROP   , "drop");
     AddExplicit(opCALL   , "call");
     AddImplicit(opOnePlus, "1+");
+    AddImplicit(opTwoPlus, "2+");
+    AddImplicit(opFourPlus, "cell+");
     AddImplicit(opPUSH   , ">r");
     AddImplicit(opSWAP   , "swap");
     AddSkip    (opSKIP   , "no:");
