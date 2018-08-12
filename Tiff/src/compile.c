@@ -275,6 +275,33 @@ static void FakeIt (int opcode) {       // execute an opcode in the VM
     DbgGroup(opcode, opSKIP, opNOP, opNOP, opNOP);
 }
 
+// Compile branches: | 0= -bran <20-bit> |
+
+void NoExecute (void) {
+    if (!FetchCell(STATE)) tiffIOR = -14;
+}
+
+void CompIf (void){
+    NewGroup();  NoExecute();
+    PushNum(FetchCell(CP));
+    Implicit(opZeroEquals);
+    Explicit(opMiBran, 0xFFFFF);
+}
+void CompThen (void){
+    NewGroup();  NoExecute();
+    uint32_t mark = PopNum();
+    uint32_t dest = FetchCell(CP) >> 2;
+    StoreROM(0xFFF00000 + dest, mark);
+}
+
+// compile a forward reference
+
+void CompDefer (void){
+    NewGroup();
+    Explicit(opJUMP, 0x3FFFFFF);
+}
+
+
 // Functions invoked after being found, from either xte or xtc.
 // Positive means execute in the VM.
 // Negative means execute in C.

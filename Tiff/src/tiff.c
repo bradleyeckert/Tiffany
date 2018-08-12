@@ -173,6 +173,14 @@ void tiffCOLON (void) {
     StoreCell(1, STATE);
 }
 
+void tiffDEFER (void) {
+    FollowingToken(name, 32);
+    NewGroup();
+    CommaHeader(name, FetchCell(CP), ~16, 1, 0xC0);
+    // xtc must be multiple of 8 ----^
+    CompDefer();
+}
+
 void tiffWORDS (void) {
     FollowingToken(name, 32);
     tiffWords (name, 0);
@@ -223,6 +231,11 @@ void tiffHTICK (void) {                 // h' = header tick, a primitive of '
 void tiffTICK (void) {                  // '
     uint32_t ht = Htick();
     PushNum(FetchCell(ht-4) & 0xFFFFFF);
+}
+void tiffIS (void) {                    // patch ROM defer
+    tiffTICK();
+    uint32_t dest = PopNum();
+    StoreROM(0xFC000000 + (PopNum() >> 2), dest);
 }
 void tiffSEE (void) {                   // disassemble word
     uint32_t ht = Htick();
@@ -298,6 +311,10 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword(":",       tiffCOLON);
     AddKeyword(";",       Semicolon);
     AddKeyword("exit",    SemiExit);
+    AddKeyword("defer",   tiffDEFER);
+    AddKeyword("is",      tiffIS);
+    AddKeyword("if",      CompIf);
+    AddKeyword("then",    CompThen);
     AddKeyword("rom!",    tiffROMstore);
     AddKeyword("bench",   benchmark);
     AddKeyword("h'",      tiffHTICK);
