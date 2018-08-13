@@ -36,20 +36,27 @@ int main(int argc, char *argv[]) {
                 Arg++;
                 switch (c) {
                     case 't':
-                        if (argc>2) {   // attempt binary load
+                        if (argc>Arg) { // attempt binary load
                             BinaryLoad(argv[Arg]);
                         }
                         vmTEST();  goto bye;
                     case 'b':
                         if (argc>Arg) {
-                            if (BinaryLoad(argv[Arg])) {
+                            if (BinaryLoad(argv[Arg++])) {
                                 printf("Invalid or missing filename");
                             }
                             break;
                         } else {
-                            printf("Use ""-b filename""");
+                            printf("Use \"-b filename\"");
                             goto bye;
                         }
+                    case 'f':
+                        if (argc>Arg) {
+                            DefaultFile = argv[Arg++];
+                            break;
+                        }
+						printf("Use \"-f filename\"");
+                        goto bye;
                     default:
                         printf("Unknown native command -%c", c);
                         goto bye;

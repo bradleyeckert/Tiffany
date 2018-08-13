@@ -593,6 +593,8 @@ ex: PopNum();                           // keyword is an empty string
 // Keyboard input uses the default terminal cooked mode.
 // Since getline includes the trailing LF (or CR), we lop it off.
 
+char *DefaultFile = "tiff.f";           // Default file to load from
+
 void tiffQUIT (char *cmdline) {
     int loaded = 0;
     size_t bufsize = MaxTIBsize;        // for getline
@@ -618,9 +620,8 @@ void tiffQUIT (char *cmdline) {
                 case 0:                 // load TIBB from keyboard
                     if (!loaded) {
 #ifdef VERBOSE
-                        printf("%d\nAttempting to include file ", tiffIOR);
-                        printf(DefaultFile);
-                        printf("\n");  printed = 1;
+                        printf("%d\nAttempting to include file %s\n", tiffIOR, DefaultFile);
+                        printed = 1;
 #endif
                         FILE *test = fopen(DefaultFile, "r");
                         if (test != NULL) {
