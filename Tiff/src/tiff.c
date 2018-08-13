@@ -14,6 +14,14 @@
 #define MaxFiles 20
 #define File FileStack[filedepth]
 
+void ColorHilight(void){                // set color to hilighted
+
+}
+void ColorNormal(void){                // set color to normal
+
+}
+
+
 char name[MaxTIBsize+1];                // generic scratchpad
 
 /**
@@ -277,7 +285,7 @@ int keywords = 0;                       // # of keywords added at startup
 typedef void (*VoidFn)();
 
 struct Keyword {                        // host keywords only have
-    char  name[24];                     // a name and
+    char  name[16];                     // a name and
     VoidFn Function;                    // a C function
     uint32_t w;                         // optional data
 };
@@ -294,6 +302,7 @@ void tiffEquate(void) {                 // runtime part of equates
 void AddKeyword(char *name, void (*func)()) {
     if (keywords<MaxKeywords){          // ignore new keywords if full
         strcpy (HostWord[keywords].name, name);
+        HostWord[keywords].w = 0xf00c0ded; // tag as "not an equ"
         HostWord[keywords++].Function = func;
     } else printf("\nPlease increase MaxKeywords and rebuild.");
 }
@@ -308,6 +317,11 @@ void AddEquate(char *name, uint32_t value) {
 void ListKeywords(void) {
     int i;
     for (i=0; i<keywords; i++) {
+        if (HostWord[keywords].w == 0xf00c0ded) {
+            ColorHilight();
+        } else {
+            ColorNormal();
+        }
         printf("%s ", HostWord[i].name);
     }   printed = 1;
 }
@@ -434,11 +448,20 @@ void LoadKeywords(void) {               // populate the list of gator brain func
 
 int NotKeyword (char *key) {            // do a command, return 0 if found
     int i = 0;
-    for (i=0; i<keywords; i++) {        // scan the list
-        if (strcmp(key, HostWord[i].name) == 0) {
-            thisKeyword = i;
-            HostWord[i].Function();
-            return 0;
+    char str1[16], str2[16];
+    if (strlen(key) < 16) {
+        for (i = 0; i < keywords; i++) { // scan the list for the word name
+            strcpy(str1, key);
+            strcpy(str2, HostWord[i].name);
+            if (CaseInsensitive) {
+                strlwr(str1);
+                strlwr(str2);
+            }
+            if (strcmp(str1, str2) == 0) {
+                thisKeyword = i;
+                HostWord[i].Function(); // execute it
+                return 0;
+            }
         }
     }
     return -1;

@@ -167,6 +167,10 @@ char WordColors[16] = {
 | 2    | 4th name character               | Name Text, chars 5-7, etc...       |
 */
 void PrintWordlist(uint32_t WID, char *substring, int verbosity) {
+    char key[32];
+    char name[32];
+    char wordname[32];
+    if (strlen(substring) > 31) return;  // oops
     if (verbosity) {
         printf("\nNAME             LEN    XTE    XTC FID  LINE  WHERE    VALUE FLAG HEAD");
     }
@@ -178,9 +182,15 @@ void PrintWordlist(uint32_t WID, char *substring, int verbosity) {
 #endif
         int flags = length>>5;
         length &= 0x1F;
-        FetchString(str, WID+5, length);
+        FetchString(wordname, WID+5, length);
         if (substring) {
-            char *s = strstr(str, substring);
+            strcpy(key, substring);
+            strcpy(name, wordname);
+            if (CaseInsensitive) {
+                strlwr(key);
+                strlwr(name);
+            }
+            char *s = strstr(key, name);
             if (s != NULL) goto good;
         } else {
 good:       if (verbosity) {            // long version
@@ -189,7 +199,7 @@ good:       if (verbosity) {            // long version
                 uint32_t xte = FetchCell(WID-4);
                 uint32_t linenum = ((xte>>16) & 0xFF00) + (xtc>>24);
                 printf("\n%-17s%3d%7X%7X",
-                       str, FetchByte(WID+3), xte&0xFFFFFF, xtc&0xFFFFFF);
+                       wordname, FetchByte(WID+3), xte&0xFFFFFF, xtc&0xFFFFFF);
                 if (linenum == 0xFFFF)
                     printf("  --    --");
                 else
@@ -197,7 +207,7 @@ good:       if (verbosity) {            // long version
                 printf("%7X%9X%5d %X",
                        where&0xFFFFFF, FetchCell(WID-16), flags, WID);
             }
-            else printf("%s", str);
+            else printf("%s", wordname);
 #ifdef ErrorColor
             printf("\033[0m");          // reset colors
 #endif
