@@ -26,7 +26,7 @@ void initFilelist(void);
 
 // used by main.c, defined in tiff.c
 // might move to vmaccess.c later, with memory and stack access functions.
-void vmTEST(void);
+uint32_t vmTEST(void);
 
 //==============================================================================
 // Definitions of terminal variables addresses.

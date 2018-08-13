@@ -787,11 +787,11 @@ void ShowParam(void){
     printf("\033[K\n");  // erase to end of line
 }
 
-void vmTEST (void) {
+uint32_t vmTEST (void) {
     int c;
     printf("\033[2J");                  // CLS
 Re: DumpRegs();
-    SetCursorPosition(0, DumpRows+6);   // help along the bottom
+    SetCursorPosition(0, DumpRows+5);   // help along the bottom
     printf("(0..F)=digit, Enter=Clear, O=pOp, P=Push, R=Refresh, X=eXecute, \\=POR, ESC=Bye\n");
     #ifdef TRACEABLE
     printf("G=Goto, S=Step, @=Fetch, U=dUmp, W=WipeHistory, Y=Redo, Z=Undo \n");
@@ -806,7 +806,8 @@ Re: DumpRegs();
             Param = Param*16 + (c&0x0F);
         } else {
             switch (c) {
-                case 27: SetCursorPosition(0, 17); return; // ESC = bye
+                case 27: SetCursorPosition(0, DumpRows+7); // ESC = bye
+                    return RegRead(5);
                 case 13:  Param=0;  break;                 // ENTER = clear
                 case 'p':
                 case 'P': PushNum(Param);   goto Re;       // P = Push

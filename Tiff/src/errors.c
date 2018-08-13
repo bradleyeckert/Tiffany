@@ -21,7 +21,7 @@ void ErrorMessage (int error) {
        case  -10: msg = "Division by zero";                             break;
        case  -11: msg = "Result out of range";                          break;
        case  -12: msg = "Argument type mismatch";                       break;
-       case  -13: memmove (ErrorString+4,ErrorString,60);
+       case  -13: memmove (ErrorString+4,ErrorString,60);   // huh?
                   memmove (ErrorString, "??? ",4);
                   msg = *&ErrorString;                                  break;
        case  -14: msg = "Interpreting a compile-only word";             break;
@@ -72,6 +72,7 @@ void ErrorMessage (int error) {
        case  -59: msg = "Missing literal before opcode";                break;
        case  -60: msg = "Attempt to write to non-blank flash memory";   break;
        case  -61: msg = "Macro expansion failure";                      break;
+       case  -62: msg = "Input buffer overflow, line too long";         break;
        case  -80: msg = "Dictionary full";                              break;
        case  -99: msg = "Nesting overflow during include";              break;
        case -100: msg = "ALLOCATE failed";                              break;

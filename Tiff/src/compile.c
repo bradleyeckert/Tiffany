@@ -22,7 +22,7 @@ static char names[64][6] = {
     "no:",   "2+",   "-bran", "jmp",  "?",    "w!+",  "w@+", "and",
     "?",     "litx", ">r",    "call", "?",    "0=",   "w@",  "xor",
     "rept",  "4+",   "over",  "?",    "?",    "!+",   "@+",  "2*",
-    "-rept", "?",    "rp",    "?",    "?",    "rp!",  "@",   "d2*",
+    "-rept", "?",    "rp",    "?",    "?",    "rp!",  "@",   "2*c",
     "-if:",  "?",    "sp",    "@as",  "?",    "sp!",  "c@",  "port",
     "+if",   "lit",  "up",    "!as",  "?",    "up!",  "r@",  "com"
 };
@@ -33,10 +33,15 @@ char * OpName(unsigned int opcode) {
 
 // Determine if opcode uses immediate data
 static int isImmediate(unsigned int opcode) {
-    switch (opcode&7) {
-        case 1: return ((opcode & 030)==030);   // 31, 71
-        case 2: return (opcode == 022);         // 22
-        case 3: return (opcode & 020);          // 23, 33, 63, 73
+    switch (opcode) {
+        case opLitX:
+        case opLIT:
+        case opFetchAS:
+        case opStoreAS:
+        case opUSER:
+        case opMiBran:
+        case opCALL:
+        case opJUMP: return 1;
         default: return 0;
     }
 }
@@ -337,6 +342,8 @@ void CompDefer (void){
 // Positive means execute in the VM.
 // Negative means execute in C.
 
+int32_t breakpoint = -1;
+
 void tiffFUNC (int32_t n) {   /*EXPORT*/
     uint32_t i;
     if (n & 0x800000) n |= 0xFF000000; // sign extend 24-bit n
@@ -373,6 +380,10 @@ void tiffFUNC (int32_t n) {   /*EXPORT*/
         DbgGroup(opDUP, opPORT, opPUSH, opEXIT, opNOP); // Jump to code to run
         DbgPC = n;
         for (i=1; i<RunLimit; i++) {
+            if (DbgPC == breakpoint) {
+                DbgPC = vmTEST();
+                breakpoint = -1;
+            }
             uint32_t ir = FetchCell(DbgPC);
 #ifdef VERBOSE
             printf("\nStep %d: IR=%08X, PC=%X", i, ir, DbgPC);
@@ -389,7 +400,7 @@ void tiffFUNC (int32_t n) {   /*EXPORT*/
                 return;
             }
         }
-        printf("\nHit the RunLimit in compile.c");
+        printf("\nHit the RunLimit in compile.c");  printed = 1;
 	}
 }
 
@@ -413,57 +424,57 @@ void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     InitIR();
     memset(OpcodeCount, 0, 64);         // clear static opcode counters
     CommaHeader("|", ~4, ~8, 0, 0);     // skip to new opcode group
-    AddImplicit(opNOP    , "nop");
-    AddImplicit(opDUP    , "dup");
-//    AddImplicit(opEXIT   , "exit");
-    AddImplicit(opADD    , "+");
-    AddImplicit(opSUB    , "-");
-    AddImplicit(opRfetch , "r@");
-    AddImplicit(opAND    , "and");
-    AddImplicit(opOVER   , "over");
-    AddImplicit(opPOP    , "r>");
-    AddImplicit(opXOR    , "xor");
-    AddExplicit(opStoreAS, "!as");
-    AddImplicit(opTwoStar, "2*");
+    AddImplicit(opNOP       , "nop");
+    AddImplicit(opDUP       , "dup");
+//    AddImplicit(opEXIT      , "exit");
+    AddImplicit(opADD       , "+");
+    AddImplicit(opSUB       , "-");
+    AddImplicit(opRfetch    , "r@");
+    AddImplicit(opAND       , "and");
+    AddImplicit(opOVER      , "over");
+    AddImplicit(opPOP       , "r>");
+    AddImplicit(opXOR       , "xor");
+    AddExplicit(opStoreAS   , "!as");
+    AddImplicit(opTwoStar   , "2*");
     AddImplicit(opCstorePlus, "c!+");
     AddImplicit(opCfetchPlus, "c@+");
-    AddImplicit(opCfetch ,    "c@");
+    AddImplicit(opCfetch    , "c@");
     AddImplicit(opWstorePlus, "w!+");
     AddImplicit(opWfetchPlus, "w@+");
-    AddImplicit(opWfetch ,    "w@");
-    AddImplicit(opStorePlus,  "!+");
-    AddImplicit(opFetchPlus,  "@+");
-    AddImplicit(opFetch  ,    "@");
-    AddImplicit(opUtwoDiv, "u2/");
-    AddImplicit(opREPT   , "rept");
-    AddImplicit(opMiREPT , "-rept");
-    AddImplicit(opTwoDiv , "2/");
-    AddExplicit(opSP     , "sp");
-    AddImplicit(opCOM    , "invert");
-    AddImplicit(opSetRP  , "rp!");
-    AddExplicit(opRP     , "rp");
-    AddImplicit(opPORT   , "port");
-    AddImplicit(opSetSP  , "sp!");
-    AddExplicit(opUP     , "up");
-    AddImplicit(opSetUP  , "up!");
-    AddExplicit(opLitX   , "litx");
-    AddExplicit(opUSER   , "user");
-    AddExplicit(opJUMP   , "jump");
-    AddExplicit(opFetchAS, "@as");
-    AddExplicit(opLIT    , "lit");
-    AddImplicit(opDROP   , "drop");
-    AddExplicit(opCALL   , "call");
-    AddImplicit(opOnePlus, "1+");
-    AddImplicit(opTwoPlus, "2+");
-    AddImplicit(opFourPlus, "cell+");
-    AddImplicit(opPUSH   , ">r");
-    AddImplicit(opSWAP   , "swap");
-    AddSkip    (opSKIP   , "no:");
-    AddSkip    (opSKIPLT , "+if:");
-    AddSkip    (opSKIPGE , "-if:");
-    AddHardSkip(opSKIP   , "|no");
-    AddHardSkip(opSKIPLT , "|+if");
-    AddHardSkip(opSKIPGE , "|-if");
+    AddImplicit(opWfetch    , "w@");
+    AddImplicit(opStorePlus , "!+");
+    AddImplicit(opFetchPlus , "@+");
+    AddImplicit(opFetch     , "@");
+    AddImplicit(opUtwoDiv   , "u2/");
+    AddImplicit(opREPT      , "rept");
+    AddImplicit(opMiREPT    , "-rept");
+    AddImplicit(opTwoDiv    , "2/");
+    AddExplicit(opSP        , "sp");
+    AddImplicit(opCOM       , "invert");
+    AddImplicit(opSetRP     , "rp!");
+    AddExplicit(opRP        , "rp");
+    AddImplicit(opPORT      , "port");
+    AddImplicit(opSetSP     , "sp!");
+    AddExplicit(opUP        , "up");
+    AddImplicit(opSetUP     , "up!");
+    AddExplicit(opLitX      , "litx");
+    AddExplicit(opUSER      , "user");
+    AddExplicit(opJUMP      , "jump");
+    AddExplicit(opFetchAS   , "@as");
+    AddExplicit(opLIT       , "lit");
+    AddImplicit(opDROP      , "drop");
+    AddExplicit(opCALL      , "call");
+    AddImplicit(opOnePlus   , "1+");
+    AddImplicit(opTwoPlus   , "2+");
+    AddImplicit(opFourPlus  , "cell+");
+    AddImplicit(opPUSH      , ">r");
+    AddImplicit(opSWAP      , "swap");
+    AddSkip    (opSKIP      , "no:");
+    AddSkip    (opSKIPLT    , "+if:");
+    AddSkip    (opSKIPGE    , "-if:");
+    AddHardSkip(opSKIP      , "|no");
+    AddHardSkip(opSKIPLT    , "|+if");
+    AddHardSkip(opSKIPGE    , "|-if");
     AddImplicit(opZeroEquals, "0=");
 
 }

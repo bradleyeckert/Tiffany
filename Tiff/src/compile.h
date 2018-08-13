@@ -22,4 +22,6 @@ void CompIf (void);
 void CompThen (void);
 void CompDefer (void);
 
+extern int32_t breakpoint;
+
 #endif

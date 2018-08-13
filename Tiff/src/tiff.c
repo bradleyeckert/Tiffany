@@ -50,12 +50,6 @@ void tiffDOT (void) {                   // pop and print
     uint32_t n = PopNum();
     printf("%d (%X) ", n, n);  printed = 1;
 }
-void tiffCPUon (void) {                 // enable CPU display mode
-    ShowCPU = 1;
-}
-void tiffCPUoff (void) {                // disable CPU display mode
-    ShowCPU = 0;
-}
 void tiffCISon (void) {                 // enable CPU display mode
     CaseInsensitive = 1;
 }
@@ -227,7 +221,8 @@ uint32_t Htick (void) {  // ( -- )
         uint8_t length = (uint8_t)PopNum();
         FetchString(name, PopNum(), length);
         strcpy(ErrorString, name);
-        tiffIOR = -13;
+        if (length) tiffIOR = -13;
+        else tiffIOR = -16;
     }
     return 0;
 }
@@ -249,6 +244,18 @@ void tiffSEE (void) {                   // disassemble word
     uint32_t addr =  FetchCell(ht-4) & 0xFFFFFF;
     uint8_t length = FetchByte(ht+3);
     if (ht) Disassemble(addr, length);
+}
+void tiffCPUon (void) {                 // enable CPU display mode
+    ShowCPU = 1;
+}
+void tiffCPUoff (void) {                // disable CPU display mode
+    ShowCPU = 0;
+}
+void tiffRunBrk (void) {                 // run to breakpoint
+    tiffTICK();
+    breakpoint = PopNum();
+    tiffFUNC(breakpoint);
+    tiffCPUon();
 }
 
 void tiffSTATS (void) {
@@ -315,10 +322,11 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("//",      tiffCOMMENT); // too much cog dis switching between C and Forth
     AddKeyword(".",       tiffDOT);
     AddKeyword("stats",   tiffSTATS);
-    AddKeyword(".static",  ListOpcodeCounts);
+    AddKeyword(".static", ListOpcodeCounts);
     AddKeyword("+cpu",    tiffCPUon);
     AddKeyword("-cpu",    tiffCPUoff);
     AddKeyword("cpu",     tiffCPUgo);
+    AddKeyword("debug",   tiffRunBrk);  // set and run to breakpoint(s)
     AddKeyword("cls",     tiffCLS);
     AddKeyword("CaseSensitive",   tiffCISoff);
     AddKeyword("CaseInsensitive", tiffCISon);
@@ -345,7 +353,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("replace-xt", ReplaceXTs);   // Replace XTs  ( NewXT OldXT -- )
     AddKeyword("save-rom", tiffSAVEcrom);
     AddKeyword("save-flash", tiffSAVEcaxi);
-    AddKeyword("iwords",  ListKeywords);    // internal words, after the dictionary
+    AddKeyword("iwords",   ListKeywords);   // internal words, after the dictionary
     AddEquate ("op_dup",   opDUP);
     AddEquate ("op_exit",  opEXIT);
     AddEquate ("op_+",     opADD);
@@ -601,10 +609,12 @@ void tiffQUIT (char *cmdline) {
                     if (cmdline) {      // first time through use command line
                         strcpy (File.Line, cmdline);
                         length = strlen(cmdline);
+                        if (length >= MaxTIBsize) tiffIOR = -62;
                         cmdline = NULL; // clear cmdline
                     } else {
                         buf = File.Line;
                         length = getline(&buf, &bufsize, stdin);   // get input line
+                        if (length >= MaxTIBsize) tiffIOR = -62;
 #if (OKstyle==0)        // undo the newline that getline generated
                         printf("\033[A\033[%dC", (int)strlen(File.Line));
 #endif
@@ -628,6 +638,7 @@ void tiffQUIT (char *cmdline) {
                         }
                         tiffCOMMENT();
                     } else {
+                        if (length >= MaxTIBsize) tiffIOR = -62;
                         if (length > 0) length--; // remove LF or CR
                         File.Line[length] = 0;
                         File.LineNumber++;
