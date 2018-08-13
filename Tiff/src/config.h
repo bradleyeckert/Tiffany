@@ -22,18 +22,9 @@
 // number of rows in the CPU register dump, minimum 9, maximum 12
 #define DumpRows         10
 
+// Comment out if your terminal supports color escape codes. See colors.h for colors.
+// Note that if you want to pipe a bunch of stdout to a file, you want monochrome.
 // #define MONOCHROME
-// Console color scheme, comment out if no colors.
-#ifndef MONOCHROME
-#define InterpretColor  "\033[1;33m"
-#define ErrorColor      "\033[1;31m"
-#define FilePathColor   "\033[1;34m"
-#define FileLineColor   "\033[1;32m"
-#define DisJumpColor    "\033[1;31m"
-#define DisImmedColor   "\033[1;35m"
-#define AnonAttribute   "\033[1;4m"
-#define NoJumpAttribute "\033[1;34m"
-#endif
 
 #define OKstyle  2     /* Style of OK prompt: 0=classic, 1=openboot, 2=depth */
 // #define VERBOSE     /* for debugging the quit loop, etc. */

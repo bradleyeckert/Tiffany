@@ -5,6 +5,7 @@
 #include "vmaccess.h"
 #include "compile.h"
 #include "tiff.h"
+#include "colors.h"
 #include <string.h>
 #define RunLimit 1000000
 
@@ -17,7 +18,7 @@ uint32_t DbgPC;                         // shared with vmaccess.c
 uint32_t OpcodeCount[64];               // static instruction count
 
 static char names[64][6] = {
-    "nop",   "dup",  "exit",  "+",    "user", "drop", "r>",  "2/",
+    ".",     "dup",  "exit",  "+",    "user", "drop", "r>",  "2/",
     "?",     "1+",   "swap",  "-",    "?",    "c!+",  "c@+", "u2/",
     "no:",   "2+",   "-bran", "jmp",  "?",    "w!+",  "w@+", "and",
     "?",     "litx", ">r",    "call", "?",    "0=",   "w@",  "xor",
@@ -65,27 +66,19 @@ void DisassembleIR(uint32_t IR) {
             if (isImmAddress(opcode)) {
                 char *name = GetXtName(imm<<2);
                 if (name) {
-#ifdef DisJumpColor
-                    printf(DisJumpColor);
-#endif
+                    ColorCompiled();
                     printf("%s ", name);
                 } else {
-#ifdef DisImmedColor
-                    printf(DisImmedColor);
-#endif
+                    ColorImmAddress();
                     printf("0x%X ", imm<<2);
                 }
             } else {
-#ifdef FileLineColor
-                printf(FileLineColor);
-#endif
+                ColorImmediate();
                 printf("0x%X ", imm);
             }
             slot=0;
         }
-#ifdef InterpretColor
-        printf(InterpretColor);
-#endif
+        ColorOpcode();
         printf("%s ", OpName(opcode));
         slot -= 6;
     }
@@ -93,6 +86,7 @@ void DisassembleIR(uint32_t IR) {
         opcode = IR & 3;
         goto NextOp;
     }
+    ColorNormal();
 }
 
 void ListOpcodeCounts(void) {           // list the static profile

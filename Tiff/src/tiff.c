@@ -6,6 +6,7 @@
 #include "vmaccess.h"
 #include "compile.h"
 #include "fileio.h"
+#include "colors.h"
 #include <string.h>
 #include <ctype.h>
 #include <sys/time.h>
@@ -14,15 +15,7 @@
 #define MaxFiles 20
 #define File FileStack[filedepth]
 
-void ColorHilight(void){                // set color to hilighted
-
-}
-void ColorNormal(void){                // set color to normal
-
-}
-
-
-char name[MaxTIBsize+1];                // generic scratchpad
+char name[MaxTIBsize+1];                // generic scratchpad (maybe not such a great idea making it global)
 
 /**
 * Returns the current time in microseconds.
@@ -247,6 +240,16 @@ void tiffIS (void) {                    // patch ROM defer
     uint32_t dest = PopNum();
     StoreROM(0xFC000000 + (PopNum() >> 2), dest);
 }
+void tiffDASM (void) {                  // disassemble range ( addr len )
+    uint32_t length = PopNum();
+    uint32_t addr = PopNum();
+    if (length > 65535) {               // probably an erroneous length
+        printf("\nToo long to disassemble");
+        printed = 1;
+        return;
+    }
+    Disassemble(addr, length);
+}
 void tiffSEE (void) {                   // disassemble word
     uint32_t ht = Htick();
     uint32_t addr =  FetchCell(ht-4) & 0xFFFFFF;
@@ -364,6 +367,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("call-only", tiffCALLONLY);
     AddKeyword("anonymous", tiffANON);
     AddKeyword("see",     tiffSEE);
+    AddKeyword("dasm",    tiffDASM);
     AddKeyword("replace-xt", ReplaceXTs);   // Replace XTs  ( NewXT OldXT -- )
     AddKeyword("save-rom", tiffSAVEcrom);
     AddKeyword("save-flash", tiffSAVEcaxi);
@@ -602,9 +606,7 @@ void tiffQUIT (char *cmdline) {
         StoreCell(0, SOURCEID);     	// input is keyboard
         StoreCell(0, STATE);     	    // interpret
         while (1) {
-#ifdef InterpretColor
-            printf("\033[0m");          // reset colors
-#endif
+            ColorNone();
             if (ShowCPU) {
                 DumpRegs();
             }
@@ -672,10 +674,7 @@ void tiffQUIT (char *cmdline) {
                 default:	// unexpected
                     StoreCell(0, SOURCEID);
             }
-
-#ifdef InterpretColor
-            printf(InterpretColor);
-#endif
+            ColorNormal();
 #ifdef VERBOSE
             FetchString(name, FetchCell(TIBB), (uint8_t)FetchCell(TIBS));
             printf("ior before Interpret of |%s| is %d\n", name, tiffIOR);
@@ -709,26 +708,18 @@ void tiffQUIT (char *cmdline) {
             }
         }
         if (tiffIOR == -99999) return;  // produced by BYE
-#ifdef ErrorColor
-        printf(ErrorColor);
-#endif
+        ColorError();
         ErrorMessage(tiffIOR);
         printed = 1;
         while (filedepth) {
-#ifdef FilePathColor
-            printf(FilePathColor);
-#endif
+            ColorFilePath();
             printf("%s[%d]: ", File.FilePath, File.LineNumber);
-#ifdef FileLineColor
-            printf(FileLineColor);
-#endif
+            ColorFileLine();
             printf("%s\n", File.Line);
             fclose(File.fp);
             filedepth--;
         }
-#ifdef ErrorColor
-        printf("\033[0m");              // reset colors
-#endif
+        ColorNormal();
     }
 }
 

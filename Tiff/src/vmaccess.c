@@ -5,6 +5,7 @@
 #include "fileio.h"
 #include "vmaccess.h"
 #include "compile.h"
+#include "colors.h"
 #include <string.h>
 #include <ctype.h>
 
@@ -146,16 +147,6 @@ uint32_t tiffFIND (void) {  // ( addr len -- addr len | 0 ht )
 
 // WORDS primitive
 
-char WordColors[16] = {
-30, 44,                                 // 30, 40 = Black
-31, 44, // bit 0 = smudged              // 31, 41 = Red
-30, 40,                                 // 32, 42 = Green
-31, 40,                                 // 33, 43 = Yellow
-33, 44, // bit 2 = call-only (when '0') // 34, 44 = Blue
-31, 44,                                 // 35, 45 = Magenta
-33, 40, // bit 1 = public               // 36, 46 = Cyan
-31, 40                                  // 37, 47 = White
-};
 /*
 | Cell | \[31:24\]                        | \[23:0\]                           |
 | ---- |:---------------------------------| ----------------------------------:|
@@ -170,20 +161,19 @@ void PrintWordlist(uint32_t WID, char *substring, int verbosity) {
     char key[32];
     char name[32];
     char wordname[32];
-    if (strlen(substring) > 31) return;  // oops
+    if (strlen(substring) == 0)         // zero length string same as NULL
+        substring = NULL;
     if (verbosity) {
         printf("\nNAME             LEN    XTE    XTC FID  LINE  WHERE    VALUE FLAG HEAD");
     }
     do {
         uint8_t length = FetchByte(WID+4);
-#ifdef ErrorColor
-        uint8_t color = (length>>4) & 0x0E;
-        printf("\033[1;%d;%dm", WordColors[color], WordColors[color+1]);
-#endif
+        WordColor((length>>4) & 0x0E);
         int flags = length>>5;
         length &= 0x1F;
         FetchString(wordname, WID+5, length);
         if (substring) {
+            if (strlen(substring) > 31) goto done;  // no words this long
             strcpy(key, substring);
             strcpy(name, wordname);
             if (CaseInsensitive) {
@@ -208,17 +198,14 @@ good:       if (verbosity) {            // long version
                        where&0xFFFFFF, FetchCell(WID-16), flags, WID);
             }
             else printf("%s", wordname);
-#ifdef ErrorColor
-            printf("\033[0m");          // reset colors
-#endif
+            ColorNormal();
             printf(" ");
         }
         WID = FetchCell(WID) & 0xFFFFFF;
     } while (WID);
-#ifdef ErrorColor
-    printf("\033[0m");
-#endif
     printed = 1;
+done:
+    ColorNormal();
 }
 
 void tiffWords (char *substring, int verbosity) {
@@ -227,9 +214,7 @@ void tiffWords (char *substring, int verbosity) {
         uint32_t wid = FetchCell(CONTEXT + wids*4);  // search the first list
         PrintWordlist(FetchCell(wid), substring, verbosity);
     }
-#ifdef InterpretColor
-    printf(InterpretColor);
-#endif
+    ColorNormal();
 }
 
 // Look up the name of a definition from its address (xte)
@@ -690,6 +675,22 @@ void DumpReturnStack(void){
     }
 }
 
+void DisassembleGroup(int addr) {
+    uint32_t ir = FetchCell(addr);
+    ColorNone();
+    printf("%04X %08X ", addr, ir);
+    DisassembleIR(ir);
+    char *name = GetXtName(addr);
+    if (name) {
+        ColorNone();
+        printf("  \\ ");
+        ColorDef();
+        printf("%s", name);
+        ColorNone();
+    }
+    printed = 1;
+}
+
 // Disassemble to screen
 void Disassemble(uint32_t addr, uint32_t length) {
     int i;
@@ -697,20 +698,12 @@ void Disassemble(uint32_t addr, uint32_t length) {
         printf("Can't disassemble a C function");
     } else {
         for (i=0; i<length; i++) {
-            uint32_t IR = FetchCell(addr);
-            printf("\n%04X ", addr);
-#ifdef FilePathColor
-            printf(FilePathColor);
-#endif
-            printf("%08X ", IR);
-#ifdef InterpretColor
-            printf(InterpretColor);
-#endif
-            DisassembleIR(IR);
+            printf("\n");
+            DisassembleGroup(addr);
             addr += 4;
         }
     }
-    printed = 1;
+    ColorNormal();
 }
 
 void DumpROM(void) {
@@ -732,21 +725,7 @@ void DumpROM(void) {
         if (PC == (addr)) {
             printf("\033[4m");          // hilight
         }
-        uint32_t ir = FetchCell(addr);
-        printf("%04X %08X ", addr, ir);
-        DisassembleIR(ir);
-        char *name = GetXtName(addr);
-        if (name) {
-            printf("  \\ ");
-#ifdef ErrorColor
-            printf(ErrorColor);
-#endif
-            printf("%s", name);
-#ifdef ErrorColor
-            printf("\033[0m");
-#endif
-        }
-        printf("\033[0m");              // default FG/BG
+        DisassembleGroup(addr);
         addr += 4;
     }
 }
@@ -757,6 +736,7 @@ void DumpRegs(void) {
     char term[12][10] = {"STATUS", "FOLLOWER", "SP0", "RP0", "HANDLER", "BASE",
                         "Head: HP", "Code: CP", "Data: DP", "STATE", "CURRENT", "SOURCEID"};
     uint32_t i;
+    ColorNone();
     printf("\033[s");                   // save cursor
     printf("\033[%d;0H", DumpRows+2);
     printf("\033[1J\033[H");            // erase to top of screen, home cursor
@@ -792,6 +772,7 @@ uint32_t Param = 0;     // parameter
 
 void ShowParam(void){
     SetCursorPosition(0, DumpRows+2);
+    ColorNormal();
     printf("%08X\n", Param);
     DisassembleIR(Param);
     printf("\033[K\n");  // erase to end of line
@@ -816,6 +797,7 @@ Re: DumpRegs();
             Param = Param*16 + (c&0x0F);
         } else {
             switch (c) {
+                case 3:                                    // ^C
                 case 27: SetCursorPosition(0, DumpRows+7); // ESC = bye
                     return RegRead(5);
                 case 13:  Param=0;  break;                 // ENTER = clear
