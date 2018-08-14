@@ -48,7 +48,7 @@ Preliminary opcodes:
 | **5**   | -rept     |            | rp        | c-        |           | rp!       | @         | 2\*c      |
 | **6**   | -if:      |            | sp        | **@as**   |           | sp!       | c@        | port      |
 | **7**   | +if:      | **lit**    | up        | **!as**   |           | up!       | r@        | invert    |
-| *mux*   | *none*    | *T+offset* | *XP / N*  | *N +/- T* | user      | *0= / N*  | *mem bus* | *logic*   |
+| *mux*   | *none*    | *T+offset* | *XP / N*  | *N +/- T* | *user*    | *0= / N*  | *mem bus* | *logic*   |
 
 The opcode map is optimized for LUT4 implementation. opcode[2:0] selects T from a 7:1 mux (column).
 opcode[5:3] selects the row within the column, sometimes with some decoding.
@@ -85,8 +85,8 @@ Basic stack
 - `r@`    ( -- x )
 - `r>`    ( -- x ) ( R: x -- )
 - `>r`    ( x -- ) ( R: -- x )
-- `lit`   ( -- imm )
-- `litx`  ( x -- x<<24 + imm )
+- `lit`   ( -- Imm )
+- `litx`  ( x -- x<<24 + Imm )
 
 ALU
 - `+`     ( n m -- n+m ) carry out
@@ -106,10 +106,10 @@ ALU
 - `invert`( n -- ~n )
 
 Control Flow
-- `call`  ( R: -- PC ) PC = imm.
+- `call`  ( R: -- PC ) PC = Imm.
 - `exit`  ( R: PC -- ) Pop PC from return stack.
 - `-bran` ( flag -- ) Jump if flag < 0.
-- `jmp`   Jump: PC = imm.
+- `jmp`   Jump: PC = Imm.
 - `no:`   Skip the rest of the slots. Displays as `//`
 - `rept`  Go back to slot 0.
 - `-rept` Go back to slot 0 if N<0; N=N+1.
@@ -134,10 +134,10 @@ Memory
 - `up!`   ( a -- )
 
 Interface
-- `user`  ( n -- m )
+- `user`  ( n1 n2 -- n1 n3 ) User function selected by Imm.
 - `@as`   ( asrc adest -- asrc adest ) Imm = burst length.
 - `!as`   ( asrc adest -- asrc adest ) Imm = burst length.
-- `port`  ( n ? -- m ? )
+- `port`  ( n -- m ) Used for debugging access.
 
 ### Sample usage
 - Local fetch: lit rp @
@@ -151,7 +151,7 @@ The SP, RP, and UP instructions are used to address PICK, Local, and USER variab
 
 Jumps and calls use unsigned absolute addresses of width 2, 8, 14, 20, or 26 bits, corresponding to an addressable space of 16, 1K, 64K, 4M, or 256M bytes. Most applications will be under 64K bytes, leaving the first three slots available for other opcodes. Many calls will be into the the kernel, in the lower 1K bytes. That leaves four slots for other opcodes.
 
-The RAM used by the CPU core is relatively small. To access more memory, you would connect the AXI4 bus to other memory types such as single-port SRAM or a DRAM controller. Burst transfers use a !AS or @AS instruction to issue the address (with burst length=R) and stream that many words to/from external memory. Code is fetched from the AXI4 bus when outside of the internal ROM space. Depending on the implementation, AXI has excess latency to contend with. This doesn’t matter if most time is spent in internal ROM.
+The RAM used by the CPU core is relatively small. To access more memory, you would connect the AXI4 bus to other memory types such as single-port SRAM or a DRAM controller. Burst transfers use a !AS or @AS instruction to issue the address (with burst length=Imm) and stream that many words to/from external memory. Code is fetched from the AXI4 bus when outside of the internal ROM space. Depending on the implementation, AXI has excess latency to contend with. This doesn’t matter if most time is spent in internal ROM.
 
 In a hardware implementation, the instruction group provides natural protection of atomic operations from interrupts, since the ISR is held off until the group is finished. A nice way of handling interrupts in a Forth system, since calls and returns are so frequent, is to redirect return instructions to take an interrupt-hardware-generated address instead of popping the PC from the return stack. This is a great benefit in hardware verification, as verifying asynchronous interrupts is much more involved. As a case in point, the RTX2000 had an interrupt bug.
 
