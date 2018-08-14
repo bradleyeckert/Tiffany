@@ -40,11 +40,11 @@ op[5:3] |           | T+offset  | XP / N    | T +- N    | user      | 0= / N    
 |       | 0         | 1  / imm  | 2         | 3         | 4         | 5         | 6         | 7         |
 |:-----:|:---------:|:---------:|:---------:|:---------:|:---------:|:---------:|:---------:|:---------:|
 | **0** | nop       | dup       | exit      | +         | user      | drop      | r>        | 2/        |
-| **1** |           | 1+        | swap      | -         |           | c!+       | c@+       | u2/       |
+| **1** | ifc:      | 1+        | swap      | -         |           | c!+       | c@+       | u2/       |
 | **2** | no:       | 2+        | **-bran** | **jmp**   |           | w!+       | w@+       | and       |
 | **3** |           | **litx**  | >r        | **call**  |           | 0=        | w@        | xor       |
-| **4** | rept      | 4+        | over      | +c        |           | !+        | @+        | 2*        |
-| **5** | -rept     |           | rp        | -c        |           | rp!       | @         |           |
+| **4** | rept      | 4+        | over      | c+        |           | !+        | @+        | 2\*       |
+| **5** | -rept     |           | rp        | c-        |           | rp!       | @         | 2\*c      |
 | **6** | -if:      |           | sp        | **@as**   |           | sp!       | c@        | port      |
 | **7** | +if:      | **lit**   | up        | **!as**   |           | up!       | r@        | invert    |
 
@@ -92,13 +92,13 @@ Group 7: Memory read result
 - `no:`   Skip the rest of the slots.
 - `-`     ( n1 n2 -- n1-n2 )
 - `2+`    ( n -- m )
-- `rp`    ( -- a )
+- `rp`    ( n -- a+n )
 - `lit`   ( -- x )
-- `sp`    ( -- a )
+- `sp`    ( n -- a+n )
 - `w!+`   ( n a -- a+2 )
 - `w@+`   ( a -- a+2 n )
 - `swap`  ( n m -- m n )
-- `up`    ( -- a )
+- `up`    ( n -- a+n )
 - `litx`  ( x -- x<<23 + imm )
 - `carry` ( -- 0/1 )
 - `0=`    ( n -- flag )
@@ -129,10 +129,10 @@ Group 7: Memory read result
 - `up!`   ( a -- )
 
 ### Sample usage
-- Local fetch: Lit_Offset RP @
-- User variable fetch: Lit_Uservar UP @
-- User variable store:  Lit_Uservar UP !+ DROP
-- ABS: -IF| INVERT 1+ |
+- Local fetch: lit rp @
+- User variable fetch: lit up @
+- User variable store: lit up !+ drop
+- ABS: -if| invert 1+ |
 
 Conditional skip instructions skip the remainder of the instruction group, which could be up to 5 slots. This eliminates the branch overhead for short IF THEN statements and allows for more complex combinations of conditional branches and calls. The syntax of the skip instructions uses vertical bars to delineate the opcodes that are intended to fit in one instruction group. The compiler will skip to the next group if there are insufficient slots to fit it, or complain if it’s too big.
 

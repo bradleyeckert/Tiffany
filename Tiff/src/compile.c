@@ -19,8 +19,8 @@ uint32_t OpcodeCount[64];               // static instruction count
 
 static char names[64][6] = {
     ".",     "dup",  "exit",  "+",    "user", "drop", "r>",  "2/",
-    "?",     "1+",   "swap",  "-",    "?",    "c!+",  "c@+", "u2/",
-    "no:",   "2+",   "-bran", "jmp",  "?",    "w!+",  "w@+", "and",
+    "ifc:",  "1+",   "swap",  "-",    "?",    "c!+",  "c@+", "u2/",
+    "//",    "2+",   "-bran", "jmp",  "?",    "w!+",  "w@+", "and",
     "?",     "litx", ">r",    "call", "?",    "0=",   "w@",  "xor",
     "rept",  "4+",   "over",  "?",    "?",    "!+",   "@+",  "2*",
     "-rept", "?",    "rp",    "?",    "?",    "rp!",  "@",   "2*c",
@@ -323,6 +323,16 @@ void CompThen (void){
     uint32_t dest = FetchCell(CP) >> 2;
     StoreROM(0xFFF00000 + dest, mark);
 }
+void CompBegin (void){
+    NewGroup();  NoExecute();
+    PushNum(FetchCell(CP));
+}
+void CompPlusUntil (void){  // most compact backward branch
+    NoExecute();
+    uint32_t dest = PopNum();
+    Explicit(opMiBran, dest>>2);
+}
+
 
 // compile a forward reference
 
@@ -423,6 +433,8 @@ void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
 //    AddImplicit(opEXIT      , "exit");
     AddImplicit(opADD       , "+");
     AddImplicit(opSUB       , "-");
+    AddImplicit(opADDC      , "c+");
+    AddImplicit(opSUBC      , "c-");
     AddImplicit(opRfetch    , "r@");
     AddImplicit(opAND       , "and");
     AddImplicit(opOVER      , "over");
@@ -430,6 +442,7 @@ void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     AddImplicit(opXOR       , "xor");
     AddExplicit(opStoreAS   , "!as");
     AddImplicit(opTwoStar   , "2*");
+    AddImplicit(opTwoStarC  , "2*c");
     AddImplicit(opCstorePlus, "c!+");
     AddImplicit(opCfetchPlus, "c@+");
     AddImplicit(opCfetch    , "c@");
@@ -464,9 +477,11 @@ void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     AddImplicit(opPUSH      , ">r");
     AddImplicit(opSWAP      , "swap");
     AddSkip    (opSKIP      , "no:");
+    AddSkip    (opSKIPNC    , "ifc:");
     AddSkip    (opSKIPLT    , "+if:");
     AddSkip    (opSKIPGE    , "-if:");
     AddHardSkip(opSKIP      , "|no");
+    AddHardSkip(opSKIPNC    , "|ifc");
     AddHardSkip(opSKIPLT    , "|+if");
     AddHardSkip(opSKIPGE    , "|-if");
     AddImplicit(opZeroEquals, "0=");

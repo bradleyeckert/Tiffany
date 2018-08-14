@@ -21,6 +21,8 @@ void DisassembleIR(uint32_t IR);             // disassemble an instruction group
 void CompIf (void);
 void CompThen (void);
 void CompDefer (void);
+void CompBegin (void);
+void CompPlusUntil (void);
 
 extern int32_t breakpoint;
 

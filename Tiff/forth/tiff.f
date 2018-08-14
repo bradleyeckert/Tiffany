@@ -8,7 +8,26 @@
 : cells               2* 2* ; macro     \ n -- n*4
 : rot       >r swap r> swap ; macro     \ n m x -- m x n
 : -rot      swap >r swap r> ; macro     \ n m x -- x n m
-: 2drop           drop drop ; macro     \ n m --
+: 2drop           drop drop ; macro     \ d --
+: 2dup            over over ; macro     \ d1 d2 -- d1 d2 d1
+: tuck            swap over ; macro     \ ab -- bab
+: nip             swap drop ; macro     \ ab -- b
+: 3drop      drop drop drop ; macro     \ abc --
+: ?dup        dup 0= -if: drop exit | ; \ n -- nn|0
+: s>d  dup +if: dup dup xor exit | -1 ; \ n -- d
+: =                  xor 0= ; macro     \ x y -- f
+: <>              xor 0= 0= ; macro     \ x y -- f
+: 0<>                 0= 0= ; macro     \ x y -- f
+: aligned      2+ 1+ -4 and ;           \ n -- n'
+: d2*          >r 2* r> 2*c ;           \ d -- d'
+: abs    |-if negate | ;                \ n -- u
+: 0<     |-if 0= 0= exit | 0= ;         \ n -- flag
+: d+     >r swap >r + r> r> c+ ;        \ d1 d2 -- d3
+: dnegate                               \ d -- -d
+   invert >r invert 1+ r> |
+   over 0= -if: drop 1+ exit | drop
+;
+: dabs   |-if dnegate exit | ;          \ n -- u
 
 : lshift  \ x count                     \ left shift
    63 and                               \ limit the count
@@ -23,6 +42,45 @@
    1+ swap
    | u2/ -rept swap drop ;
 ;
+
+: um*  \ u1 u2 -- ud                    \ 450-550 beats
+   0 -32  begin                         \ u1 u2 0 count
+      >r 2* >r 2*c                      \ u1 u2' | count x'
+      |ifc over r> + >r |               \ add u1 to x
+      |ifc 1+ |                         \ carry into u2
+      r> r> 1+                          \ u1 u2' x' count'
+   dup +until
+   drop >r >r drop r> r> swap
+;
+
+: u<
+   2dup xor
+   |+if drop - 0< exit |
+   drop >r drop r> 0<
+;
+: <                                     \ n n -- f
+   2dup xor                             \ ANS style
+   |+if drop - 0< exit |
+   drop drop 0<
+;
+
+: u>      swap u< ;                     \ u1 u2 -- f
+: >       swap < ;                      \ n n -- f
+: *       um* drop ;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 : here      cp @ ;                      \ -- CodeAddr
 : allot     cp +! ;                     \ bytes --

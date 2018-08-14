@@ -408,15 +408,20 @@ uint32_t RegRead(int ID) {
     }
 }
 #else
+
+uint32_t ReadSP(int opcode) {           // read a stack pointer
+    DbgGroup(opDUP, opDUP, opXOR, opcode, opSKIP);
+    return DbgGroup(opPORT, opDROP, opSKIP, opNOP, opNOP);
+}
+
 uint32_t RegRead(int ID) {
     switch(ID) {
-        case 0: return DbgGroup(opDUP, opPORT, opDROP, opSKIP, opNOP); // T
-        case 1: return DbgGroup(opOVER, opPORT, opDROP, opSKIP, opNOP);// N
-        case 2: return DbgGroup(opRP, opPORT, opDROP, opSKIP, opNOP);  // RP
-        case 3: return DbgGroup(opSP, opPORT, opDROP, opSKIP, opNOP);  // SP
-            // The SP is offset due to saving A on the stack
-        case 4: return DbgGroup(opUP, opPORT, opDROP, opSKIP, opNOP);  // UP
-        case 5: return (DbgPC*4); // Don't make this the first RegRead // PC
+        case 0: return DbgGroup(opDUP, opPORT, opDROP, opSKIP, opNOP);  // T
+        case 1: return DbgGroup(opOVER, opPORT, opDROP, opSKIP, opNOP); // N
+        case 2: return ReadSP(opRP);
+        case 3: return ReadSP(opSP) + 4; // correct for offset
+        case 4: return ReadSP(opUP);
+        case 5: return (DbgPC*4); // Don't make this the first RegRead  // PC
         default: return 0;
     }
 }
@@ -757,20 +762,22 @@ void DumpROM(void) {
             printf("\033[4m");          // hilight
         }
         DisassembleGroup(addr);
+        printf("\033[0m");              // unhilight
         addr += 4;
     }
 }
 
 void DumpRegs(void) {
     int row = 2;
+    int old = printed;
     char name[7][4] = {" T", " N", "RP", "SP", "UP", "PC", "DB"};
     char term[12][10] = {"STATUS", "FOLLOWER", "SP0", "RP0", "HANDLER", "BASE",
                         "Head: HP", "Code: CP", "Data: DP", "STATE", "CURRENT", "SOURCEID"};
     uint32_t i;
-    ColorNone();
     printf("\033[s");                   // save cursor
     printf("\033[%d;0H", DumpRows+2);
     printf("\033[1J\033[H");            // erase to top of screen, home cursor
+    ColorNone();
     printf("\033[4m");                  // hilight header
     printf("Data Stack  ReturnStack Registers  Terminal Vars  ");
     printf("ROM at PC     Instruction Disassembly"); // ESC [ <n> m
@@ -789,6 +796,7 @@ void DumpRegs(void) {
     }
     DumpROM();
     printf("\033[u");                   // restore cursor
+    printed = old;
 }
 
 /// Keyboard input is raw, from tiffEKEY().

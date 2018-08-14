@@ -28,13 +28,14 @@
 /// New value: 32-bit.
 
 #ifdef TRACEABLE
-    #define T VMreg[0]
-    #define N VMreg[1]
+    #define T  VMreg[0]
+    #define N  VMreg[1]
     #define RP VMreg[2]
     #define SP VMreg[3]
     #define UP VMreg[4]
     #define PC VMreg[5]
     #define DebugReg VMreg[6]
+    #define CARRY    VMreg[7]
     #define RidT   (-1)
     #define RidN   (-2)
     #define RidRP  (-3)
@@ -42,6 +43,7 @@
     #define RidUP  (-5)
     #define RidPC  (-6)
     #define RidDbg (-7)
+    #define RidCY  (-8)
     #define VMregs 10
 
     uint32_t VMreg[VMregs];     // registers with undo capability
@@ -83,10 +85,10 @@
                          RP++;  return r; }
 
 #else
-    static uint32_t T;	 static uint32_t RP = 64;
-    static uint32_t N;	 static uint32_t SP = 32;
-    static uint32_t PC;  static uint32_t UP = 64;
-                         static uint32_t DebugReg;
+    static uint32_t T;	    static uint32_t RP = 64;
+    static uint32_t N;	    static uint32_t SP = 32;
+    static uint32_t PC;     static uint32_t UP = 64;
+    static uint32_t CARRY;  static uint32_t DebugReg;
 
     static uint32_t RAM[RAMsize];
     static uint32_t ROM[ROMsize];
@@ -234,6 +236,7 @@ void VMpor(void) {  // EXPORTED
 
 uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 	uint32_t M;  int slot;
+	uint64_t DX;
 	unsigned int opcode;
 // The PC is incremented at the same time the IR is loaded. Slot0 is next clock.
 // The instruction group returned from memory will be latched in after the final
@@ -263,8 +266,6 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
         if (OpCounter[opcode] != 0xFFFFFFFF) OpCounter[opcode]++;
         New = 1;  // first state change in an opcode
         if (!Paused) cyclecount += 1;
-#else
-LastOp:
 #endif // TRACEABLE
         switch (opcode) {
 			case opNOP:									break;	// nop
@@ -278,10 +279,14 @@ LastOp:
                 // PC is a cell address. The return stack works in bytes.
                 PC = M;  goto ex;                   	        // exit
 			case opADD:
+			    DX = (uint64_t)N + (uint64_t)T;
 #ifdef TRACEABLE
-                Trace(New, RidT, T, N + T);  New=0;
+                Trace(New, RidT, T, (uint32_t)DX);  New=0;
+                Trace(0, RidCY, CARRY, (uint32_t)(DX>>32));
 #endif // TRACEABLE
-                T = N + T;  SNIP();	                    break;	// +
+                T = (uint32_t)DX;
+                CARRY = (uint32_t)(DX>>32);
+                SNIP();	                                break;	// +
 			case opSKIP: goto ex;					    break;	// no:
 			case opUSER: M = UserFunction (T, N, IMM);          // user
 #ifdef TRACEABLE
@@ -299,6 +304,7 @@ LastOp:
                 Trace(New, RidT, T, T / 2);  New=0;
 #endif // TRACEABLE
 			    T = (signed)T / 2;                      break;	// 2/
+			case opSKIPNC: if (!CARRY) goto ex;	        break;	// ifc:
 			case opOnePlus:
 #ifdef TRACEABLE
                 Trace(New, RidT, T, T + 1);  New=0;
@@ -306,10 +312,14 @@ LastOp:
 			    T = T + 1;                              break;	// 1+
 			case opPUSH:  RDUP(T);  SDROP();            break;  // >r
 			case opSUB:
+			    DX = (uint64_t)N - (uint64_t)T;
 #ifdef TRACEABLE
-                Trace(New, RidT, T, N - T);  New=0;
+                Trace(New, RidT, T, (uint32_t)DX);  New=0;
+                Trace(0, RidCY, CARRY, (uint32_t)(DX>>32));
 #endif // TRACEABLE
-                T = N - T;  SNIP();	                    break;	// -
+                T = (uint32_t)DX;
+                CARRY = (uint32_t)(DX>>32);
+                SNIP();	                                break;	// -
 			case opCstorePlus:    /* ( n a -- a' ) */
                 StoreX(T>>2, N, (T&3)*8, 0xFF);
 #ifdef TRACEABLE
@@ -411,12 +421,15 @@ LastOp:
 			    T = T + 4;                              break;	// 4+
             case opMiBran:
                 if ((signed)T < 0) PC = IMM; SDROP(); goto ex;  // -bran
-			case opADDC:  // todo: add carry
-                M = N;
+			case opADDC:  // carry into adder
+			    DX = (uint64_t)N + (uint64_t)T + (uint64_t)(CARRY & 1);
 #ifdef TRACEABLE
-                Trace(New, RidT, T, T + M);  New=0;
+                Trace(New, RidT, T, (uint32_t)DX);  New=0;
+                Trace(0, RidCY, CARRY, (uint32_t)(DX>>32));
 #endif // TRACEABLE
-                T = T + M;  SNIP();	                    break;	// +c
+                T = (uint32_t)DX;
+                CARRY = (uint32_t)(DX>>32);
+                SNIP();	                                break;	// c+
 			case opStorePlus:    /* ( n a -- a' ) */
                 StoreX(T>>2, N, 0, 0xFFFFFFFF);
 #ifdef TRACEABLE
@@ -432,24 +445,29 @@ LastOp:
                 T = M;
                 N += 4;                                 break;  // @+
 			case opTwoStar:
+                M = T * 2;
 #ifdef TRACEABLE
-                Trace(New, RidT, T, T * 2);  New=0;
+                Trace(0, RidT, T, M);
+                Trace(0, RidCY, CARRY, T>>31);
 #endif // TRACEABLE
-                T = T * 2;	        				    break;	// 2*
+                CARRY = T>>31;   T = M;                 break;  // 2*
 			case opMiREPT:
                 if (N&0x8000) slot = 32;          	            // -rept
 #ifdef TRACEABLE
                 Trace(New, RidN, N, N+1);  New=0; // repeat loop uses N
 #endif // TRACEABLE                               // test and increment
                 N++;  break;
-			case opRP: M = (RP + ROMsize)*4;                    // rp
+			case opRP: M = RP;                                  // rp
                 goto GetPointer;
 			case opSUBC:
-                M = N;  // todo: add carry
+			    DX = (uint64_t)N - (uint64_t)T - (uint64_t)(CARRY & 1);
 #ifdef TRACEABLE
-                Trace(New, RidT, T, T - M);  New=0;
+                Trace(New, RidT, T, (uint32_t)DX);  New=0;
+                Trace(0, RidCY, CARRY, (uint32_t)(DX>>32));
 #endif // TRACEABLE
-                T = T - M;  SNIP();	                    break;	// -c
+                T = (uint32_t)DX;
+                CARRY = (uint32_t)(DX>>32) & 1;
+                SNIP();	                                break;	// c-
 			case opSetRP:
                 M = (T>>2) & (RAMsize-1);
 #ifdef TRACEABLE
@@ -462,17 +480,18 @@ LastOp:
                 Trace(0, RidT, T, M);
 #endif // TRACEABLE
                 T = M;                                  break;  // @
-            case opDtwoStar:
+            case opTwoStarC:
+                M = (T*2) | (CARRY&1);
 #ifdef TRACEABLE
-                Trace(0, RidN, N, N*2);
-                Trace(0, RidT, T, (T*2) | ((N>>31)&1));
+                Trace(0, RidT, T, M);
+                Trace(0, RidCY, CARRY, T>>31);
+
 #endif // TRACEABLE
-                N = N * 2;
-                T = (T*2) | ((N>>31)&1);                break;  // d2*
+                CARRY = T>>31;   T = M;                 break;  // 2*c
 			case opSKIPGE:
-                if ((T & 0x10000)==0)  goto ex;                 // -if:
-			case opSP: M = (SP + ROMsize)*4;                    // sp
-GetPointer:     SDUP();
+                if ((signed)T >= 0)  goto ex;           break;  // -if:
+			case opSP: M = SP;                                  // sp
+GetPointer:     M = T + (M + ROMsize)*4;
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
 #endif // TRACEABLE
@@ -500,13 +519,13 @@ GetPointer:     SDUP();
                 T=DebugReg;
                 DebugReg=M;
                 break;	// port
-			case opSKIPLT: if (T & 0x10000) goto ex;	break;	// +if:
+			case opSKIPLT: if ((signed)T < 0) goto ex;  break;  // +if:
 			case opLIT: SDUP();
 #ifdef TRACEABLE
                 Trace(0, RidT, T, IMM);
 #endif // TRACEABLE
                 T = IMM;  goto ex;                              // lit
-			case opUP: M = (UP + ROMsize)*4;  	                // up
+			case opUP: M = UP;  	                            // up
                 goto GetPointer;
 			case opStoreAS:  // ( src dest -- src dest ) imm length
                 SendAXI(N/4, T/4, IMM);  goto ex;               // !as

@@ -41,6 +41,7 @@ void tiffQUIT(char *s);                                    // The C-side QUIT lo
 #define opPOP        (006)  // r>
 #define opTwoDiv     (007)  // 2/
 
+#define opSKIPNC     (010)  // ifc:  slot=end if no carry
 #define opOnePlus    (011)  // 1+
 #define opSWAP       (012)  // swap
 #define opSUB        (013)  // -
@@ -66,17 +67,17 @@ void tiffQUIT(char *s);                                    // The C-side QUIT lo
 #define opREPT       (040)  // rept  slot=0
 #define opFourPlus   (041)  // 4+
 #define opOVER       (042)  // over
-#define opADDC       (043)  // +  with carry in
+#define opADDC       (043)  // c+  with carry in
 #define opStorePlus  (045)  // !+  ( n a -- a+4 )
 #define opFetchPlus  (046)  // @+  ( a -- a+4 n )
 #define opTwoStar    (047)  // 2*
 
 #define opMiREPT     (050)  // -rept  slot=0 if T < 0
 #define opRP         (052)  // rp
-#define opSUBC       (053)  // -c  subtract with borrow
+#define opSUBC       (053)  // c-  subtract with borrow
 #define opSetRP      (055)  // rp!
 #define opFetch      (056)  // @
-#define opDtwoStar   (057)  // d2*
+#define opTwoStarC   (057)  // 2*c
 
 #define opSKIPGE     (060)  // -if:  slot=end if T >= 0
 #define opSP         (062)  // sp

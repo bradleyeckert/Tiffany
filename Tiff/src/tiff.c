@@ -359,6 +359,8 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("is",      tiffIS);
     AddKeyword("if",      CompIf);
     AddKeyword("then",    CompThen);
+    AddKeyword("begin",   CompBegin);
+    AddKeyword("+until",  CompPlusUntil);
     AddKeyword("rom!",    tiffROMstore);
     AddKeyword("bench",   benchmark);
     AddKeyword("h'",      tiffHTICK);
@@ -416,7 +418,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddEquate ("op_sp!",   opSetSP);
     AddEquate ("op_c@",    opCfetch);
     AddEquate ("op_port",  opPORT);
-    AddEquate ("op_+if:",  opSKIPLT);
+    AddEquate ("op_ifc:",  opSKIPNC);
     AddEquate ("op_lit",   opLIT);
     AddEquate ("op_up",    opUP);
     AddEquate ("op_!as",   opStoreAS);
@@ -692,14 +694,14 @@ void tiffQUIT (char *cmdline) {
                     printf(" ok\n");
 #elif (OKstyle == 1)    // openboot style
                     if (printed) {
-                        printf("\n");
                         printed = 0;
+                        printf("\n");
                     }
-                    printf("ok ");    // should only newline of some text has been output
+                    printf("ok ");    // should only newline if some text has been output
 #else                   // openboot style with stack depth
                     if (printed) {
-                        printf("\n");
                         printed = 0;
+                        printf("\n");
                     }
                     printf("%d:ok ", Sdepth());
 #endif
