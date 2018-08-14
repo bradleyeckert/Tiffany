@@ -541,7 +541,7 @@ void TraceHist(void) {                  // dump trace history
 #endif
 
 // Initialize useful variables in the terminal task
-void InitializeTIB(void) {
+void InitializeTIB (void) {
     SetDbgReg(STATUS);                  // reset USER pointer
     DbgGroup(opDUP, opPORT, opSetUP, opSKIP, opNOP);
     SetDbgReg(TiffRP0);                 // reset return stack
@@ -557,22 +557,52 @@ void InitializeTIB(void) {
     StoreCell(0, COLONDEF);             // clear this byte and the other three
     InitIR();
 }
+/*
+| Cell | Usage                          |
+| ---- | ------------------------------:|
+| 0    | Link                           |
+| 1    | Value resolved by GILD         |
+| 2    | WID                            |
+| 3    | Optional name (counted string) |
+*/
+uint32_t WordlistHead (void) {          // find the first blank link
+    int32_t link = HeadPointerOrigin+4;
+    int32_t result;
+    do {
+        result = link;
+        link = FetchCell(link);         // -1 if end of list
+    } while (link != -1);
+    return result;
+}
+void AddWordlistHead (uint32_t wid, char *name) {
+    uint32_t hp = FetchCell(HP);
+    StoreROM(hp, WordlistHead());       // resolve forward link
+    CommaH(-1);                         // link
+    CommaH(-1);                         // to be resolved by GILD
+    if (name) {
+        CommaH(wid + 0x80000000);       // include "named" tag
+        CommaHstring(name);             // padded to cell alignment
+    } else {
+        CommaH(wid);
+    }
+}
+
+// GILD stores WORDLISTS in the second header space cell
 
 // Initialize ALL variables in the terminal task
-void InitializeTermTCB(void) {
+void InitializeTermTCB (void) {
     VMpor();                            // clear VM and RAM
     initFilelist();
     EraseSPIimage();                    // clear SPI flash image
-    StoreCell(HeadPointerOrigin+4, HP); // leave forward link to filename list
+    StoreCell(HeadPointerOrigin+8, HP); // leave forward link to filename list
     StoreCell(CodePointerOrigin, CP);
     StoreCell(DataPointerOrigin, DP);
     StoreCell(10, BASE);                // decimal
     StoreCell(FORTHWID, CURRENT);       // definitions are to Forth wordlist
     StoreCell(FORTHWID, CONTEXT);       // context is Forth
     StoreByte(1, WIDS);                 // one wordlist in search order
+    AddWordlistHead(FORTHWID, "forth");
     InitializeTIB();
-    CommaHstring("forth");              // place wordlist name before 1st header
-    CommaH(-8);                         // offset to the name
     InitCompiler();                     // load compiler words
 }
 
@@ -600,9 +630,9 @@ void CellDump(int length, uint32_t addr) {  // DUMP
     uint32_t line[8];                       // buffer for ASCII
     uint8_t c;  int i, j, pad, len;
     if (length>4096) length=4096;           // limit to reasonable length
-    addr = (addr+3) & 0xFFFFFFFC;           // align
+    addr = (addr+3) & ~3;                   // align
     while (length) {
-        printf("\n%04X ", addr);            // address
+        printf("%04X ", addr);              // address
         if (length<8) {
             len = length;  pad = 8 - length;
         } else {
@@ -625,9 +655,10 @@ void CellDump(int length, uint32_t addr) {  // DUMP
             }
         }
         for (i=0; i<pad; i++) {             // padding
-            printf("    ");
+            printf(" ");
         }
         length -= len;
+        printf("\n");
     }
 }
 

@@ -66,7 +66,16 @@ Macro expansion is amazingly simple. Each slot of an instruction in a definition
 
 ## Wordlists
 
-A wordlist is created by creating a RAM variable and initializing it with HP. The WID is the address of that variable. To append to that wordlist, you would put that WID in CURRENT.
+A wordlist is created by creating a RAM variable and initializing it to 0. The WID is the address of that variable. To append to that wordlist, you would put that WID in CURRENT. A wordlist starts out empty, with its head pointer at 0. The first element in the list gets its link set to 0.
+
+There is a list of wordlists, pointed to by `WORDLISTS`. The header structure is:
+
+| Cell | Usage                          |
+| ---- | ------------------------------:|
+| 0    | Link                           |
+| 1    | Value resolved by GILD         |
+| 2    | WID                            |
+| 3    | Optional name (counted string) |
 
 ## Source File ID
 

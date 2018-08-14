@@ -21,7 +21,7 @@
 
 // Comment out if your terminal supports color escape codes. See colors.h for colors.
 // Note that if you want to pipe a bunch of stdout to a file, you want monochrome.
-// #define MONOCHROME
+ #define MONOCHROME
 
 #define OKstyle  2     /* Style of OK prompt: 0=classic, 1=openboot, 2=depth */
 // #define VERBOSE     /* for debugging the quit loop, etc. */

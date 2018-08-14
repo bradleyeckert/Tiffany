@@ -343,7 +343,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("+cpu",    tiffCPUon);
     AddKeyword("-cpu",    tiffCPUoff);
     AddKeyword("cpu",     tiffCPUgo);
-    AddKeyword("debug",   tiffRunBrk);  // set and run to breakpoint(s)
+    AddKeyword("dbg",     tiffRunBrk);  // set and run to breakpoint(s)
     AddKeyword("cls",     tiffCLS);
     AddKeyword("CaseSensitive",   tiffCISoff);
     AddKeyword("CaseInsensitive", tiffCISon);
@@ -369,7 +369,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("see",     tiffSEE);
     AddKeyword("dasm",    tiffDASM);
     AddKeyword("replace-xt", ReplaceXTs);   // Replace XTs  ( NewXT OldXT -- )
-    AddKeyword("save-rom", tiffSAVEcrom);
+    AddKeyword("save-rom",   tiffSAVEcrom);
     AddKeyword("save-flash", tiffSAVEcaxi);
     AddKeyword("iwords",   ListKeywords);   // internal words, after the dictionary
     AddEquate ("op_dup",   opDUP);
@@ -608,8 +608,8 @@ void tiffQUIT (char *cmdline) {
         StoreCell(0, SOURCEID);     	// input is keyboard
         StoreCell(0, STATE);     	    // interpret
         while (1) {
-            ColorNone();
             if (ShowCPU) {
+                ColorNone();
                 DumpRegs();
             }
             StoreCell(0, TOIN);		    // >IN = 0
@@ -649,6 +649,7 @@ void tiffQUIT (char *cmdline) {
                     }
                     StoreCell((uint32_t)length, TIBS);
                     StoreString(File.Line, (uint32_t)TIBaddr);
+                    ColorNormal();
                     break;
                 case 1:
                     buf = File.Line;
@@ -675,7 +676,6 @@ void tiffQUIT (char *cmdline) {
                 default:	// unexpected
                     StoreCell(0, SOURCEID);
             }
-            ColorNormal();
 #ifdef VERBOSE
             FetchString(name, FetchCell(TIBB), (uint8_t)FetchCell(TIBS));
             printf("ior before Interpret of |%s| is %d\n", name, tiffIOR);
