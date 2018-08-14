@@ -354,7 +354,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 			case opJUMP:
 #ifdef TRACEABLE
                 Trace(New, RidPC, PC, IMM);  New=0;
-                if (!Paused) cyclecount += 3;  
+                if (!Paused) cyclecount += 3;
 				// PC change flushes pipeline in HW version
 #endif // TRACEABLE
                 // Jumps and calls use cell addressing
@@ -379,7 +379,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 #endif // TRACEABLE
                 T = T & N;  SNIP();	                    break;	// and
             case opLitX:
-				M = (T<<24) | (IMM & 0xFFFFFF)
+				M = (T<<24) | (IMM & 0xFFFFFF);
 #ifdef TRACEABLE
                 Trace(New, RidT, T, M);  New=0;
 #endif // TRACEABLE
@@ -395,7 +395,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 			case opCALL:  RDUP(PC<<2);                        	// call
 #ifdef TRACEABLE
                 Trace(0, RidPC, PC, IMM);  PC = IMM;
-                if (!Paused) cyclecount += 3;  
+                if (!Paused) cyclecount += 3;
                 goto ex;
 #else
                 PC = IMM;  goto ex;
