@@ -38,17 +38,17 @@ Preliminary opcodes:
 - *opcode conditionally skips the rest of the slots*
 - **opcode uses the rest of the slots as signed immediate data**
 
-|       | 0         | 1  / imm  | 2         | 3         | 4         | 5         | 6         | 7         |
-|:-----:|:---------:|:---------:|:---------:|:---------:|:---------:|:---------:|:---------:|:---------:|
-| **0** | nop       | dup       | exit      | +         | user      | drop      | r>        | 2/        |
-| **1** | ifc:      | 1+        | swap      | -         |           | c!+       | c@+       | u2/       |
-| **2** | no:       | 2+        | **-bran** | **jmp**   |           | w!+       | w@+       | and       |
-| **3** |           | **litx**  | >r        | **call**  |           | 0=        | w@        | xor       |
-| **4** | rept      | 4+        | over      | c+        |           | !+        | @+        | 2\*       |
-| **5** | -rept     |           | rp        | c-        |           | rp!       | @         | 2\*c      |
-| **6** | -if:      |           | sp        | **@as**   |           | sp!       | c@        | port      |
-| **7** | +if:      | **lit**   | up        | **!as**   |           | up!       | r@        | invert    |
-|       |           | T+offset  | XP / N    | T +- N    | user      | 0= / N    | mem       | logic     |
+|         | 0         | 1          | 2         | 3         | 4         | 5         | 6         | 7         |
+|:-------:|:---------:|:----------:|:---------:|:---------:|:---------:|:---------:|:---------:|:---------:|
+| **0**   | nop       | dup        | exit      | +         | user      | drop      | r>        | 2/        |
+| **1**   | ifc:      | 1+         | swap      | -         |           | c!+       | c@+       | u2/       |
+| **2**   | no:       | 2+         | **-bran** | **jmp**   |           | w!+       | w@+       | and       |
+| **3**   |           | **litx**   | >r        | **call**  |           | 0=        | w@        | xor       |
+| **4**   | rept      | 4+         | over      | c+        |           | !+        | @+        | 2\*       |
+| **5**   | -rept     |            | rp        | c-        |           | rp!       | @         | 2\*c      |
+| **6**   | -if:      |            | sp        | **@as**   |           | sp!       | c@        | port      |
+| **7**   | +if:      | **lit**    | up        | **!as**   |           | up!       | r@        | invert    |
+| *mux*   | *none*    | *T+offset* | *XP / N*  | *N +/- T* | user      | *0= / N*  | *mem bus* | *logic*   |
 
 The opcode map is optimized for LUT4 implementation. opcode[2:0] selects T from a 7:1 mux (column).
 opcode[5:3] selects the row within the column, sometimes with some decoding.
