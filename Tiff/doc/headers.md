@@ -71,7 +71,7 @@ A wordlist is created by creating a RAM variable and initializing it to 0. The W
 There is a list of wordlists, pointed to by `WORDLISTS`. The header structure is:
 
 | Cell | Usage                          |
-| ---- | ------------------------------:|
+|:----:|-------------------------------:|
 | 0    | Link                           |
 | 1    | Value resolved by GILD         |
 | 2    | WID                            |
