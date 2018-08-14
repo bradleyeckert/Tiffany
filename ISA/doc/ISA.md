@@ -76,63 +76,67 @@ Group 7: Memory read result
 
 ### Summary
 
-- `+`     ( n m -- n+m ) carry out
-- `over`  ( n m -- n m n )
-- `c+`    ( n m -- n+m ) carry in and carry out
-- `dup`   ( x -- x x )
-- `r@`    ( -- x )
-- `user`  ( n -- m )
+Basic stack
+- `nop`   ( -- ) Displays as `.`.
 - `drop`  ( x -- )
-- `rot`   ( j k n -- k n j )
-- `exit`  Pop PC from return stack.
-- `jmp`   PC = imm.
-- `1+`    ( n -- n+1 )
-- `call`  ( R: -- PC ) PC = imm.
+- `dup`   ( x -- x x )
+- `over`  ( n m -- n m n )
+- `swap`  ( n m -- m n )
+- `r@`    ( -- x )
 - `r>`    ( -- x ) ( R: x -- )
-- `2/`    ( n -- m )
+- `>r`    ( x -- ) ( R: -- x )
+- `lit`   ( -- imm )
+- `litx`  ( x -- x<<24 + imm )
+ALU
+- `+`     ( n m -- n+m ) carry out
+- `-`     ( n m -- n+m ) carry out
+- `c+`    ( n m -- n+m ) carry in and carry out
+- `c-`    ( n m -- n+m ) carry in and carry out
+- `1+`    ( n -- n+1 )
+- `2+`    ( n -- n+2 )
+- `cell+` ( n -- n+4 )
+- `2/`    ( n -- m ) carry out
+- `u2/`   ( n -- m ) carry out
 - `2*`    ( n -- m ) carry out
 - `2*c`   ( n -- m ) carry in and carry out
-- `c!+`   ( n a -- a+1 )
-- `c@+`   ( a -- a+1 n )
-- `no:`   Skip the rest of the slots. Displayed as `//`.
-- `-`     ( n m -- n+m ) carry out
-- `2+`    ( n -- m )
-- `rp`    ( n -- a+n )
-- `c-`    ( n m -- n+m ) carry in and carry out
-- `lit`   ( -- x )
-- `sp`    ( n -- a+n )
-- `w!+`   ( n a -- a+2 )
-- `w@+`   ( a -- a+2 n )
-- `swap`  ( n m -- m n )
-- `up`    ( n -- a+n )
-- `litx`  ( x -- x<<23 + imm )
-- `carry` ( -- 0/1 )
 - `0=`    ( n -- flag )
-- `w@`    ( a -- n )
-- `4+`    ( n -- m )
-- `rept`  Set slot=0.
 - `and`   ( n m -- n&m )
-- `!+`    ( n a -- a+4 )
-- `@+`    ( a -- a+4 n )
-- `-if:`  Skip slots if T>=0.
-- `-rept` Set slot=0 if N<0; N=N+1.
 - `xor`   ( n m -- n^m )
-- `u2/`   ( n -- m )
-- `rp!`   ( a -- )
-- `@`     ( a -- n )
-- `port`  ( n ? -- m ? )
-- `rjmp`  PC = imm.
-- `>r`    ( x -- ) ( R: -- x )
-- `rcall` ( R: -- PC ) PC = PC + imm.
-- `or`    ( n m -- n|m )
-- `@as`   ( asrc adest -- asrc adest ) Imm = burst length.
-- `sp!`   ( a -- )
-- `c@`    ( a -- c )
-- `+if:`  Skip slots if T<0.
-- `-bran` ( flag -- )
 - `invert`( n -- ~n )
-- `!as`   ( asrc adest -- asrc adest ) Imm = burst length.
+
+Control Flow
+- `call`  ( R: -- PC ) PC = imm.
+- `exit`  ( R: PC -- ) Pop PC from return stack.
+- `-bran` ( flag -- ) Jump if flag < 0.
+- `jmp`   Jump: PC = imm.
+- `no:`   Skip the rest of the slots. Displays as `//`.
+- `rept`  Go back to slot 0.
+- `-rept` Go back to slot 0 if N<0; N=N+1.
+- `-if:`  Skip remaining slots if T>=0.
+- `+if:`  Skip remaining slots if T<0.
+
+Memory
+- `!+`    ( n a -- a+4 ) 32-bit
+- `@+`    ( a -- a+4 n )
+- `@`     ( a -- n )
+- `w!+`   ( n a -- a+2 ) 16-bit
+- `w@+`   ( a -- a+2 n )
+- `w@`    ( a -- n )
+- `c!+`   ( n a -- a+1 ) 8-bit
+- `c@+`   ( a -- a+1 n )
+- `c@`    ( a -- c )
+- `rp`    ( n -- a+n ) Return stack pointer
+- `sp`    ( n -- a+n ) Data stack pointer
+- `up`    ( n -- a+n ) User pointer
+- `rp!`   ( a -- )
+- `sp!`   ( a -- )
 - `up!`   ( a -- )
+
+Interface
+- `user`  ( n -- m )
+- `@as`   ( asrc adest -- asrc adest ) Imm = burst length.
+- `!as`   ( asrc adest -- asrc adest ) Imm = burst length.
+- `port`  ( n ? -- m ? )
 
 ### Sample usage
 - Local fetch: lit rp @
