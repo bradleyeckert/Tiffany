@@ -488,8 +488,8 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 
 #endif // TRACEABLE
                 CARRY = T>>31;   T = M;                 break;  // 2*c
-			case opSKIPGE:
-                if ((signed)T >= 0)  goto ex;           break;  // -if:
+			case opSKIPGE: if ((signed)T < 0) break;            // -if:
+                goto ex;
 			case opSP: M = SP;                                  // sp
 GetPointer:     M = T + (M + ROMsize)*4;
 #ifdef TRACEABLE
@@ -519,7 +519,8 @@ GetPointer:     M = T + (M + ROMsize)*4;
                 T=DebugReg;
                 DebugReg=M;
                 break;	// port
-			case opSKIPLT: if ((signed)T < 0) goto ex;  break;  // +if:
+			case opSKIPLT: if ((signed)T >= 0) break;           // +if:
+                goto ex;
 			case opLIT: SDUP();
 #ifdef TRACEABLE
                 Trace(0, RidT, T, IMM);

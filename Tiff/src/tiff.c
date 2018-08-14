@@ -713,7 +713,6 @@ void tiffQUIT (char *cmdline) {
         if (tiffIOR == -99999) return;  // produced by BYE
         ColorError();
         ErrorMessage(tiffIOR);
-        printed = 1;
         while (filedepth) {
             ColorFilePath();
             printf("%s[%d]: ", File.FilePath, File.LineNumber);
@@ -722,6 +721,7 @@ void tiffQUIT (char *cmdline) {
             fclose(File.fp);
             filedepth--;
         }
+        printed = 0;    // already at newline
         ColorNormal();
     }
 }
