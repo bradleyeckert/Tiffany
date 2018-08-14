@@ -9,7 +9,9 @@ MISC computers are minimal instruction set computers. They were pioneered by Chu
 
 The MISC paradigm executes small instructions very fast, from an instruction group. The instruction group is fetched from memory, and then the opcodes are executed in sequence within the group. An opcode can conditionally loop or skip the sequence, removing the need to change the PC to execute a loop or a short conditional.
 
-The minimum instruction word size in bits is the base 2 log of the maximum address plus the opcode width. For 6-bit opcodes and a 1MB address range, that would be 26 bits. The primary motivation for the group-based MISC architecture is the ease with which it can be simulated so as to port applications to MCUs or to run simulations at near real speed. This also affects the design, as data widths should match that of simulation targets. Since 32 bits are the standard in MCUs, a 32-bit instruction word and 32-bit data are used.
+An instruction word may be any number of bits. 16, 18 and 32 are popular sizes. Optimal semantic density is in the 20 bit range due to more slots being discarded at higher widths. This affects only the size, not the speed. Since the desired hardware talks to an AXI bus, the chosen word size is 32-bit to match AXI's minimum bus width.
+
+The model's instruction size affects the ISA as well as the low level implementation, so to be the most useful we bet on a single horse: 32-bit. Word size affects how much memory you can address. In an embedded system, even a cheap one, there can be megabytes of data. Even phone apps weigh in at 10MB for a small one. Yes, that's ridiculous. However, supposing a CPU should be able to address that, a word size of at least 24 bits would be needed. Large SPI flash needs even more address bits, and keep in mind you need to add another address bit every two years. So, 32-bit is just about optimal for "small systems".
 
 ### Instruction Group
 The ISA uses 6-bit opcodes in a 32-bit instruction group. Opcodes that use immediate data take that data from the remainder of the instruction group. A slot pointer steps through the opcodes in sequence. It can be conditionally reset to cause a loop, or set to the end to skip the rest of the opcodes in the group.
@@ -29,7 +31,7 @@ The number of bits depends on the slot position or the opcode. It can be 26, 20,
 
 ALU operations take their operands from registers for minimum input delay. Since the RAM is synchronous read/write, the opcode must be pre-decoded. The pre-decoder initiates reads. The main decoder has a registered opcode to work with, so the decode delay isn’t so bad. The pre-read stage of the pipeline allows time for immediate data to be registered, so the execute stage sees no delay. Opcodes have time to add the immediate data to registers, for more complex operations. One can index into the stack, for example.
 
-There is no 0BRAN because it takes a lot of LUT4 layers to test for zero. IF uses "0 -bran" instead.
+There is no 0BRAN because it takes a lot of LUT4 layers to test for zero. `if` uses "0= -bran" instead.
 
 Preliminary opcodes:
 
@@ -74,8 +76,9 @@ Group 7: Memory read result
 
 ### Summary
 
-- `+`     ( n m -- n+m )
+- `+`     ( n m -- n+m ) carry out
 - `over`  ( n m -- n m n )
+- `c+`    ( n m -- n+m ) carry in and carry out
 - `dup`   ( x -- x x )
 - `r@`    ( -- x )
 - `user`  ( n -- m )
@@ -87,12 +90,15 @@ Group 7: Memory read result
 - `call`  ( R: -- PC ) PC = imm.
 - `r>`    ( -- x ) ( R: x -- )
 - `2/`    ( n -- m )
+- `2*`    ( n -- m ) carry out
+- `2*c`   ( n -- m ) carry in and carry out
 - `c!+`   ( n a -- a+1 )
 - `c@+`   ( a -- a+1 n )
-- `no:`   Skip the rest of the slots.
-- `-`     ( n1 n2 -- n1-n2 )
+- `no:`   Skip the rest of the slots. Displayed as `//`.
+- `-`     ( n m -- n+m ) carry out
 - `2+`    ( n -- m )
 - `rp`    ( n -- a+n )
+- `c-`    ( n m -- n+m ) carry in and carry out
 - `lit`   ( -- x )
 - `sp`    ( n -- a+n )
 - `w!+`   ( n a -- a+2 )
@@ -132,20 +138,18 @@ Group 7: Memory read result
 - Local fetch: lit rp @
 - User variable fetch: lit up @
 - User variable store: lit up !+ drop
-- ABS: -if| invert 1+ |
+- ABS: |-if invert 1+ |
 
 Conditional skip instructions skip the remainder of the instruction group, which could be up to 5 slots. This eliminates the branch overhead for short IF THEN statements and allows for more complex combinations of conditional branches and calls. The syntax of the skip instructions uses vertical bars to delineate the opcodes that are intended to fit in one instruction group. The compiler will skip to the next group if there are insufficient slots to fit it, or complain if it’s too big.
 
 The SP, RP, and UP instructions are used to address PICK, Local, and USER variables respectively. After loading the address into A using one of these, you can use any word/halfword/byte fetch or store opcode.
 
-Jumps and calls use unsigned absolute addresses of width 2, 8, 14, 20, or 26 bits, corresponding to an addressable space of 16, 1K, 64K, 4M, or 256M bytes. Most applications will be under 64K bytes, leaving the first three slots available for other opcodes. Many calls will be into the “reptilian brain” part of the kernel, in the lower 1K bytes. That leaves four slots for other opcodes.
+Jumps and calls use unsigned absolute addresses of width 2, 8, 14, 20, or 26 bits, corresponding to an addressable space of 16, 1K, 64K, 4M, or 256M bytes. Most applications will be under 64K bytes, leaving the first three slots available for other opcodes. Many calls will be into the the kernel, in the lower 1K bytes. That leaves four slots for other opcodes.
 
 The RAM used by the CPU core is relatively small. To access more memory, you would connect the AXI4 bus to other memory types such as single-port SRAM or a DRAM controller. Burst transfers use a !AS or @AS instruction to issue the address (with burst length=R) and stream that many words to/from external memory. Code is fetched from the AXI4 bus when outside of the internal ROM space. Depending on the implementation, AXI has excess latency to contend with. This doesn’t matter if most time is spent in internal ROM.
 
 In a hardware implementation, the instruction group provides natural protection of atomic operations from interrupts, since the ISR is held off until the group is finished. A nice way of handling interrupts in a Forth system, since calls and returns are so frequent, is to redirect return instructions to take an interrupt-hardware-generated address instead of popping the PC from the return stack. This is a great benefit in hardware verification, as verifying asynchronous interrupts is much more involved. As a case in point, the RTX2000 had an interrupt bug.
 
-A typical Forth kernel will have a number of sequential calls, which take four bytes per call. This is a little bulky, especially if the equivalent macro can fit in a group. The call and return overhead is eight clock cycles, so it’s also slow. Using the macro sequence should replace the call when possible. Code that’s inlineable is copied directly except for its ;, leaving that slot open for the next instruction.
+A typical Forth kernel will have a number of sequential calls, which take four bytes per call. This is a little bulky, especially if the equivalent macro can fit in a group. The call and return overhead is eight clock cycles, so it’s also slow. Using the macro sequence should replace the call when possible. Code that’s inlineable is copied directly except for its `;`, leaving that slot open for the next instruction.
 
-;| doesn’t flush the IR, so the remaining slots are allowed to execute while the branch is in progress. It takes 4 cycles to complete a branch, so that many slots may be used. The compiler will enforce this limit so that the CPU doesn’t have to deal with exiting too early.
-
-Hardware multiply and divide, if provided, are accessed via the USER instruction.
+Hardware multiply and divide, if provided, are accessed via the USER instruction. `um*` takes about 500 cycles when done by shift-and-add.
