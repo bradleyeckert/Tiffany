@@ -1,7 +1,7 @@
 # Dev Tools
 I use Code::Blocks and CLion. CLion is great to have if you're doing serious C coding, as its editor has the best hinting and real-time error hilighting. If you're on a budget, Code::Blocks is free. Linux is also free, but making console I/O work properly (raw vs cooked) is a little tricky. When creating a new project, include all of the files in the `/src` folder.
 
-I run the executable in ConEmu. If you must use a very dumb terminal, #define MONOCHROME in config.h.
+I run the executable in ConEmu. If you must use a very dumb terminal, or you want to pipe output to a file without ANSI escape codes being inserted, #define MONOCHROME in config.h.
 
 # Command Line parameters
 
@@ -35,8 +35,11 @@ Undo and Redo are supported if TRACEABLE is defined. This keeps a log of all sta
 ## The Forth Interpreter
 The command line is formed by concatenating any remaining argv[] strings from the C command line, separating them with blanks. This trick is necessary because C doesn't give you the raw command line. Since C strips out quotes, it looks for other quotation characters (like open-quote and close-quote) and replaces them with a normal quote.
 
-As of 8/2/18, the interpreter recognizes some keywords (using cheap C tricks) if a dictionary search fails. These keywords are: `bye`, `\`, `.`, `+cpu`, and `-cpu`. The latter two enable and disable the raw CPU display used in low level debugging. Header creation and word find work, so extensibility is now possible.
+The interpreter recognizes some keywords (C host functions) if a dictionary search fails. These keywords are listed by `iwords`. 
 
 ## To Do
-Add compiler words
+
+Add more kernel, etc. Build up to a self-hosting Forth.
+
+More documentation.
 
