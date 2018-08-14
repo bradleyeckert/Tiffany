@@ -17,7 +17,7 @@ The model's instruction size affects the ISA as well as the low level implementa
 The ISA uses 6-bit opcodes in a 32-bit instruction group. Opcodes that use immediate data take that data from the remainder of the instruction group. A slot pointer steps through the opcodes in sequence. It can be conditionally reset to cause a loop, or set to the end to skip the rest of the opcodes in the group.
 
 | Slot | Bits  | Range   |
-| ---- |:-----:| -------:|
+|:----:|:-----:| -------:|
 | 0    | 31:26 | 0 to 63 |
 | 1    | 25:20 | 0 to 63 |
 | 2    | 19:14 | 0 to 63 |
@@ -38,7 +38,6 @@ Preliminary opcodes:
 - *opcode conditionally skips the rest of the slots*
 - **opcode uses the rest of the slots as signed immediate data**
 
-op[5:3] |           | T+offset  | XP / N    | T +- N    | user      | 0= / N    | mem       | logic     |
 |       | 0         | 1  / imm  | 2         | 3         | 4         | 5         | 6         | 7         |
 |:-----:|:---------:|:---------:|:---------:|:---------:|:---------:|:---------:|:---------:|:---------:|
 | **0** | nop       | dup       | exit      | +         | user      | drop      | r>        | 2/        |
@@ -49,6 +48,7 @@ op[5:3] |           | T+offset  | XP / N    | T +- N    | user      | 0= / N    
 | **5** | -rept     |           | rp        | c-        |           | rp!       | @         | 2\*c      |
 | **6** | -if:      |           | sp        | **@as**   |           | sp!       | c@        | port      |
 | **7** | +if:      | **lit**   | up        | **!as**   |           | up!       | r@        | invert    |
+|       |           | T+offset  | XP / N    | T +- N    | user      | 0= / N    | mem       | logic     |
 
 The opcode map is optimized for LUT4 implementation. opcode[2:0] selects T from a 7:1 mux (column).
 opcode[5:3] selects the row within the column, sometimes with some decoding.
@@ -77,7 +77,7 @@ Group 7: Memory read result
 ### Summary
 
 Basic stack
-- `nop`   ( -- ) Displays as `.`.
+- `nop`   ( -- ) Displays as `.`
 - `drop`  ( x -- )
 - `dup`   ( x -- x x )
 - `over`  ( n m -- n m n )
@@ -87,6 +87,7 @@ Basic stack
 - `>r`    ( x -- ) ( R: -- x )
 - `lit`   ( -- imm )
 - `litx`  ( x -- x<<24 + imm )
+
 ALU
 - `+`     ( n m -- n+m ) carry out
 - `-`     ( n m -- n+m ) carry out
@@ -109,7 +110,7 @@ Control Flow
 - `exit`  ( R: PC -- ) Pop PC from return stack.
 - `-bran` ( flag -- ) Jump if flag < 0.
 - `jmp`   Jump: PC = imm.
-- `no:`   Skip the rest of the slots. Displays as `//`.
+- `no:`   Skip the rest of the slots. Displays as `//`
 - `rept`  Go back to slot 0.
 - `-rept` Go back to slot 0 if N<0; N=N+1.
 - `-if:`  Skip remaining slots if T>=0.
