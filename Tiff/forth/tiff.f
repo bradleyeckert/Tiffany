@@ -53,6 +53,26 @@
    drop >r >r drop r> r> swap
 ;
 
+: um/mod_ov  \ ud u -- -1 -1
+   drop drop drop -1 dup
+;
+: um/mod \ ud u -- ur uq               \ (untested)
+   2dup swap - drop
+   |ifc um/mod_ov exit |                \ check for overflow
+   -64  dup 2* drop                     \ set carry
+   begin                                \ L H divisor count
+      >r >r   >r 2*c r> 2*c             \ L' H' | count divisor
+      ifnc
+         dup r@ - drop                  \ test subtraction
+         |ifc r@ - |                    \ keep it
+      else
+         r@ -  0 2* drop                \ clear carry
+      then
+      r> r> 1+                          \ L' H' divisor count
+   dup +until
+   drop drop
+;
+
 : u<
    2dup xor
    |+if drop - 0< exit |

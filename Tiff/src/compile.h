@@ -18,7 +18,9 @@ void tiffCALLONLY (void);                 // tag current definition as call-only
 void tiffANON (void);                     // tag current definition as anonymous
 void ListOpcodeCounts(void);             // list the static opcode count profile
 void DisassembleIR(uint32_t IR);             // disassemble an instruction group
+void CompIfNC (void);
 void CompIf (void);
+void CompElse (void);
 void CompThen (void);
 void CompDefer (void);
 void CompBegin (void);

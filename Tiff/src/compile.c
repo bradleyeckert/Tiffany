@@ -311,23 +311,42 @@ void NoExecute (void) {
     if (!FetchCell(STATE)) tiffIOR = -14;
 }
 
-void CompIf (void){
+void CompIfNC (void){  // ( -- addr slot )
+    NewGroup();  NoExecute();
+    PushNum(FetchCell(CP));
+    Implicit(opSKIPNC);
+    PushNum(FetchByte(SLOT));
+    Explicit(opJUMP, 0xFFFFF);
+}
+void CompIf (void){  // ( -- addr slot )
     NewGroup();  NoExecute();
     PushNum(FetchCell(CP));
     Implicit(opZeroEquals);
+    PushNum(FetchByte(SLOT));
     Explicit(opMiBran, 0xFFFFF);
 }
-void CompThen (void){
+void CompThen (void){  // ( addr slot -- )
     NewGroup();  NoExecute();
+    uint32_t slot = PopNum();
     uint32_t mark = PopNum();
     uint32_t dest = FetchCell(CP) >> 2;
-    StoreROM(0xFFF00000 + dest, mark);
+//  printf("\nFwd Resolving %X = %X, slot %d ", mark, dest, slot);
+    StoreROM((-1<<slot) + dest, mark);
 }
-void CompBegin (void){
+void CompElse (void){  // ( addr slot -- addr' slot' )
+    NewGroup();  NoExecute();
+    uint32_t cp =   FetchCell(CP);
+    uint32_t slot = FetchByte(SLOT);
+    Explicit(opJUMP, 0x3FFFFFF);
+    CompThen();
+    PushNum(cp);
+    PushNum(slot);
+}
+void CompBegin (void){  // ( -- addr )
     NewGroup();  NoExecute();
     PushNum(FetchCell(CP));
 }
-void CompPlusUntil (void){  // most compact backward branch
+void CompPlusUntil (void){  // ( addr -- )
     NoExecute();
     uint32_t dest = PopNum();
     Explicit(opMiBran, dest>>2);

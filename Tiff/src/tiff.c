@@ -357,7 +357,9 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("exit",    SemiExit);
     AddKeyword("defer",   tiffDEFER);
     AddKeyword("is",      tiffIS);
+    AddKeyword("ifnc",    CompIfNC);
     AddKeyword("if",      CompIf);
+    AddKeyword("else",    CompElse);
     AddKeyword("then",    CompThen);
     AddKeyword("begin",   CompBegin);
     AddKeyword("+until",  CompPlusUntil);
