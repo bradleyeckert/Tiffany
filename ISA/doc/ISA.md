@@ -31,8 +31,6 @@ The number of bits depends on the slot position or the opcode. It can be 26, 20,
 
 ALU operations take their operands from registers for minimum input delay. Since the RAM is synchronous read/write, the opcode must be pre-decoded. The pre-decoder initiates reads. The main decoder has a registered opcode to work with, so the decode delay isn’t so bad. The pre-read stage of the pipeline allows time for immediate data to be registered, so the execute stage sees no delay. Opcodes have time to add the immediate data to registers, for more complex operations. One can index into the stack, for example.
 
-There is no 0BRAN because it takes a lot of LUT4 layers to test for zero. `if` uses "0= -bran" instead.
-
 Preliminary opcodes:
 
 - *opcode conditionally skips the rest of the slots*
@@ -40,12 +38,12 @@ Preliminary opcodes:
 
 |         | 0         | 1          | 2         | 3         | 4         | 5         | 6         | 7         |
 |:-------:|:---------:|:----------:|:---------:|:---------:|:---------:|:---------:|:---------:|:---------:|
-| **0**   | nop       | dup        | exit      | +         | user      | drop      | r>        | 2/        |
+| **0**   | nop       | dup        | exit      | +         | user      | 0<        | r>        | 2/        |
 | **1**   | ifc:      | 1+         | swap      | -         |           | c!+       | c@+       | u2/       |
-| **2**   | no:       | 2+         | **-bran** | **jmp**   |           | w!+       | w@+       | and       |
+| **2**   | no:       | 2+         | ifz:      | **jmp**   |           | w!+       | w@+       | and       |
 | **3**   |           | **litx**   | >r        | **call**  |           | 0=        | w@        | xor       |
 | **4**   | rept      | 4+         | over      | c+        |           | !+        | @+        | 2\*       |
-| **5**   | -rept     |            | rp        | c-        |           | rp!       | @         | 2\*c      |
+| **5**   | -rept     |            | rp        | drop      |           | rp!       | @         | 2\*c      |
 | **6**   | -if:      |            | sp        | **@as**   |           | sp!       | c@        | port      |
 | **7**   | +if:      | **lit**    | up        | **!as**   |           | up!       | r@        | invert    |
 | *mux*   | *none*    | *T+offset* | *XP / N*  | *N +/- T* | *user*    | *0= / N*  | *mem bus* | *logic*   |
@@ -74,6 +72,14 @@ Group 7: Memory read result
 @   ( a -- n )      T = mem
 ```
 
+Branches compile a conditional skip past `jmp`.
+
+- `if` compiles `ifz: jmp`. Jump if T=0.
+- `+if` compiles `-if: jmp`. Jump if T<0. Does not consume top of stack.
+- `ifnc` compiles `ifc: jmp`. Jump if carry flag is set. Does not consume top of stack.
+
+`begin ... +until` is handy for loops. Negate the loop count before `begin`.
+
 ### Summary
 
 Basic stack
@@ -101,6 +107,7 @@ ALU
 - `2*`    ( n -- m ) carry out
 - `2*c`   ( n -- m ) carry in and carry out
 - `0=`    ( n -- flag )
+- `0<`    ( n -- flag )
 - `and`   ( n m -- n&m )
 - `xor`   ( n m -- n^m )
 - `invert`( n -- ~n )
@@ -108,13 +115,13 @@ ALU
 Control Flow
 - `call`  ( R: -- PC ) PC = Imm.
 - `exit`  ( R: PC -- ) Pop PC from return stack.
-- `-bran` ( flag -- ) Jump if flag < 0.
-- `jmp`   Jump: PC = Imm.
-- `no:`   Skip the rest of the slots. Displays as `//`
-- `rept`  Go back to slot 0.
-- `-rept` Go back to slot 0 if N<0; N=N+1.
-- `-if:`  Skip remaining slots if T>=0.
-- `+if:`  Skip remaining slots if T<0.
+- `ifz:`  ( flag -- ) Skip the rest of the slots if flag <> 0.
+- `jmp`   ( -- ) Jump: PC = Imm.
+- `no:`   ( -- ) Skip the rest of the slots. Displays as `_`
+- `rept`  ( -- ) Go back to slot 0.
+- `-rept` ( n ? -- n' ? ) Go back to slot 0 if N<0; N=N+1.
+- `-if:`  ( n -- n ) Skip remaining slots if T>=0.
+- `+if:`  ( n -- n ) Skip remaining slots if T<0.
 
 Memory
 - `!+`    ( n a -- a+4 ) 32-bit

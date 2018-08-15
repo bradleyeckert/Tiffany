@@ -22,6 +22,7 @@ extern int printed;
 
 // forward references for tiff.c
 uint32_t tiffPARSENAME (void);                             // ( -- addr length )
+uint32_t tiffPARSE (void);
 void initFilelist(void);
 
 // used by main.c, defined in tiff.c

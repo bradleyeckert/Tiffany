@@ -105,7 +105,7 @@ void CommaHeader (char *name, uint32_t xte, uint32_t xtc, int Size, int flags){
 	uint32_t link = FetchCell(wid);
 	StoreCell (FetchCell(HP), wid);
 	CommaH (((Size&0xFF)<<24) | link);                 // [0]: Upper size | link
-	CommaXstring(name, CommaH, flags);                 // [1]: Name
+	CommaXstring(name, CommaH, flags, 0);              // [1]: Name
 }
 
 void FollowingToken (char *str, int max) {  // parse the next blank delimited string
@@ -199,6 +199,48 @@ void tiffSAVEcrom (void) {
 void tiffSAVEcaxi (void) {
     FollowingToken(name, 32);
     SaveAXIasC (name, 1024);
+}
+
+void TiffLitChar (void) {
+    FollowingToken(name, 32);
+    Literal(name[0]);
+}
+void TiffChar (void) {
+    FollowingToken(name, 32);
+    PushNum((name[0]));
+}
+
+void GetQuotedString (char terminator) {
+    PushNum(terminator);
+    tiffPARSE();  // ( addr len ) string is on the stack
+    uint32_t length = PopNum();
+    if (length>MaxTIBsize) length=MaxTIBsize;   // sanity check
+    uint32_t address = PopNum();
+    FetchString(name, address, (uint8_t)length); // name is the string
+}
+
+void tiffCommaString (void) {
+    GetQuotedString('"');
+    CommaCstring(name);
+}
+
+void tiffMsgString (void) {
+    CompAhead();
+    uint32_t cp = FetchCell(CP);
+    tiffCommaString();
+    CompThen();
+    CompType(cp);
+}
+
+void tiffCommentString (void) {
+    GetQuotedString(')');
+}
+void tiffTypeString (void) {
+    GetQuotedString(')');
+    printf("%s", name);
+}
+void tiffTypeCR (void) {
+    printf("\n");
 }
 
 void benchmark(void) {
@@ -353,17 +395,26 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("xwords",  tiffXWORDS);
     AddKeyword(":noname", tiffNONAME);
     AddKeyword(":",       tiffCOLON);
-    AddKeyword(";",       Semicolon);
-    AddKeyword("exit",    SemiExit);
+    AddKeyword(";",       CompSemi);
+    AddKeyword(",",       CompComma);
+    AddKeyword(",\"",     tiffCommaString);
+    AddKeyword(".\"",     tiffMsgString);
+    AddKeyword(".(",      tiffTypeString);
+    AddKeyword("(",       tiffCommentString);
+    AddKeyword("cr",      tiffTypeCR);
+    AddKeyword("[char]",  TiffLitChar);
+    AddKeyword("char",    TiffChar);
+    AddKeyword("exit",    CompExit);
     AddKeyword("defer",   tiffDEFER);
     AddKeyword("is",      tiffIS);
-    AddKeyword("if-",     CompIfMi);
+    AddKeyword("+if",     CompPlusIf);
     AddKeyword("ifnc",    CompIfNC);
     AddKeyword("if",      CompIf);
     AddKeyword("else",    CompElse);
     AddKeyword("then",    CompThen);
     AddKeyword("begin",   CompBegin);
     AddKeyword("again",   CompAgain);
+    AddKeyword("until",   CompUntil);
     AddKeyword("+until",  CompPlusUntil);
     AddKeyword("rom!",    tiffROMstore);
     AddKeyword("bench",   benchmark);
@@ -393,7 +444,6 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddEquate ("op_u2/",   opUtwoDiv);
     AddEquate ("op_no:",   opSKIP);
     AddEquate ("op_2+",    opTwoPlus);
-    AddEquate ("op_-bran", opMiBran);
     AddEquate ("op_jmp",   opJUMP);
     AddEquate ("op_w!+",   opWstorePlus);
     AddEquate ("op_w@+",   opWfetchPlus);
@@ -402,6 +452,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddEquate ("op_>r",    opPUSH);
     AddEquate ("op_call",  opCALL);
     AddEquate ("op_0=",    opZeroEquals);
+    AddEquate ("op_0<",    opZeroLess);
     AddEquate ("op_w@",    opWfetch);
     AddEquate ("op_xor",   opXOR);
     AddEquate ("op_rept",  opREPT);
@@ -413,7 +464,6 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddEquate ("op_2*",    opTwoStar);
     AddEquate ("op_-rept", opMiREPT);
     AddEquate ("op_rp",    opRP);
-    AddEquate ("op_-c",    opSUBC);
     AddEquate ("op_rp!",   opSetRP);
     AddEquate ("op_@",     opFetch);
     AddEquate ("op_-if:",  opSKIPGE);
@@ -423,6 +473,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddEquate ("op_c@",    opCfetch);
     AddEquate ("op_port",  opPORT);
     AddEquate ("op_ifc:",  opSKIPNC);
+    AddEquate ("op_ifz:",  opSKIPNZ);
     AddEquate ("op_lit",   opLIT);
     AddEquate ("op_up",    opUP);
     AddEquate ("op_!as",   opStoreAS);
@@ -512,16 +563,18 @@ void SkipWhite (void){                  // skip whitespsce (blanks)
         TOINbump();
     }
 }
-// Parse without skipping delimiter, return string on stack.
+// Parse without skipping leading delimiter, return string on stack.
 // Also return length of string for C to check.
 uint32_t tiffPARSE (void) {             // ( delimiter -- addr length )
     uint32_t length = 0;                // returns a string
     uint8_t delimiter = (uint8_t) PopNum();
     PushNum(TIBhere());
     while (TIBnotExhausted()) {
-        if (TIBchar() == delimiter) break;
+        if (TIBchar() == delimiter) {
+            TOINbump();                 // point to after delimiter
+            break;
+        }
         TOINbump();                     // get string
-        if (length==31) break;          // token size limit
         length++;
     }
     PushNum(length);

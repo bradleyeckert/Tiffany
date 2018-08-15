@@ -293,7 +293,12 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
                 Trace(New, RidT, T, M);  New=0;
 #endif // TRACEABLE
                 T = M;  goto ex;
-			case opDROP: SDROP();		    	        break;	// drop
+			case opZeroLess:
+                M=0;  if ((signed)T<0) M--;
+#ifdef TRACEABLE
+                Trace(New, RidT, T, M);  New=0;
+#endif // TRACEABLE
+                T = M;                                  break;  // 0<
 			case opPOP:  SDUP();  M = RDROP();
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
@@ -358,7 +363,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 				// PC change flushes pipeline in HW version
 #endif // TRACEABLE
                 // Jumps and calls use cell addressing
-			    PC = IMM;  goto ex;                             // jump
+			    PC = IMM;  goto ex;                             // jmp
 			case opWstorePlus:    /* ( n a -- a' ) */
                 StoreX(T>>2, N, (T&2)*8, 0xFFFF);
 #ifdef TRACEABLE
@@ -401,7 +406,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
                 PC = IMM;  goto ex;
 #endif // TRACEABLE
             case opZeroEquals:
-                M=0;  if (T==0) M=-1;
+                M=0;  if (T==0) M--;
 #ifdef TRACEABLE
                 Trace(New, RidT, T, M);  New=0;
 #endif // TRACEABLE
@@ -423,8 +428,10 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
                 Trace(New, RidT, T, T + 4);  New=0;
 #endif // TRACEABLE
 			    T = T + 4;                              break;	// 4+
-            case opMiBran:
-                if ((signed)T < 0) PC = IMM; SDROP(); goto ex;  // -bran
+            case opSKIPNZ:
+				M = T;  SDROP();
+                if (M == 0) break;
+                goto ex;  										// ifz:
 			case opADDC:  // carry into adder
 			    DX = (uint64_t)N + (uint64_t)T + (uint64_t)(CARRY & 1);
 #ifdef TRACEABLE
@@ -463,15 +470,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
                 N++;  break;
 			case opRP: M = RP;                                  // rp
                 goto GetPointer;
-			case opSUBC:
-			    DX = (uint64_t)N - (uint64_t)T - (uint64_t)(CARRY & 1);
-#ifdef TRACEABLE
-                Trace(New, RidT, T, (uint32_t)DX);  New=0;
-                Trace(0, RidCY, CARRY, ~(uint32_t)(DX>>32));
-#endif // TRACEABLE
-                T = (uint32_t)DX;
-                CARRY = ~(uint32_t)(DX>>32) & 1;
-                SNIP();	                                break;	// c-
+			case opDROP: SDROP();		    	        break;	// drop
 			case opSetRP:
                 M = (T>>2) & (RAMsize-1);
 #ifdef TRACEABLE

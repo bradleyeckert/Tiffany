@@ -38,7 +38,7 @@ int32_t UserFunction (int32_t T, int32_t N, int fn ) {
     switch (fn) {
         case 0: return tiffKEYQ();
         case 1: return tiffEKEY();
-        case 2: tiffEMIT((uint8_t) T);
+        case 2: tiffEMIT((uint8_t)T);  return 0;
         default: return 0;
     }
 }

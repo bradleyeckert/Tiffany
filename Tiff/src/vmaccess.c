@@ -145,6 +145,18 @@ uint32_t tiffFIND (void) {  // ( addr len -- addr len | 0 ht )
     return 0;
 }
 
+uint32_t WordFind (char *name) {        // a more C-friendly version}
+    uint8_t wids = FetchByte(WIDS);
+    while (wids--) {
+        uint32_t wid = FetchCell(CONTEXT + wids*4);  // search the first list
+        uint32_t ht = SearchWordlist(name, FetchCell(wid));
+        if (ht) {
+            return ht;
+        }
+    }
+    return 0;
+}
+
 // WORDS primitive
 
 /*
@@ -358,14 +370,51 @@ void CommaH (uint32_t X) {  // append a word to header space
     StoreCell(hp + 4, HP);
 }
 
+uint8_t xstrlen(char *s) {  // strlen that skips escape codes
+    uint8_t len = 0;
+    char c;
+    while (1) {
+        c = *s++;
+        if (!c) break;
+        if (c == '\\') {
+            if (!*s++) break; // don't skip terminator
+        }
+        len++;
+    }
+    return len;
+}
+
 // Generic counted string compile
 // Include optional flags when compiling a header name
-void CommaXstring (char *s, void(*fn)(uint32_t), int flags) {
-    int length = strlen(s);
+void CommaXstring (char *s, void(*fn)(uint32_t), int flags, int esc) {
+    int length;
+    if (esc) length = xstrlen(s);
+    else     length = strlen(s);
     uint32_t word = 0xFFFFFF00 | ((flags | length) & 0xFF);
     int i = 1;  uint32_t x, mask;
     while (length--) {
-        x = (uint32_t)*s++ << (i*8);
+        char c = *s++;
+        if (esc) {                      // escape sequences supported
+            if (c == '\\') {
+                c = *s++;
+                switch (c) {
+                    case 'a': c = 7; break;   // BEL  (bell)
+                    case 'b': c = 8; break;   // BS (backspace)
+                    case 'e': c = 27; break;  // ESC (not in C99)
+                    case 'f': c = 12; break;  // FF (form feed)
+                    case 'l': c = 10; break;  // LF
+                    case 'n': c = 10; break;  // newline
+                    case 'q': c = '"'; break; // double-quote
+                    case 'r': c = 13; break;  // CR
+                    case 't': c = 9; break;   // HT (tab)
+                    case 'v': c = 11; break;  // VT
+                    case 'z': c = 0; break;   // NUL
+                    case '"': c = '"'; break; // double-quote
+                    default: break;
+                }
+            }
+        }
+        x = c << (i*8);
         mask = ~(0xFF << (i*8));
         word &= (mask | x);
         if (i == 3) {
@@ -380,13 +429,13 @@ void CommaXstring (char *s, void(*fn)(uint32_t), int flags) {
 }
 
 void CommaHstring (char *s) {   // compile string to head space
-    CommaXstring(s, CommaH, 0);
+    CommaXstring(s, CommaH, 0, 0); // disable escape sequences
 }
 void CommaDstring (char *s) {   // compile string to data space
-    CommaXstring(s, CommaD, 0);
+    CommaXstring(s, CommaD, 0, 1);
 }
 void CommaCstring (char *s) {   // compile string to code space
-    CommaXstring(s, CommaC, 0);
+    CommaXstring(s, CommaC, 0, 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -711,11 +760,12 @@ void DumpReturnStack(void){
     }
 }
 
-void DisassembleGroup(int addr) {
+uint32_t DisassembleGroup(uint32_t addr) {
+    uint32_t r;
     uint32_t ir = FetchCell(addr);
     ColorNone();
     printf("%04X %08X ", addr, ir);
-    DisassembleIR(ir);
+    r = DisassembleIR(ir);
     char *name = GetXtName(addr);
     if (name) {
         ColorNone();
@@ -725,6 +775,7 @@ void DisassembleGroup(int addr) {
         ColorNone();
     }
     printed = 1;
+    return r;
 }
 
 // Disassemble to screen
@@ -733,13 +784,23 @@ void Disassemble(uint32_t addr, uint32_t length) {
     if (addr & 0xFF800000) {
         printf("Can't disassemble a C function");
     } else {
+        if (length == 1) { // could be a defer
+            int jmp = DisassembleGroup(addr);
+            if (jmp) {
+                addr = jmp;
+                length = 10;
+                printf("\n              refers to:");
+            } else {
+                goto ex;
+            }
+        }
         for (i=0; i<length; i++) {
             printf("\n");
             DisassembleGroup(addr);
             addr += 4;
         }
     }
-    ColorNormal();
+ex: ColorNormal();
 }
 
 void DumpROM(void) {

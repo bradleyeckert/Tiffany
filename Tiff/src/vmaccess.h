@@ -28,11 +28,13 @@ void CommaH (uint32_t X);                       // append a word to header space
 void CommaHstring (char *s);                     // compile string to head space
 void CommaDstring (char *s);                     // compile string to data space
 void CommaCstring (char *s);                     // compile string to code space
-void CommaXstring (char *s, void(*fn)(uint32_t), int flags);   // generic string
+void CommaXstring (char *s, void(*fn)(uint32_t), int flags, int esc); // generic
 void CommaHeader (char *name, uint32_t xte, uint32_t xtc, int Size, int flags);
 
 uint32_t SearchWordlist(char *name, uint32_t WID);
 uint32_t tiffFIND (void);                     // ( addr len -- addr len | 0 ht )
+uint32_t WordFind (char *name);                                     // C version
+
 void tiffWords (char *substring, int verbosity);   // list words in search order
 char *GetXtName(uint32_t xt);                              // look up name of xt
 

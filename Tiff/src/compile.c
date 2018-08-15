@@ -18,12 +18,12 @@ uint32_t DbgPC;                         // shared with vmaccess.c
 uint32_t OpcodeCount[64];               // static instruction count
 
 static char names[64][6] = {
-    ".",     "dup",  "exit",  "+",    "user", "drop", "r>",  "2/",
+    ".",     "dup",  "exit",  "+",    "user", "0<",   "r>",  "2/",
     "ifc:",  "1+",   "swap",  "-",    "?",    "c!+",  "c@+", "u2/",
-    "//",    "2+",   "-bran", "jmp",  "?",    "w!+",  "w@+", "and",
+    "_",     "2+",   "ifz:",  "jmp",  "?",    "w!+",  "w@+", "and",
     "?",     "litx", ">r",    "call", "?",    "0=",   "w@",  "xor",
-    "rept",  "4+",   "over",  "?",    "?",    "!+",   "@+",  "2*",
-    "-rept", "?",    "rp",    "?",    "?",    "rp!",  "@",   "2*c",
+    "rept",  "4+",   "over",  "c+",   "?",    "!+",   "@+",  "2*",
+    "-rept", "?",    "rp",    "drop", "?",    "rp!",  "@",   "2*c",
     "-if:",  "?",    "sp",    "@as",  "?",    "sp!",  "c@",  "port",
     "+if",   "lit",  "up",    "!as",  "?",    "up!",  "r@",  "com"
 };
@@ -40,7 +40,6 @@ static int isImmediate(unsigned int opcode) {
         case opFetchAS:
         case opStoreAS:
         case opUSER:
-        case opMiBran:
         case opCALL:
         case opJUMP: return 1;
         default: return 0;
@@ -49,28 +48,30 @@ static int isImmediate(unsigned int opcode) {
 // Determine if opcode uses immediate address
 static int isImmAddress(unsigned int opcode) {
     switch (opcode) {
-        case opMiBran:
         case opCALL:
         case opJUMP: return 1;
         default: return 0;
     }
 }
 
-void DisassembleIR(uint32_t IR) {
+uint32_t DisassembleIR(uint32_t IR) {  // return imm if JMP
     int slot = 26;  // 26 20 14 8 2
     int opcode;
+    uint32_t r = 0;
     while (slot>=0) {
         opcode = (IR >> slot) & 0x3F;
+        r = 0;
         NextOp: if (isImmediate(opcode)) {
             uint32_t imm = IR & ~(0xFFFFFFFF << slot);
             if (isImmAddress(opcode)) {
-                char *name = GetXtName(imm<<2);
+                r = imm<<2;
+                char *name = GetXtName(r);
                 if (name) {
                     ColorCompiled();
                     printf("%s ", name);
                 } else {
                     ColorImmAddress();
-                    printf("0x%X ", imm<<2);
+                    printf("0x%X ", r);
                 }
             } else {
                 ColorImmediate();
@@ -87,6 +88,7 @@ void DisassembleIR(uint32_t IR) {
         goto NextOp;
     }
     ColorNormal();
+    return r;
 }
 
 void ListOpcodeCounts(void) {           // list the static profile
@@ -198,7 +200,7 @@ static void CompileMacro(uint32_t addr) { // compile as a macro
 // 4. if COLONDEF, resolve the code length.
 // 5. Return to EXECUTE mode.
 
-void SemiExit (void) {  /*EXPORT*/
+void CompExit (void) {  /*EXPORT*/
 	if (FetchByte(CALLED)) {            // ca = packed slot and address
         uint32_t ca = FetchCell(CALLADDR);
         uint32_t addr = ca & 0xFFFFFF;
@@ -212,8 +214,8 @@ void SemiExit (void) {  /*EXPORT*/
 	}
 }
 
-void Semicolon (void) {  /*EXPORT*/
-    SemiExit();  NewGroup();
+void CompSemi (void) {  /*EXPORT*/
+    CompExit();  NewGroup();
 	uint32_t wid = FetchCell(CURRENT);
 	wid = FetchCell(wid);               // -> current definition
     uint32_t name = FetchCell(wid + 4);
@@ -223,7 +225,7 @@ void Semicolon (void) {  /*EXPORT*/
     // The code address is in the header at wid-16.
     if (FetchByte(COLONDEF)) {          // resolve length of definition
         StoreByte(0, COLONDEF);
-        uint32_t org = FetchCell(wid-4);  // start address = xte
+        uint32_t org = FetchCell(wid-4) & 0xFFFFFF; // start address = xte
         uint32_t cp  = FetchCell(CP);     // end address
         uint32_t length = (cp - org) / 4; // length in cells
         if (length>255) length=255;       // limit to 8-bit
@@ -311,28 +313,44 @@ void NoExecute (void) {
     if (!FetchCell(STATE)) tiffIOR = -14;
 }
 
-void CompIfNC (void){  // ( -- addr slot )
-    NewGroup();  NoExecute();
-    PushNum(FetchCell(CP));
-    Implicit(opSKIPNC);
-    PushNum(FetchByte(SLOT));
-    Explicit(opJUMP, 0xFFFFF);
-}
-void CompIf (void){  // ( -- addr slot )
-    NewGroup();  NoExecute();
-    PushNum(FetchCell(CP));
-    Implicit(opZeroEquals);
-    PushNum(FetchByte(SLOT));
-    Explicit(opMiBran, 0xFFFFF);
-}
-void CompIfMi (void){  // ( -- addr slot )
+void CompAhead (void){  // ( -- addr slot )
     NoExecute();
     if (FetchByte(SLOT)<14)
         NewGroup();
     PushNum(FetchCell(CP));
     int slot = FetchByte(SLOT);
     PushNum(slot);
-    Explicit(opMiBran, ~(-1<<slot));
+    Explicit(opJUMP, ~(-1<<slot));
+}
+void CompIfNC (void){  // ( -- addr slot )
+    NoExecute();
+    if (FetchByte(SLOT)<20)
+        NewGroup();
+    PushNum(FetchCell(CP));
+    Implicit(opSKIPNC);
+    int slot = FetchByte(SLOT);
+    PushNum(slot);
+    Explicit(opJUMP, ~(-1<<slot));
+}
+void CompIf (void){  // ( -- addr slot )
+    NoExecute();
+    if (FetchByte(SLOT)<20)
+        NewGroup();
+    PushNum(FetchCell(CP));
+    Implicit(opSKIPNZ);
+    int slot = FetchByte(SLOT);
+    PushNum(slot);
+    Explicit(opJUMP, ~(-1<<slot));
+}
+void CompPlusIf (void){  // ( -- addr slot )
+    NoExecute();
+    if (FetchByte(SLOT)<20)
+        NewGroup();
+    PushNum(FetchCell(CP));
+    Implicit(opSKIPGE);
+    int slot = FetchByte(SLOT);
+    PushNum(slot);
+    Explicit(opJUMP, ~(-1<<slot));
 }
 void CompThen (void){  // ( addr slot -- )
     NewGroup();  NoExecute();
@@ -362,18 +380,42 @@ void CompAgain (void){  // ( addr -- )
 }
 void CompPlusUntil (void){  // ( addr -- )
     NoExecute();
+    if (FetchByte(SLOT)<20)
+        NewGroup();
     uint32_t dest = PopNum();
-    Explicit(opMiBran, dest>>2);
+    Implicit(opSKIPGE);
+    Explicit(opJUMP, dest>>2);
 }
-
-
-// compile a forward reference
-
-void CompDefer (void){
+void CompUntil (void){  // ( addr -- )
+    NoExecute();
+    if (FetchByte(SLOT)<20)
+        NewGroup();
+    uint32_t dest = PopNum();
+    Implicit(opSKIPNZ);
+    Explicit(opJUMP, dest>>2);
+}
+void CompDefer (void){                  // compile a forward reference
     NewGroup();
     Explicit(opJUMP, 0x3FFFFFF);
 }
-
+void CompComma (void){                  // append number on the stack to code space
+    uint32_t cp = FetchCell(CP);
+    StoreROM(PopNum(), cp);
+    if (cp & 3) tiffIOR = -23;          // not cell aligned
+    StoreCell(cp+4, CP);
+}
+void CompType(uint32_t cp) {
+    Literal(cp);
+    Implicit(opCfetchPlus);
+    uint32_t ht = WordFind("type");
+    if (ht) {
+        uint32_t xte = FetchCell(ht-4) & 0xFFFFFF;
+        Compile(xte);
+    } else {
+        printf("\nInternal name not found");
+        tiffIOR = -21;
+    }
+}
 
 // Functions invoked after being found, from either xte or xtc.
 // Positive means execute in the VM.
@@ -401,8 +443,8 @@ void tiffFUNC (int32_t n) {   /*EXPORT*/
             case 7: HardSkipOp(w);  break;  // compile skip opcode in slot 0
             case 8: FlushLit();  NewGroup();   break;  // skip to new instruction group
 // Compile xt must be multiple of 8 so that clearing bit2 converts to a macro
-            case 16: Compile(FetchCell(ht-4)); break;  // compile call to xte
-            case 20: CompileMacro(FetchCell(ht-4)); break;
+            case 16: Compile     (FetchCell(ht-4) & 0xFFFFFF); break;  // compile call to xte
+            case 20: CompileMacro(FetchCell(ht-4) & 0xFFFFFF); break;
 			default: break;
 		}
 	} else { // execute in the VM
@@ -467,7 +509,6 @@ void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     AddImplicit(opADD       , "+");
     AddImplicit(opSUB       , "-");
     AddImplicit(opADDC      , "c+");
-    AddImplicit(opSUBC      , "c-");
     AddImplicit(opRfetch    , "r@");
     AddImplicit(opAND       , "and");
     AddImplicit(opOVER      , "over");
@@ -478,6 +519,7 @@ void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     AddImplicit(opTwoStarC  , "2*c");
     AddImplicit(opCstorePlus, "c!+");
     AddImplicit(opCfetchPlus, "c@+");
+    AddImplicit(opCfetchPlus, "count");
     AddImplicit(opCfetch    , "c@");
     AddImplicit(opWstorePlus, "w!+");
     AddImplicit(opWfetchPlus, "w@+");
@@ -499,7 +541,7 @@ void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     AddImplicit(opSetUP     , "up!");
     AddExplicit(opLitX      , "litx");
     AddExplicit(opUSER      , "user");
-    AddExplicit(opJUMP      , "jump");
+    AddExplicit(opJUMP      , "jmp");
     AddExplicit(opFetchAS   , "@as");
     AddExplicit(opLIT       , "lit");
     AddImplicit(opDROP      , "drop");
@@ -511,12 +553,15 @@ void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     AddImplicit(opSWAP      , "swap");
     AddSkip    (opSKIP      , "no:");
     AddSkip    (opSKIPNC    , "ifc:");
+    AddSkip    (opSKIPNZ    , "ifz:");
     AddSkip    (opSKIPLT    , "+if:");
     AddSkip    (opSKIPGE    , "-if:");
     AddHardSkip(opSKIP      , "|no");
     AddHardSkip(opSKIPNC    , "|ifc");
+    AddHardSkip(opSKIPNZ    , "|ifz");
     AddHardSkip(opSKIPLT    , "|+if");
     AddHardSkip(opSKIPGE    , "|-if");
     AddImplicit(opZeroEquals, "0=");
+    AddImplicit(opZeroLess  , "0<");
 
 }
