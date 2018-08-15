@@ -325,6 +325,15 @@ void CompIf (void){  // ( -- addr slot )
     PushNum(FetchByte(SLOT));
     Explicit(opMiBran, 0xFFFFF);
 }
+void CompIfMi (void){  // ( -- addr slot )
+    NoExecute();
+    if (FetchByte(SLOT)<14)
+        NewGroup();
+    PushNum(FetchCell(CP));
+    int slot = FetchByte(SLOT);
+    PushNum(slot);
+    Explicit(opMiBran, ~(-1<<slot));
+}
 void CompThen (void){  // ( addr slot -- )
     NewGroup();  NoExecute();
     uint32_t slot = PopNum();
@@ -345,6 +354,11 @@ void CompElse (void){  // ( addr slot -- addr' slot' )
 void CompBegin (void){  // ( -- addr )
     NewGroup();  NoExecute();
     PushNum(FetchCell(CP));
+}
+void CompAgain (void){  // ( addr -- )
+    NoExecute();
+    uint32_t dest = PopNum();
+    Explicit(opJUMP, dest>>2);
 }
 void CompPlusUntil (void){  // ( addr -- )
     NoExecute();

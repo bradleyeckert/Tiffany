@@ -19,11 +19,14 @@ void tiffANON (void);                     // tag current definition as anonymous
 void ListOpcodeCounts(void);             // list the static opcode count profile
 void DisassembleIR(uint32_t IR);             // disassemble an instruction group
 void CompIfNC (void);
+void CompIfMi (void);
 void CompIf (void);
 void CompElse (void);
 void CompThen (void);
 void CompDefer (void);
 void CompBegin (void);
+void CompAgain (void);
+
 void CompPlusUntil (void);
 
 extern int32_t breakpoint;

@@ -316,10 +316,10 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 			    DX = (uint64_t)N - (uint64_t)T;
 #ifdef TRACEABLE
                 Trace(New, RidT, T, (uint32_t)DX);  New=0;
-                Trace(0, RidCY, CARRY, (uint32_t)(DX>>32));
+                Trace(0, RidCY, CARRY, ~(uint32_t)(DX>>32));
 #endif // TRACEABLE
                 T = (uint32_t)DX;
-                CARRY = (uint32_t)(DX>>32);
+                CARRY = ~(uint32_t)(DX>>32);
                 SNIP();	                                break;	// -
 			case opCstorePlus:    /* ( n a -- a' ) */
                 StoreX(T>>2, N, (T&3)*8, 0xFF);
@@ -467,10 +467,10 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 			    DX = (uint64_t)N - (uint64_t)T - (uint64_t)(CARRY & 1);
 #ifdef TRACEABLE
                 Trace(New, RidT, T, (uint32_t)DX);  New=0;
-                Trace(0, RidCY, CARRY, (uint32_t)(DX>>32));
+                Trace(0, RidCY, CARRY, ~(uint32_t)(DX>>32));
 #endif // TRACEABLE
                 T = (uint32_t)DX;
-                CARRY = (uint32_t)(DX>>32) & 1;
+                CARRY = ~(uint32_t)(DX>>32) & 1;
                 SNIP();	                                break;	// c-
 			case opSetRP:
                 M = (T>>2) & (RAMsize-1);

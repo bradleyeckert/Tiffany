@@ -21,13 +21,17 @@
 : aligned      2+ 1+ -4 and ;           \ n -- n'
 : d2*          >r 2* r> 2*c ;           \ d -- d'
 : abs    |-if negate | ;                \ n -- u
-: 0<     |-if 0= 0= exit | 0= ;         \ n -- flag
+: 0<     |+if dup xor exit | 0= 0= ;    \ n -- flag
 : d+     >r swap >r + r> r> c+ ;        \ d1 d2 -- d3
+: or    invert swap invert and invert ; \ n m -- n&m
 : dnegate                               \ d -- -d
    invert >r invert 1+ r> |
    over 0= -if: drop 1+ exit | drop
 ;
 : dabs   |-if dnegate exit | ;          \ n -- u
+
+\ Software versions of math functions
+\ May be replaced by user functions.
 
 : lshift  \ x count                     \ left shift
    63 and                               \ limit the count
@@ -35,14 +39,12 @@
    1+ swap
    | 2* -rept swap drop ;
 ;
-
 : rshift  \ x count                     \ right shift
    63 and                               \ limit the count
    negate +if: drop exit |              \ 0
    1+ swap
    | u2/ -rept swap drop ;
 ;
-
 : um*  \ u1 u2 -- ud                    \ 450-550 beats
    0 -32  begin                         \ u1 u2 0 count
       >r 2* >r 2*c                      \ u1 u2' | count x'
@@ -52,26 +54,41 @@
    dup +until
    drop >r >r drop r> r> swap
 ;
-
 : um/mod_ov  \ ud u -- -1 -1
    drop drop drop -1 dup
 ;
-: um/mod \ ud u -- ur uq               \ (untested)
-   2dup swap - drop
+: um/mod \ ud u -- ur uq                \ (untested)
+   2dup - drop
    |ifc um/mod_ov exit |                \ check for overflow
-   -64  dup 2* drop                     \ set carry
+   -32  u2/ 2*                          \ clear carry
    begin                                \ L H divisor count
-      >r >r   >r 2*c r> 2*c             \ L' H' | count divisor
+      >r >r   >r 2*c r> 2*c             \ dividend' | count divisor
       ifnc
-         dup r@ - drop                  \ test subtraction
+         dup r@  - drop                 \ test subtraction
          |ifc r@ - |                    \ keep it
       else
          r@ -  0 2* drop                \ clear carry
       then
       r> r> 1+                          \ L' H' divisor count
    dup +until
-   drop drop
+   drop drop swap 2*c
 ;
+
+\ eForth
+: m/mod
+    dup 0< dup >r
+    if negate  >r
+       dnegate r>
+    then >r dup 0<
+    if r@ +
+    then r> um/mod
+    r> if
+        swap negate swap
+    then
+;
+: /mod  over 0< swap m/mod ;
+: mod   /mod drop ;
+: /     /mod nip ;
 
 : u<
    2dup xor
@@ -84,14 +101,44 @@
    drop drop 0<
 ;
 
+: /string >r swap r@ + swap r> - ;      \ a u -- a+1 u-1
+: within  over - >r - r> u< ;           \ u ulo uhi -- flag
 : u>      swap u< ;                     \ u1 u2 -- f
 : >       swap < ;                      \ n n -- f
 : *       um* drop ;
+: m*
+    2dup xor 0< >r
+    abs swap abs um*
+    r> if dnegate then
+;
+: */mod  >r m* r> m/mod ;
+: */     */mod swap drop ;
 
-
-
-
-
+: emit  2 user drop ;  \ c --
+: type  \ addr len
+   negate
+   begin  swap c@+ emit
+          swap 1+ dup
+   +until 2drop
+;
+: space   bl emit ;
+: spaces  negate begin +if: drop exit | space 1+ again ;
+: >char   127 and dup 127 bl within if drop 95 then ;
+: digit   9 over < 7 and + 48 + ;
+: <#      pad hld ! ;
+: hold    hld @ 1 - dup hld ! c! ;
+: #       0 base @ um/mod >r base @ um/mod swap digit hold r> ;
+: #s      begin # 2dup or 0= 0= +until ;
+: sign    0< if 45 hold then ;
+: #>      2drop hld @ pad over - ;
+: s.r     over - spaces type ;
+: d.r     >r dup >r dabs <# #s r> sign #> r> s.r ;
+: u.r     0 swap d.r ;
+: .r      >r s>d r> d.r ;
+: d.      0 d.r space ;
+: u.      0 d. ;
+\ -1 u. takes 18k cycles with slow math: 100 MHz = 180 usec.
+\ About 18us per digit.
 
 
 

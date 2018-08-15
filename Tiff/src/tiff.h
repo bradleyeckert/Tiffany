@@ -65,11 +65,14 @@ extern char *DefaultFile;
 #define HEAD        termTCB(21)  /* Points to header of last found word       */
 #define CONTEXT     termTCB(22)  /* 8 cells of context                        */
 #define FORTHWID    termTCB(30)  /* Forth wordlist                            */
-#define TIB         termTCB(31)  /* Terminal Input Buffer                     */
+#define HLD         termTCB(31)  /* Numeric input pointer                     */
+#define TIB         termTCB(32)  /* Terminal Input Buffer                     */
 // support 132-column text files plus a little extra in case of zero-terminator
 #define MaxTIBsize  136          /* Maximum bytes allowed in TIB              */
+#define PADsize     64
+#define PAD         (TIB + MaxTIBsize)
 
-#define DataPointerOrigin (TIB + MaxTIBsize)         /* Data starts after TIB */
+#define DataPointerOrigin (TIB + MaxTIBsize + PADsize) /* Data starts after TIB */
 
 #if (MaxTIBsize & 3)
 #error Please make MaxTIBsize a multiple of 4

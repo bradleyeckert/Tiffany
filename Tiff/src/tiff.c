@@ -357,11 +357,13 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("exit",    SemiExit);
     AddKeyword("defer",   tiffDEFER);
     AddKeyword("is",      tiffIS);
+    AddKeyword("if-",     CompIfMi);
     AddKeyword("ifnc",    CompIfNC);
     AddKeyword("if",      CompIf);
     AddKeyword("else",    CompElse);
     AddKeyword("then",    CompThen);
     AddKeyword("begin",   CompBegin);
+    AddKeyword("again",   CompAgain);
     AddKeyword("+until",  CompPlusUntil);
     AddKeyword("rom!",    tiffROMstore);
     AddKeyword("bench",   benchmark);
@@ -451,6 +453,10 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddEquate ("forthwid",   FORTHWID);
     AddEquate ("tib",        TIB);
     AddEquate ("head",       HEAD);
+    AddEquate ("hld",        HLD);
+    AddEquate ("pad",        PAD);
+    AddEquate ("|pad|",      PADsize);
+    AddEquate ("bl",         32);
 
 }
 
@@ -707,6 +713,7 @@ void tiffQUIT (char *cmdline) {
                     }
                     printf("%d:ok ", Sdepth());
 #endif
+                    ColorNone();
                     break;
                 default:
                     break;
