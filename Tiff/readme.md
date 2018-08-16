@@ -1,5 +1,5 @@
 # Dev Tools
-I use Code::Blocks and CLion. CLion is great to have if you're doing serious C coding, as its editor has the best hinting and real-time error hilighting. If you're on a budget, Code::Blocks is free. Linux is also free, but making console I/O work properly (raw vs cooked) is a little tricky. When creating a new project, include all of the files in the `/src` folder.
+I used Code::Blocks and the 30-day evaluation version of CLion. CLion is great to have if you're doing serious C coding, as its editor has the best hinting and real-time error hilighting. If you're on a budget, Code::Blocks is free. Linux is also free, but making console I/O work properly (raw vs cooked) is a little tricky. When creating a new project, include all of the files in the `/src` folder.
 
 I run the executable in ConEmu. If you must use a very dumb terminal, or you want to pipe output to a file without ANSI escape codes being inserted, #define MONOCHROME in config.h.
 
@@ -14,8 +14,14 @@ Tiff uses raw keyboard input and outputs to a VT100 terminal. Is that too much t
 
 Low level testing has a problem on Linux - something about how the terminal is used. Main.c is missing a trick to enable raw keyboard input. I commented it out because it's missing a mystery header file. Possibly an easy fix. It's rather ironic given the quality of xterm.
 
+## The Forth Interpreter
+The command line is formed by concatenating any remaining argv[] strings from the C command line, separating them with blanks. This trick is necessary because C doesn't give you the raw command line. Since C strips out quotes, it looks for other quotation characters (like open-quote and close-quote) and replaces them with a normal quote.
+
+The interpreter recognizes some keywords (C host functions) if a dictionary search fails. These keywords are listed by `iwords`. 
+
 ## Low Level Testing
-The internal ROM is erased to -1. If a filename exists, it loads it into ROM in binary format. At this point, you don't need to know much to start playing. You can edit a binary file to create executable ROM or you can type an 8-digit hex number and press X to execute it and see the stack effects. The tester operates like a postfix-style calculator. Hex digits are shifted into a 32-bit parameter. Non-digits are commands. Non-implemented commands display the key code so you know what the more esoteric key codes do. You might want to use them for something. So far, these (case-insensitive) commands are implemented:
+When I was just getting started, before there was a Forth dictionary, I wrote a screen dump of internal state. It's still handy to have. `+cpu` causes a screen dump after each keyboard line is interpreted. `cpu` enters a calculator-like test mode (which Linux doesn't like).
+You can type an 8-digit hex number and press X to execute it and see the stack effects. The tester operates like a postfix-style calculator. Hex digits are shifted into a 32-bit parameter. Non-digits are commands. Non-implemented commands display the key code so you know what the more esoteric key codes do. You might want to use them for something. So far, these (case-insensitive) commands are implemented:
 
 - `0-9, A-F` Push hex digit into parameter P.
 - `Enter` Clears P.
@@ -31,11 +37,6 @@ The internal ROM is erased to -1. If a filename exists, it loads it into ROM in 
 - `\` Resets the VM.
 
 Undo and Redo are supported if TRACEABLE is defined. This keeps a log of all state changes so that execution can be stepped backward and forward. It's definitely cute. Not tested much, though.
-
-## The Forth Interpreter
-The command line is formed by concatenating any remaining argv[] strings from the C command line, separating them with blanks. This trick is necessary because C doesn't give you the raw command line. Since C strips out quotes, it looks for other quotation characters (like open-quote and close-quote) and replaces them with a normal quote.
-
-The interpreter recognizes some keywords (C host functions) if a dictionary search fails. These keywords are listed by `iwords`. 
 
 ## To Do
 
