@@ -378,6 +378,15 @@ void CompAgain (void){  // ( addr -- )
     uint32_t dest = PopNum();
     Explicit(opJUMP, dest>>2);
 }
+void CompWhile (void){  // ( addr -- addr' slot addr )
+    uint32_t beg = PopNum();
+    CompIf();
+    PushNum(beg);
+}
+void CompRepeat (void){  // ( addr2 slot2 addr1 )
+    CompAgain();
+    CompThen();
+}
 void CompPlusUntil (void){  // ( addr -- )
     NoExecute();
     if (FetchByte(SLOT)<20)
@@ -531,13 +540,13 @@ void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     AddImplicit(opREPT      , "rept");
     AddImplicit(opMiREPT    , "-rept");
     AddImplicit(opTwoDiv    , "2/");
-    AddExplicit(opSP        , "sp");
+    AddImplicit(opSP        , "sp");
     AddImplicit(opCOM       , "invert");
     AddImplicit(opSetRP     , "rp!");
-    AddExplicit(opRP        , "rp");
+    AddImplicit(opRP        , "rp");
     AddImplicit(opPORT      , "port");
     AddImplicit(opSetSP     , "sp!");
-    AddExplicit(opUP        , "up");
+    AddImplicit(opUP        , "up");
     AddImplicit(opSetUP     , "up!");
     AddExplicit(opLitX      , "litx");
     AddExplicit(opUSER      , "user");
@@ -547,6 +556,7 @@ void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     AddImplicit(opDROP      , "drop");
     AddExplicit(opCALL      , "call");
     AddImplicit(opOnePlus   , "1+");
+    AddImplicit(opOnePlus   , "char+");
     AddImplicit(opTwoPlus   , "2+");
     AddImplicit(opFourPlus  , "cell+");
     AddImplicit(opPUSH      , ">r");

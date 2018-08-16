@@ -39,9 +39,9 @@ extern char *DefaultFile;
 #define FOLLOWER    termTCB(1)   /* -> next header in task list               */
 #define SP0         termTCB(2)   /* initial stack pointer                     */
 #define RP0         termTCB(3)   /* initial return stack pointer              */
-#define HANDLER     termTCB(4)   /* exception stack frame pointer             */
 
 /* Terminal task only, located at a fixed location in RAM.                    */
+#define HANDLER     termTCB(4)   /* exception stack frame pointer             */
 #define BASE        termTCB(5)   /* numeric conversion base                   */
 #define HP          termTCB(6)   /* head space pointer                        */
 #define CP          termTCB(7)   /* code space pointer                        */
@@ -59,6 +59,7 @@ extern char *DefaultFile;
 #define SLOT        termTCB(16)+2  /* current slot position, these are a pair */
 #define LITPEND     termTCB(16)+3  /* literal-pending flag                    */
 #define COLONDEF    termTCB(17)+0  /* colon definition is in progress         */
+#define CASEINSENS  termTCB(17)+1  /* case-insensitive flag                   */
 // Compiler internal state
 #define CALLADDR    termTCB(18)  /* address+slot of last compiled CALL        */
 #define NEXTLIT     termTCB(19)  /* Next literal to be compiled               */

@@ -30,6 +30,8 @@ void CompDefer (void);
 void CompBegin (void);
 void CompAgain (void);
 void CompUntil (void);
+void CompWhile (void);
+void CompRepeat (void);
 void CompPlusUntil (void);
 void CompType(uint32_t cp);
 

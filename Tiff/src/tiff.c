@@ -232,17 +232,6 @@ void tiffMsgString (void) {
     CompType(cp);
 }
 
-void tiffCommentString (void) {
-    GetQuotedString(')');
-}
-void tiffTypeString (void) {
-    GetQuotedString(')');
-    printf("%s", name);
-}
-void tiffTypeCR (void) {
-    printf("\n");
-}
-
 void benchmark(void) {
     long now = getMicrotime();
     uint32_t i, sum;
@@ -282,6 +271,11 @@ void tiffIS (void) {                    // patch ROM defer
     uint32_t dest = PopNum();
     StoreROM(0xFC000000 + (PopNum() >> 2), dest);
 }
+void tiffBracketTICK (void) {           // [']
+    uint32_t ht = Htick();
+    Literal(FetchCell(ht-4) & 0xFFFFFF);
+}
+
 void tiffDASM (void) {                  // disassemble range ( addr len )
     uint32_t length = PopNum();
     uint32_t addr = PopNum();
@@ -399,9 +393,6 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword(",",       CompComma);
     AddKeyword(",\"",     tiffCommaString);
     AddKeyword(".\"",     tiffMsgString);
-    AddKeyword(".(",      tiffTypeString);
-    AddKeyword("(",       tiffCommentString);
-    AddKeyword("cr",      tiffTypeCR);
     AddKeyword("[char]",  TiffLitChar);
     AddKeyword("char",    TiffChar);
     AddKeyword("exit",    CompExit);
@@ -416,10 +407,13 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("again",   CompAgain);
     AddKeyword("until",   CompUntil);
     AddKeyword("+until",  CompPlusUntil);
+    AddKeyword("while",   CompWhile);
+    AddKeyword("repeat",  CompRepeat);
     AddKeyword("rom!",    tiffROMstore);
     AddKeyword("bench",   benchmark);
     AddKeyword("h'",      tiffHTICK);
     AddKeyword("'",       tiffTICK);
+    AddKeyword("[']",     tiffBracketTICK);
     AddKeyword("macro",   tiffMACRO);
     AddKeyword("call-only", tiffCALLONLY);
     AddKeyword("anonymous", tiffANON);
@@ -481,7 +475,12 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddEquate ("op_r@",    opRfetch);
     AddEquate ("op_com",   opCOM);
     AddEquate ("hp0", HeadPointerOrigin);  // bottom of head space
-    AddEquate ("base",       BASE);         // tiff.h variable names
+    AddEquate ("status",     STATUS);     // tiff.h variable names
+    AddEquate ("follower",   FOLLOWER);
+    AddEquate ("sp0",        SP0);
+    AddEquate ("rp0",        RP0);
+    AddEquate ("handler",    HANDLER);
+    AddEquate ("base",       BASE);
     AddEquate ("hp",         HP);
     AddEquate ("cp",         CP);
     AddEquate ("dp",         DP);
@@ -497,6 +496,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddEquate ("c_slot",     SLOT);
     AddEquate ("c_litpend",  LITPEND);
     AddEquate ("c_colondef", COLONDEF);
+    AddEquate ("c_caseins",  CASEINSENS);
     AddEquate ("calladdr",   CALLADDR);
     AddEquate ("nextlit",    NEXTLIT);
     AddEquate ("iracc",      IRACC);
