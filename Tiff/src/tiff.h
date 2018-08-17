@@ -30,6 +30,9 @@ void initFilelist(void);
 uint32_t vmTEST(void);
 extern char *DefaultFile;
 
+// substitute for strlwr
+void UnCase(char *s);
+
 //==============================================================================
 // Definitions of terminal variables addresses.
 // Only one terminal task is supported, but it's in a cooperative task loop.

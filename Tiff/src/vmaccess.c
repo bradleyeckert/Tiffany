@@ -189,8 +189,8 @@ void PrintWordlist(uint32_t WID, char *substring, int verbosity) {
             strcpy(key, substring);
             strcpy(name, wordname);
             if (CaseInsensitive) {
-                strlwr(key);
-                strlwr(name);
+                UnCase(key);
+                UnCase(name);
             }
             char *s = strstr(key, name);
             if (s != NULL) goto good;
