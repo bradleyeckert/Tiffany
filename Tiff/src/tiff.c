@@ -423,6 +423,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("save-rom",   tiffSAVEcrom);
     AddKeyword("save-flash", tiffSAVEcaxi);
     AddKeyword("iwords",   ListKeywords);   // internal words, after the dictionary
+    // CPU opcode names
     AddEquate ("op_dup",   opDUP);
     AddEquate ("op_exit",  opEXIT);
     AddEquate ("op_+",     opADD);
@@ -474,7 +475,11 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddEquate ("op_up!",   opSetUP);
     AddEquate ("op_r@",    opRfetch);
     AddEquate ("op_com",   opCOM);
+    // Initial Value names
+    AddEquate ("sp00", TiffSP0);           // empty stacks for terminal
+    AddEquate ("rp00", TiffRP0);
     AddEquate ("hp0", HeadPointerOrigin);  // bottom of head space
+    // Variable names
     AddEquate ("status",     STATUS);     // tiff.h variable names
     AddEquate ("follower",   FOLLOWER);
     AddEquate ("sp0",        SP0);
@@ -507,7 +512,10 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddEquate ("hld",        HLD);
     AddEquate ("pad",        PAD);
     AddEquate ("|pad|",      PADsize);
+    // Some useful constants
     AddEquate ("bl",         32);
+    AddEquate ("true",       -1);
+    AddEquate ("false",      0);
 
 }
 

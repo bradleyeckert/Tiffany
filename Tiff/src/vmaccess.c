@@ -391,7 +391,7 @@ void CommaXstring (char *s, void(*fn)(uint32_t), int flags, int esc) {
     if (esc) length = xstrlen(s);
     else     length = strlen(s);
     uint32_t word = 0xFFFFFF00 | ((flags | length) & 0xFF);
-    int i = 1;  uint32_t x, mask;
+    int i = 1;  uint32_t x, mask;  char hex[4];
     while (length--) {
         char c = *s++;
         if (esc) {                      // escape sequences supported
@@ -408,6 +408,10 @@ void CommaXstring (char *s, void(*fn)(uint32_t), int flags, int esc) {
                     case 'r': c = 13; break;  // CR
                     case 't': c = 9; break;   // HT (tab)
                     case 'v': c = 11; break;  // VT
+                    case 'x': hex[2] = 0;  	  // hex byte
+						hex[0] = *s++;
+						hex[1] = *s++;
+						c = (char)strtol(hex, (char **)NULL, 16); break;
                     case 'z': c = 0; break;   // NUL
                     case '"': c = '"'; break; // double-quote
                     default: break;
