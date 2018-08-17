@@ -37,38 +37,38 @@ extern char *DefaultFile;
 /* Common to all tasks.                                                       */
 #define STATUS      termTCB(0)   /* -> multitasker status function            */
 #define FOLLOWER    termTCB(1)   /* -> next header in task list               */
-#define SP0         termTCB(2)   /* initial stack pointer                     */
-#define RP0         termTCB(3)   /* initial return stack pointer              */
-
+#define RP0         termTCB(2)   /* initial return stack pointer              */
+#define SP0         termTCB(3)   /* initial data stack pointer                */
+#define TOS         termTCB(4)   /* multitasker state-of-stacks               */
 /* Terminal task only, located at a fixed location in RAM.                    */
-#define HANDLER     termTCB(4)   /* exception stack frame pointer             */
-#define BASE        termTCB(5)   /* numeric conversion base                   */
-#define HP          termTCB(6)   /* head space pointer                        */
-#define CP          termTCB(7)   /* code space pointer                        */
-#define DP          termTCB(8)   /* data space pointer                        */
-#define STATE       termTCB(9)   /* compiler state                            */
-#define CURRENT     termTCB(10)  /* the wid which is compiled into            */
-#define SOURCEID    termTCB(11)  /* input source, 0(keybd) +(file) -(blk)     */
-#define PERSONALITY termTCB(12)  /* address of personality array              */
-#define TIBS        termTCB(13)  /* number of chars in TIB                    */
-#define TIBB        termTCB(14)  /* pointer to tib (paired with TIBS)         */
-#define TOIN        termTCB(15)  /* offset into TIB                           */
+#define HANDLER     termTCB(5)   /* exception stack frame pointer             */
+#define BASE        termTCB(6)   /* numeric conversion base                   */
+#define HP          termTCB(7)   /* head space pointer                        */
+#define CP          termTCB(8)   /* code space pointer                        */
+#define DP          termTCB(9)   /* data space pointer                        */
+#define STATE       termTCB(10)  /* compiler state                            */
+#define CURRENT     termTCB(11)  /* the wid which is compiled into            */
+#define SOURCEID    termTCB(12)  /* input source, 0(keybd) +(file) -(blk)     */
+#define PERSONALITY termTCB(13)  /* address of personality array              */
+#define TIBS        termTCB(14)  /* number of chars in TIB                    */
+#define TIBB        termTCB(15)  /* pointer to tib (paired with TIBS)         */
+#define TOIN        termTCB(16)  /* offset into TIB                           */
 // 8-bit variables are used here to save RAM
-#define WIDS        termTCB(16)+0  /* number of WID entries in context stack  */
-#define CALLED      termTCB(16)+1  /* set if last explicit opcode was a call  */
-#define SLOT        termTCB(16)+2  /* current slot position, these are a pair */
-#define LITPEND     termTCB(16)+3  /* literal-pending flag                    */
-#define COLONDEF    termTCB(17)+0  /* colon definition is in progress         */
-#define CASEINSENS  termTCB(17)+1  /* case-insensitive flag                   */
+#define WIDS        termTCB(17)+0  /* number of WID entries in context stack  */
+#define CALLED      termTCB(17)+1  /* set if last explicit opcode was a call  */
+#define SLOT        termTCB(17)+2  /* current slot position, these are a pair */
+#define LITPEND     termTCB(17)+3  /* literal-pending flag                    */
+#define COLONDEF    termTCB(18)+0  /* colon definition is in progress         */
+#define CASEINSENS  termTCB(18)+1  /* case-insensitive flag                   */
 // Compiler internal state
-#define CALLADDR    termTCB(18)  /* address+slot of last compiled CALL        */
-#define NEXTLIT     termTCB(19)  /* Next literal to be compiled               */
-#define IRACC       termTCB(20)  /* IR accumulator                            */
-#define HEAD        termTCB(21)  /* Points to header of last found word       */
-#define CONTEXT     termTCB(22)  /* 8 cells of context                        */
-#define FORTHWID    termTCB(30)  /* Forth wordlist                            */
-#define HLD         termTCB(31)  /* Numeric input pointer                     */
-#define TIB         termTCB(32)  /* Terminal Input Buffer                     */
+#define CALLADDR    termTCB(19)  /* address+slot of last compiled CALL        */
+#define NEXTLIT     termTCB(20)  /* Next literal to be compiled               */
+#define IRACC       termTCB(21)  /* IR accumulator                            */
+#define HEAD        termTCB(22)  /* Points to header of last found word       */
+#define CONTEXT     termTCB(23)  /* 8 cells of context                        */
+#define FORTHWID    termTCB(31)  /* Forth wordlist                            */
+#define HLD         termTCB(32)  /* Numeric input pointer                     */
+#define TIB         termTCB(33)  /* Terminal Input Buffer                     */
 // support 132-column text files plus a little extra in case of zero-terminator
 #define MaxTIBsize  136          /* Maximum bytes allowed in TIB              */
 #define PADsize     64

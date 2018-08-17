@@ -55,7 +55,7 @@ void ColorOpcode(void){                 // set color to opcode
 
 void ColorFilePath(void){               // set color to file path
 #ifndef MONOCHROME
-	printf("\033[0;34m");				// blue
+	printf("\033[0;35m");				// cyan
 #endif
 }
 

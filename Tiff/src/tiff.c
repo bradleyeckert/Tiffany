@@ -480,11 +480,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddEquate ("rp00", TiffRP0);
     AddEquate ("hp0", HeadPointerOrigin);  // bottom of head space
     // Variable names
-    AddEquate ("status",     STATUS);     // tiff.h variable names
-    AddEquate ("follower",   FOLLOWER);
-    AddEquate ("sp0",        SP0);
-    AddEquate ("rp0",        RP0);
-    AddEquate ("handler",    HANDLER);
+    AddEquate ("handler",    HANDLER);     // tiff.h terminal task variable names
     AddEquate ("base",       BASE);
     AddEquate ("hp",         HP);
     AddEquate ("cp",         CP);

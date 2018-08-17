@@ -1,9 +1,10 @@
 \ Core words for 32-bit Mforth
 
 : !                 !+ drop ; macro     \ x addr --
-: +!        dup >r @ + r> ! ;           \ x addr --
 : c!               c!+ drop ; macro     \ c addr --
 : w!               w!+ drop ; macro     \ w addr --
+: +!        dup >r @ + r> ! ;           \ x addr --
+: c+!     dup >r c@ + r> c! ;           \ c addr --
 : negate          invert 1+ ; macro     \ n -- -n
 : 1-                    1 - ;           \ n -- n-1
 : cells               2* 2* ; macro     \ n -- n*4

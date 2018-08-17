@@ -451,6 +451,8 @@ void tiffFUNC (int32_t n) {   /*EXPORT*/
             case 6: SkipOp(w);      break;  // compile skip opcode
             case 7: HardSkipOp(w);  break;  // compile skip opcode in slot 0
             case 8: FlushLit();  NewGroup();   break;  // skip to new instruction group
+			case 9: PushNum (w);  FakeIt(opUP); break;     // execute user variable
+			case 10: Literal (w);  Implicit(opUP); break;  // compile user variable
 // Compile xt must be multiple of 8 so that clearing bit2 converts to a macro
             case 16: Compile     (FetchCell(ht-4) & 0xFFFFFF); break;  // compile call to xte
             case 20: CompileMacro(FetchCell(ht-4) & 0xFFFFFF); break;
@@ -507,6 +509,10 @@ static void AddSkip(int opcode, char *name) {
 static void AddHardSkip(int opcode, char *name) {
     CommaH(opcode);
     CommaHeader(name, ~4, ~7, 0, 0);
+}
+static void AddUserVar(int index, char *name) {
+    CommaH(index*4);                    // user variable index
+    CommaHeader(name, ~9, ~10, 0, 0);
 }
 void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     InitIR();
@@ -573,5 +579,10 @@ void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     AddHardSkip(opSKIPGE    , "|-if");
     AddImplicit(opZeroEquals, "0=");
     AddImplicit(opZeroLess  , "0<");
+    AddUserVar (0           , "status");
+    AddUserVar (1           , "follower");
+    AddUserVar (2           , "rp0");
+    AddUserVar (3           , "sp0");
+    AddUserVar (4           , "tos");
 
 }
