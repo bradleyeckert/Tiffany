@@ -66,7 +66,7 @@
 ;
 : hfind  \ addr len -- addr len | 0 ht  \ search the search order
    c_wids c@ begin
-      invert 1+ invert -if: drop exit | \ finished
+      1- |-if 2drop exit |              \ finished, not found
       >r
       r@ cells context + @ _hfind       \ wid
       ?dup if
@@ -75,17 +75,82 @@
       r> dup
    again
 ;
+
+\ Recognize a string as a number if possible.
+
+\ Formats:
+\ Leading minus applies to entire string.
+\ A decimal anywhere means it's a 32-bit floating point number.
+\ If string is bracketed by '' and inside is a valid utf-8 sequence, it's xchar.
+\ $ prefix is hex.
+
+\ get sign from start of string
+: numbersign  \ addr u -- addr' u' sign
+   over c@  [char] - =  dup >r
+   if 1 /string then        r>
+;
+\ Attempt to convert to an integer in the current base
+: tonumber  \ addr len -- n
+   0 0 2swap >number 0<> -13 and throw  2drop
+;
+\ Convert to float
+: isfloat  \ addr len -- float32
+   -40 throw                                    \ not implemented
+;
+\ Attempt to convert utf-8 code point
+: nextutf8  \ n a -- n' a'                      \ add to utf-8 xchar
+   >r 6 lshift r> count
+   dup 192 and 128 <> -13 and throw             \ n' a c
+   63 and  swap >r  +  r>
+;
+: isutf8  \ addr len -- xchar
+   over c@ 192 <  over 1 = and  if              \ plain ASCII
+      drop c@ exit
+   then
+   over c@ 224 <  over 2 = and  if              \ 2-byte utf-8
+      drop count 31 and  swap  nextutf8
+      drop exit
+   then
+   over c@ 240 <  over 3 = and  if              \ 3-byte utf-8
+      drop count 31 and  swap  nextutf8  nextutf8
+      drop exit
+   then
+   -13 throw
+;
+\ Attempt to convert string to a number
+: isnumber  \ addr u -- n
+   numbersign  >r                               \ accept leading '-'
+   2dup [char] . scan nip if                    \ is there a decimal?
+      isfloat  r> 1073741824 2* xor exit        \ attempt floating point
+   then
+   dup 2 > if                                   \ possible 'c' or 0x
+      2dup over + 1-  c@ swap c@                \ a u c1 c2
+      over = swap [char] ' = and                \ a u  is enclosed by ''
+      if  1 /string 1- isutf8                   \ attempt character
+         r> if negate then  exit
+      then
+      over c@ [char] $ = if                     \ leading $
+         base @ >r hex  1 /string  tonumber
+         r> base !
+         r> if negate then  exit
+      then
+   then
+   tonumber  r> if negate then
+;
+
 : interpret
    begin  parse-word  dup               \ next blank-delimited string
    while  hfind                         \ addr len | 0 ht
       over if
-         nip  state @ 0= 0= 4 and       \ get offset to the xt
+         isnumber
+         state @ if . then              \ literal (don't have yet)
+      else
+         nip
+         state @ 0= 0= 4 and            \ get offset to the xt
          cell+ -  link>                 \ get xtc or xte
-         dup 8388608 and                \ is it a C function?
-         0= 0= -21 and throw            \ that's a problem
+         dup 8388608 and 0<>            \ is it a C function?
+         -21 and throw                  \ that's a problem
          execute                        \ execute the xt
-      else                              \ not found: addr u
-         2drop
       then
 \ you could check stacks here
    repeat  2drop

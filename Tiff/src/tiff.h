@@ -11,8 +11,11 @@
 /* ROMsize to (ROMsize+RAMsize-1)   Internal RAM                              */
 /* The VM restricts the stacks to the bottom 1K bytes of vmRAM.               */
 
+// Return stack has a generous 32 cells.
+// With CATCH using 4 cells in the terminal, 16 doesn't do it.
+
 #define TiffRP0     ((ROMsize + 255)*4)             /* Initial stack pointers */
-#define TiffSP0     ((ROMsize + 240)*4)                    /* Byte addressing */
+#define TiffSP0     ((ROMsize + 223)*4)                    /* Byte addressing */
 #define termTCB(n)  ((ROMsize + 256 + (n))*4)      /* Terminal USER variables */
 
 // error message handling

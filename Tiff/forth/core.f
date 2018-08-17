@@ -10,10 +10,19 @@
 : cells               2* 2* ; macro     \ n -- n*4
 : rot       >r swap r> swap ; macro     \ n m x -- m x n
 : -rot      swap >r swap r> ; macro     \ n m x -- x n m
-: 2drop           drop drop ; macro     \ d --
-: 2dup            over over ; macro     \ d1 d2 -- d1 d2 d1
 : tuck            swap over ; macro     \ ab -- bab
 : nip             swap drop ; macro     \ ab -- b
+: 2>r        swap r> swap >r swap >r >r ;  call-only
+: 2r>        r> r> swap r> swap >r swap ;  call-only
+: 2r@  r> r> r@ swap >r swap r@ swap >r ;  call-only
+: 2drop           drop drop ; macro     \ d --
+: 2dup            over over ; macro     \ d1 d2 -- d1 d2 d1
+: 2swap       rot >r rot r> ;
+: 2over >r >r 2dup r> r> 2swap ;
+: 2rot  2>r 2swap 2r> 2swap ;
+: -2rot           2rot 2rot ;
+: 2nip          2swap 2drop ;
+: 2tuck         2swap 2over ;
 : 3drop      drop drop drop ; macro     \ abc --
 : ?dup  dup ifz: exit | dup ;           \ n -- n n | 0
 : s>d   dup +if: dup xor exit |
@@ -36,9 +45,6 @@
 : dabs    |-if dnegate exit | ;         \ n -- u
 : third   4 sp @ ;
 : fourth  8 sp @ ;
-: 2>r        swap r> swap >r swap >r >r ;  call-only
-: 2r>        r> r> swap r> swap >r swap ;  call-only
-: 2r@  r> r> r@ swap >r swap r@ swap >r ;  call-only
 : 2@      @+ swap @ swap ;              \ a -- n2 n1
 : 2!          !+ !+ drop ; macro        \ n2 n1 a --
 : depth   sp0 @ 8 sp - 2/ 2/ ;
@@ -73,7 +79,7 @@
 : um/mod_ov  \ ud u -- -1 -1
    drop drop drop -1 dup
 ;
-: um/mod \ ud u -- ur uq                \ (untested)
+: um/mod \ ud u -- ur uq
    2dup - drop
    |ifc um/mod_ov exit |                \ check for overflow
    -32  u2/ 2*                          \ clear carry
@@ -135,23 +141,24 @@
 : */mod  >r m* r> m/mod ;
 : */     */mod swap drop ;
 
-: catch  \ xt -- exception# | 0  \ return addr on stack
-    4 sp >r         \ xt         \ save data stack pointer
-    handler @ >r    \ xt         \ and previous handler
-    0 rp handler !  \ xt         \ set current handler
-    execute         \            \ execute returns if no throw
-    r> handler !    \            \ restore previous handler
-    r> dup xor      \ 0          \ discard saved stack ptr
-;
+\ This version expects two registers at the top of the stack
+
+: catch  \ xt -- exception# | 0   \ return addr on stack
+    over >r                       \ save N
+    4 sp >r          \ xt         \ save data stack pointer
+    handler @ >r     \ xt         \ and previous handler
+    0 rp handler !   \ xt         \ set current handler = ret N sp handler
+    execute                       \ execute returns if no throw
+    r> handler !                  \ restore previous handler
+    r> drop
+    r> dup xor       \ 0          \ discard saved stack ptr
+; call-only
 
 : throw  \ ??? exception# -- ??? exception#
-    ?dup if         \ exc#       \ 0 throw is no-op
+    dup ifz: drop exit |         \ Don't throw 0
     handler @ rp!   \ exc#       \ restore prev return stack
     r> handler !    \ exc#       \ restore prev handler
-    r> swap >r      \ saved-sp   \ exc# on return stack
-    sp! drop r>     \ exc#       \ restore stack
-        \  return to the caller of catch because return
-        \  stack is restored to the state that existed
-        \  when catch began execution
-    then
+    r> swap >r      \ saved-sp   \ exc# is on return stack
+    sp! drop nip
+    r> r> swap      \ exc#       \ Change stack pointer
 ;
