@@ -515,6 +515,15 @@ void LoadKeywords(void) {               // populate the list of gator brain func
 
 }
 
+// strlwr(*s) etc. is not standard C: Linux is not amused.
+void UnCase(char *s){
+    uint8_t len = strlen(s);
+    while (len--) {
+        *s = toupper(*s);
+        s++;
+    }
+}
+
 int NotKeyword (char *key) {            // do a command, return 0 if found
     int i = 0;
     char str1[16], str2[16];
@@ -523,8 +532,8 @@ int NotKeyword (char *key) {            // do a command, return 0 if found
             strcpy(str1, key);
             strcpy(str2, HostWord[i].name);
             if (CaseInsensitive) {
-                strlwr(str1);
-                strlwr(str2);
+                UnCase(str1);
+                UnCase(str2);
             }
             if (strcmp(str1, str2) == 0) {
                 thisKeyword = i;
