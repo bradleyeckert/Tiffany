@@ -58,8 +58,8 @@ void tiffEMIT(uint32_t xchar) {
                 c[4] = 0;
             }
         }
-        printf("%s",c);
     }
+    printf("%s",c);
 }
 
 int32_t UserFunction (int32_t T, int32_t N, int fn ) {
