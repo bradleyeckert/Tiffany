@@ -3,6 +3,8 @@
 
 \ Data space is in initialized RAM.
 \ Code and header space is in SPI flash, accessed by @AS and !AS.
+\ This code cannot compile to internal ROM. It can only write to external ROM
+\ using !AS.
 
 : here      dp @ ;                      \ -- DataAddr
 : allot     dp +! ;                     \ bytes --
@@ -52,16 +54,26 @@ defer NewGroup
 : Explicit  \ opcode imm
    FlushLit
    1  c_slot c@  dup >r  lshift         \ opcode imm maximum
-   over - r> 0= and |+if NewGroup |     \ it doesn't fit
-   drop AppendIR
+   over 1+ - 0<  r> 0=
+   + 0= |ifz NewGroup |                 \ it doesn't fit
+   AppendIR
    c_slot c@  24 lshift
    cp @ +  calladdr !                   \ remember call address in case of ;
    0 c_slot c!  NewGroup
 ;
 
-
-: HardLit  \ n --
-   drop
+: HardLit  \ n --                       \ compile a hard literal
+   dup >r -if: negate |                 \ u
+   dup 33554431 invert 2* and if        \ too wide
+      r> drop op_lit  over 24 rshift  Explicit   \ upper part
+      op_litx swap    16777215 and    Explicit   \ lower part
+      exit
+   then
+   r> 0< if
+      1- op_lit swap Explicit
+      op_com Implicit  exit
+   then
+   op_lit swap Explicit
 ;
 
 :noname \ FlushLit  \ --                \ compile a literal if it's pending
@@ -79,28 +91,19 @@ defer NewGroup
     drop if
        op_no: Implicit                  \ skip unused slots
     then
-    iracc @ ,  ClearIR
+    iracc @
+    cr 7 h.x \ dump to screen
+    \ ,
+    ClearIR
 ; is NewGroup
 
-\
-\
-\  \ Append a zero-operand opcode
-\  \ Slot positions are 26, 20, 14, 8, 2, and 0
-\
-\  static void Implicit (int opcode) {
-\      FlushLit();
-\      if ((FetchByte(SLOT) == 0) && (opcode > 3))
-\          NewGroup();                     // doesn't fit in the last slot
-\      AppendIR(opcode, 0);
-\      int8_t slot = FetchByte(SLOT);
-\      if (slot) {
-\          slot -= 6;
-\          if (slot < 0) slot = 0;
-\          StoreByte(slot, SLOT);
-\      } else {
-\          NewGroup();
-\      }
-\  }
+: litral  \ n --
+   FlushLit
+   dup 33554431 invert 2* and
+   if HardLit exit then
+   nextlit !  1 c_litpend c!
+;
+
 \
 \ First, let's wean the pre-built headers off the C functions.
 \ Note that replace-xt is only available in the host system due to
