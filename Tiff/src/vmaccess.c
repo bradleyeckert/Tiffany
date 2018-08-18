@@ -824,7 +824,7 @@ void DumpROM(void) {
     for (i=0; i<DumpRows; i++) {
         SetCursorPosition(ROMdumpCol, row++);
         if (PC == (addr)) {
-            printf("\033[4m");          // hilight
+            printf("*");                // hilight
         }
         DisassembleGroup(addr);
         printf("\033[0m");              // unhilight

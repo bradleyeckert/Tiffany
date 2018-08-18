@@ -161,8 +161,9 @@ void NewGroup (void) {                  // finish the group and start a new one
 // notail not implemented yet
 
 static void CompCall (uint32_t addr, int notail) {
+    uint8_t len = FetchByte(FetchCell(HEAD) + 4);
     Explicit(opCALL, addr/4);
-    if (notail) return;
+    if ((len & 0x80) == 0) return;  // call-only bit is set
     StoreByte(1, CALLED);
 }
 
@@ -311,6 +312,9 @@ static void FakeIt (int opcode) {       // execute an opcode in the VM
 
 void NoExecute (void) {
     if (!FetchCell(STATE)) tiffIOR = -14;
+}
+void CompLiteral (void){
+    NoExecute(); Literal(PopNum());
 }
 
 void CompAhead (void){  // ( -- addr slot )

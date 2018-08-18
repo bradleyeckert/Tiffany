@@ -18,7 +18,7 @@
 : 2drop           drop drop ; macro     \ d --
 : 2dup            over over ; macro     \ d1 d2 -- d1 d2 d1
 : 2swap       rot >r rot r> ;
-: 2over >r >r 2dup r> r> 2swap ;
+: 2over    >r >r 2dup r> r> 2swap ;
 : 2rot  2>r 2swap 2r> 2swap ;
 : -2rot           2rot 2rot ;
 : 2nip          2swap 2drop ;
@@ -33,7 +33,9 @@
 : 0>              negate 0< ; macro     \ n -- f
 : aligned      2+ 1+ -4 and ;           \ n -- n'
 : d2*          >r 2* r> 2*c ;           \ d -- d'
-: abs    |-if negate | ;                \ n -- u
+: 2@         @+ swap @ swap ;           \ a -- n2 n1
+: 2!             !+ !+ drop ; macro     \ n2 n1 a --
+: abs         |-if negate | ;           \ n -- u
 : d+     >r >r swap r> +  swap r> c+ ;  \ d1 d2 -- d3
 : or    invert swap invert and invert ; \ n m -- n&m
 : execute                >r ;           \ xt --
@@ -45,12 +47,18 @@
 : dabs    |-if dnegate exit | ;         \ n -- u
 : third   4 sp @ ;
 : fourth  8 sp @ ;
-: 2@      @+ swap @ swap ;              \ a -- n2 n1
-: 2!          !+ !+ drop ; macro        \ n2 n1 a --
 : depth   sp0 @ 8 sp - 2/ 2/ ;
 : pick    dup cells sp @ swap drop ;
 : decimal 10 base ! ;                   \ --
 : hex     16 base ! ;                   \ --
+: link>   @ 16777215 and ;              \ a1 -- a2, mask off upper 8 bits
+
+: umove  \ a1 a2 n --                   \ move cells, assume cell aligned
+   negate |+if 3drop exit |
+   1+ swap >r swap
+   | @+ r> !+ >r -rept                  \ n a1' | a2'
+   r> 3drop
+;
 
 \ Software versions of math functions
 \ May be replaced by user functions.
@@ -141,24 +149,24 @@
 : */mod  >r m* r> m/mod ;
 : */     */mod swap drop ;
 
-\ This version expects two registers at the top of the stack
+\ This version expects two registers for the top of the data stack
 
-: catch  \ xt -- exception# | 0   \ return addr on stack
-    over >r                       \ save N
-    4 sp >r          \ xt         \ save data stack pointer
-    handler @ >r     \ xt         \ and previous handler
-    0 rp handler !   \ xt         \ set current handler = ret N sp handler
-    execute                       \ execute returns if no throw
-    r> handler !                  \ restore previous handler
+: catch  \ xt -- exception# | 0         \ return addr on stack
+    over >r                             \ save N
+    4 sp >r          \ xt               \ save data stack pointer
+    handler @ >r     \ xt               \ and previous handler
+    0 rp handler !   \ xt               \ set current handler = ret N sp handler
+    execute                             \ execute returns if no throw
+    r> handler !                        \ restore previous handler
     r> drop
-    r> dup xor       \ 0          \ discard saved stack ptr
+    r> dup xor       \ 0                \ discard saved stack ptr
 ; call-only
 
 : throw  \ ??? exception# -- ??? exception#
-    dup ifz: drop exit |         \ Don't throw 0
-    handler @ rp!   \ exc#       \ restore prev return stack
-    r> handler !    \ exc#       \ restore prev handler
-    r> swap >r      \ saved-sp   \ exc# is on return stack
+    dup ifz: drop exit |                \ Don't throw 0
+    handler @ rp!   \ exc#              \ restore prev return stack
+    r> handler !    \ exc#              \ restore prev handler
+    r> swap >r      \ saved-sp          \ exc# is on return stack
     sp! drop nip
-    r> r> swap      \ exc#       \ Change stack pointer
+    r> r> swap      \ exc#              \ Change stack pointer
 ;

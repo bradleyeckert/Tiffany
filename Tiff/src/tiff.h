@@ -66,6 +66,7 @@ void UnCase(char *s);
 #define LITPEND     termTCB(17)+3  /* literal-pending flag                    */
 #define COLONDEF    termTCB(18)+0  /* colon definition is in progress         */
 #define CASEINSENS  termTCB(18)+1  /* case-insensitive flag                   */
+#define TEMPTOIN    termTCB(18)+2  /* save 16-bit >IN in case of error        */
 // Compiler internal state
 #define CALLADDR    termTCB(19)  /* address+slot of last compiled CALL        */
 #define NEXTLIT     termTCB(20)  /* Next literal to be compiled               */

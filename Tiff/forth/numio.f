@@ -1,10 +1,13 @@
 \ Numeric conversion and text I/O
 
+: term_emit                             \ xchar --
+   begin pause dup 3 user until         \ wait until emit is ready
+   2 user  drop                         \ send it
+;
 defer type
 : $type      count type ;               \ addr --
 cp @ equ string_cr ," \r\l"             \ CRLF
 cp @ equ string_pg ," \e[2J"            \ ANSI "clear screen"
-: term_emit  2 user drop ;              \ c --
 : term_cr    string_cr $type ;          \ --
 : term_page  string_pg $type ;          \ --
 
@@ -38,7 +41,6 @@ cp @ equ term_personality               \ terminal personality
 
 \ Numeric conversion, from eForth mostly.
 
-: >char   127 and dup 127 bl within if drop 95 then ;
 : digit   9 over < 7 and + [char] 0 + ;
 : <#      pad hld ! ;
 : hold    hld @ 1 - dup hld ! c! ;
@@ -47,41 +49,13 @@ cp @ equ term_personality               \ terminal personality
 : sign    0< if [char] - hold then ;
 : #>      2drop hld @ pad over - ;
 : s.r     over - spaces type ;
-: d.r     >r dup >r dabs <# #s r> sign #> r> s.r ;
-: u.r     0 swap d.r ;
-: .r      >r s>d r> d.r ;
-: d.      0 d.r space ;
-: u.      0 d. ;
+: d.r     >r dup >r dabs <# #s r> sign #> r> s.r ; \ d width --
+: u.r     0 swap d.r ;                  \ u width --
+: .r      >r s>d r> d.r ;               \ n width --
+: d.      0 d.r space ;                 \ d --
+: u.      0 d. ;                        \ u --
 : .       base @ 10 xor if u. exit then s>d d. ; \ signed if decimal
-: ?       @ . ;
-: du.r    >r <# #s #> r> s.r ;
-: du.     du.r space ;
-
-\ convert char to uppercase, also used by `hfind`
-: toupper  \ c -- c'
-   dup [char] a [char] { within \ }
-   32 and +
-;
-\ convert char to digit, return `ok` flag
-: digit?  \ c base -- n ok?
-   >r  toupper  [char] 0 -
-   dup 10 17 within 0= >r               \ check your blind spot
-   dup 9 > 7 and -
-   r> over r> u< and                    \ check the base
-;
-\ convert string to number, stopping at first non-digit
-: >number       \ ud a u -- ud a u   ( 6.1.0570 )
-   begin dup
-   while >r  dup >r c@ base @ digit?
-   while swap base @ um* drop rot base @ um* d+ r> char+ r> 1-
-   repeat drop r> r> then
-;
-\ stack dump
-: .s
-   depth  ?dup if
-      negate begin
-         dup negate pick .
-      1+ +until drop
-   then ." <sp " cr
-;
+: ?       @ . ;                         \ a --
+: <#>     <# negate begin >r # r> 1+ +until drop #s #> ;  \ ud digits-1
+: h.x     base @ >r hex  0 swap <#> r> base !  type space ;
 

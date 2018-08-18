@@ -20,6 +20,7 @@ void ListOpcodeCounts(void);             // list the static opcode count profile
 uint32_t DisassembleIR(uint32_t IR);         // disassemble an instruction group
 void NoExecute (void);                                 // ensure we're compiling
 void CompComma (void);               // append number on the stack to code space
+void CompLiteral (void);                                      // compile literal
 void CompAhead (void);
 void CompIfNC (void);
 void CompPlusIf (void);
@@ -33,7 +34,7 @@ void CompUntil (void);
 void CompWhile (void);
 void CompRepeat (void);
 void CompPlusUntil (void);
-void CompType(uint32_t cp);
+void CompType(uint32_t cp);     // compile code for TYPE
 
 extern int32_t breakpoint;
 

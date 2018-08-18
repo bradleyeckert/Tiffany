@@ -1,5 +1,25 @@
 \ Interpreter words
 
+\ convert char to uppercase, also used by `hfind`
+: toupper  \ c -- c'
+   dup [char] a [char] { within \ }
+   32 and +
+;
+\ convert char to digit, return `ok` flag
+: digit?  \ c base -- n ok?
+   >r  toupper  [char] 0 -
+   dup 10 17 within 0= >r               \ check your blind spot
+   dup 9 > 7 and -
+   r> over r> u< and                    \ check the base
+;
+\ convert string to number, stopping at first non-digit
+: >number       \ ud a u -- ud a u   ( 6.1.0570 )
+   begin dup
+   while >r  dup >r c@ base @ digit?
+   while swap base @ um* drop rot base @ um* d+ r> char+ r> 1-
+   repeat drop r> r> then
+;
+
 : source    tibs 2@ ;                   \ -- addr len  entire source string
 : /source   source >in @ /string ;      \ -- addr len  remaining source string
 
@@ -34,9 +54,6 @@
 \ `match` checks two strings for mismatch and keeps the first string
 \ `_hfind` searches one wordlist for the string
 
-: link>  \ a1 -- a2
-   @ 16777215 and                       \ mask off upper 8 bits
-;
 : match  \ a1 n1 a2 n2 -- a1 n1 0 | nonzero
    third over xor 0=                    \ n2 <> n1
    |ifz drop dup xor exit |             \ a1 n1 0 | a1 n1 a2 n2
@@ -93,25 +110,21 @@
 : tonumber  \ addr len -- n
    0 0 2swap >number 0<> -13 and throw  2drop
 ;
-\ Convert to float
-: isfloat  \ addr len -- float32
-   -40 throw                                    \ not implemented
-;
 \ Attempt to convert utf-8 code point
-: nextutf8  \ n a -- n' a'                      \ add to utf-8 xchar
+: nextutf8  \ n a -- n' a'              \ add to utf-8 xchar
    >r 6 lshift r> count
-   dup 192 and 128 <> -13 and throw             \ n' a c
+   dup 192 and 128 <> -13 and throw     \ n' a c
    63 and  swap >r  +  r>
 ;
 : isutf8  \ addr len -- xchar
-   over c@ 192 <  over 1 = and  if              \ plain ASCII
+   over c@ 192 <  over 1 = and  if      \ plain ASCII
       drop c@ exit
    then
-   over c@ 224 <  over 2 = and  if              \ 2-byte utf-8
+   over c@ 224 <  over 2 = and  if      \ 2-byte utf-8
       drop count 31 and  swap  nextutf8
       drop exit
    then
-   over c@ 240 <  over 3 = and  if              \ 3-byte utf-8
+   over c@ 240 <  over 3 = and  if      \ 3-byte utf-8
       drop count 31 and  swap  nextutf8  nextutf8
       drop exit
    then
@@ -119,17 +132,17 @@
 ;
 \ Attempt to convert string to a number
 : isnumber  \ addr u -- n
-   numbersign  >r                               \ accept leading '-'
-   2dup [char] . scan nip if                    \ is there a decimal?
-      isfloat  r> 1073741824 2* xor exit        \ attempt floating point
+   numbersign  >r                       \ accept leading '-'
+   2dup [char] . scan nip if            \ is there a decimal?
+      -40 throw                         \ floats not implemented
    then
-   dup 2 > if                                   \ possible 'c' or 0x
-      2dup over + 1-  c@ swap c@                \ a u c1 c2
-      over = swap [char] ' = and                \ a u  is enclosed by ''
-      if  1 /string 1- isutf8                   \ attempt character
+   dup 2 > if                           \ possible 'c' or 0x
+      2dup over + 1-  c@ swap c@        \ a u c1 c2
+      over = swap [char] ' = and        \ a u  is enclosed by ''
+      if  1 /string 1- isutf8           \ attempt character
          r> if negate then  exit
       then
-      over c@ [char] $ = if                     \ leading $
+      over c@ [char] $ = if             \ leading $
          base @ >r hex  1 /string  tonumber
          r> base !
          r> if negate then  exit
@@ -139,11 +152,13 @@
 ;
 
 : interpret
-   begin  parse-word  dup               \ next blank-delimited string
-   while  hfind                         \ addr len | 0 ht
+   begin  >in @ w_>in w!                \ save position in case of error
+      parse-word  dup                   \ next blank-delimited string
+   while
+      hfind                             \ addr len | 0 ht
       over if
          isnumber
-         state @ if . then              \ literal (don't have yet)
+         state @ if ." Literal:" . then \ literal (don't have yet)
       else
          nip
          state @ 0= 0= 4 and            \ get offset to the xt

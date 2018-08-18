@@ -9,7 +9,6 @@
 #include "colors.h"
 #include <string.h>
 #include <ctype.h>
-#include <sys/time.h>
 
 #define MaxKeywords 256
 #define MaxFiles 20
@@ -17,18 +16,9 @@
 
 char name[MaxTIBsize+1];                // generic scratchpad (maybe not such a great idea making it global)
 
-/**
-* Returns the current time in microseconds.
-*/
-long getMicrotime(){
-    struct timeval currentTime;
-    gettimeofday(&currentTime, NULL);
-    return currentTime.tv_sec * (int)1e6 + currentTime.tv_usec;
-}
-
 int tiffIOR = 0;                        // Interpret error detection when not 0
 int ShowCPU = 0;                        // Enable CPU status display
-int printed = 0;                         // flag, T if text was printed on console
+int printed = 0;                        // flag, T if text was printed on console
 
 /// Primordial brain keyword support for host functions.
 /// These are interpreted after the word is not found in the Forth dictionary.
@@ -160,6 +150,15 @@ void tiffEQU (void) {
     CommaHeader(name, ~0, ~1, 0, 0);
 }
 
+void tiffBUFFER (void) {  // allot space in RAM
+    FollowingToken(name, 32);
+    uint32_t cp = FetchCell(CP);
+    uint32_t bytes = PopNum();
+    StoreCell(cp + bytes, CP);
+    CommaH(cp);
+    CommaHeader(name, ~0, ~1, 0, 0);
+}
+
 void tiffNONAME (void) {
     NewGroup();
     PushNum(FetchCell(CP));
@@ -230,16 +229,6 @@ void tiffMsgString (void) {
     tiffCommaString();
     CompThen();
     CompType(cp);
-}
-
-void benchmark(void) {
-    long now = getMicrotime();
-    uint32_t i, sum;
-    for (i=0; i<1000000; i++) {
-        sum += FetchCell(0x4000+(i&0xFF));
-    }
-    now = getMicrotime() - now;
-    printf("%d ps", (unsigned int)now);  printed = 1;
 }
 
 uint32_t Htick (void) {  // ( -- )
@@ -387,10 +376,12 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("equ",     tiffEQU);
     AddKeyword("words",   tiffWORDS);
     AddKeyword("xwords",  tiffXWORDS);
+    AddKeyword("buffer:", tiffBUFFER);
     AddKeyword(":noname", tiffNONAME);
     AddKeyword(":",       tiffCOLON);
     AddKeyword(";",       CompSemi);
     AddKeyword(",",       CompComma);
+    AddKeyword("literal", CompLiteral);
     AddKeyword(",\"",     tiffCommaString);
     AddKeyword(".\"",     tiffMsgString);
     AddKeyword("[char]",  TiffLitChar);
@@ -410,7 +401,6 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("while",   CompWhile);
     AddKeyword("repeat",  CompRepeat);
     AddKeyword("rom!",    tiffROMstore);
-    AddKeyword("bench",   benchmark);
     AddKeyword("h'",      tiffHTICK);
     AddKeyword("'",       tiffTICK);
     AddKeyword("[']",     tiffBracketTICK);
@@ -492,6 +482,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddEquate ("tibs",       TIBS);
     AddEquate ("tibb",       TIBB);
     AddEquate (">in",        TOIN);
+    AddEquate ("w_>in",      TEMPTOIN);
     AddEquate ("c_wids",     WIDS);
     AddEquate ("c_called",   CALLED);
     AddEquate ("c_slot",     SLOT);

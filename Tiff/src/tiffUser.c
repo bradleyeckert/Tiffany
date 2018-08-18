@@ -9,8 +9,9 @@
 // corresponding to {KEY?, EKEY, EMIT}.
 
 #ifdef __linux__
+#include <sys/time.h>
 #include <ncurses.h>
-  #include <sched.h>
+#include <sched.h>
   static int lastchar = ERR;
   int tiffKEYQ (void) {
       lastchar = getc(stdin);
@@ -25,12 +26,30 @@
       return lastchar;
   }
 #elif _WIN32
+#include <sys/time.h>
 #include <conio.h>
 int tiffKEYQ (void) { return kbhit(); }
 int tiffEKEY (void) { return getch(); }
 #else
 #error Unknown OS for console I/O
 #endif
+
+/**
+* Returns the current time in hundreds of microseconds.
+*/
+long getMicrotime(){
+    struct timeval currentTime;
+    gettimeofday(&currentTime, NULL);
+    return currentTime.tv_sec * (int)1e6 + currentTime.tv_usec;
+}
+
+/**
+* Counter is time in milliseconds/10
+*/
+uint32_t Counter (void) {
+    return (uint32_t) getMicrotime() / 100;
+}
+
 
 // Emit outputs a xchar in UTF8 format
 
@@ -64,10 +83,11 @@ void tiffEMIT(uint32_t xchar) {
 
 int32_t UserFunction (int32_t T, int32_t N, int fn ) {
     switch (fn) {
-        case 0: return tiffKEYQ();
-        case 1: return tiffEKEY();
+        case 0: return tiffKEYQ();      // `key?`
+        case 1: return tiffEKEY();      // `key`
         case 2: tiffEMIT(T);  return 0; // `emit`
         case 3: return 1;               // `emit?`
+        case 4: return Counter();       // counter
         default: return 0;
     }
 }

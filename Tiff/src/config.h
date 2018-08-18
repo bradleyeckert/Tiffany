@@ -13,7 +13,7 @@
 #define BootFromSPI
 
 // Instruments the VM to allow Undo and Redo
-// #define TRACEABLE
+ #define TRACEABLE
 #define TraceDepth 12               /* Log2 of the trace buffer size, 13*2^N bytes */
 
 // number of rows in the CPU register dump, minimum 9, maximum 12
