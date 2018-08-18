@@ -88,3 +88,5 @@ The RDJDID result is MFR, Type, Capacity. These have vendor-specific meanings, s
 
 The simulated part has a capacity byte of log2 of the KB count. For example, a 512kb flash has 64K bytes, so n=16. As you can see from the table, ISSI and Winbond also use this scheme.
 
+Note: vmaccess.c currently uses !AS to write to flash, which should be replaced by the new method to be implemented in tiffuser.c.
+
