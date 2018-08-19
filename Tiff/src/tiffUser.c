@@ -13,12 +13,12 @@
 #include <ncurses.h>
 #include <sched.h>
   static int lastchar = ERR;
-  int tiffKEYQ (void) {
+  static int tiffKEYQ (void) {
       lastchar = getc(stdin);
       if (lastchar = ERR) return 0;
       else return -1;
   }
-  int tiffEKEY (void) {
+  static int tiffEKEY (void) {
       while (lastchar == ERR) {
           sched_yield();
           lastchar = getc(stdin);
@@ -28,16 +28,18 @@
 #elif _WIN32
 #include <sys/time.h>
 #include <conio.h>
-int tiffKEYQ (void) { return kbhit(); }
-int tiffEKEY (void) { return getch(); }
+static int tiffKEYQ (void) { return kbhit(); }
+static int tiffEKEY (void) { return getch(); }
 #else
 #error Unknown OS for console I/O
 #endif
 
+uint32_t SPIflashXfer (uint32_t n);     // import from flash.c
+
 /**
 * Returns the current time in hundreds of microseconds.
 */
-long getMicrotime(){
+static long getMicrotime(){
     struct timeval currentTime;
     gettimeofday(&currentTime, NULL);
     return currentTime.tv_sec * (int)1e6 + currentTime.tv_usec;
@@ -46,7 +48,7 @@ long getMicrotime(){
 /**
 * Counter is time in milliseconds/10
 */
-uint32_t Counter (void) {
+static uint32_t Counter (void) {
     return (uint32_t) getMicrotime() / 100;
 }
 
@@ -81,13 +83,14 @@ void tiffEMIT(uint32_t xchar) {
     printf("%s",c);
 }
 
-int32_t UserFunction (int32_t T, int32_t N, int fn ) {
+uint32_t UserFunction (uint32_t T, uint32_t N, int fn ) {
     switch (fn) {
-        case 0: return tiffKEYQ();      // `key?`
-        case 1: return tiffEKEY();      // `key`
-        case 2: tiffEMIT(T);  return 0; // `emit`
-        case 3: return 1;               // `emit?`
-        case 4: return Counter();       // counter
+        case 0: return (uint32_t)tiffKEYQ();    // `key?`
+        case 1: return (uint32_t)tiffEKEY();    // `key`
+        case 2: tiffEMIT(T);  return 0;         // `emit`
+        case 3: return 1;                       // `emit?`
+        case 4: return Counter();               // counter
+        case 5: return SPIflashXfer(T);         // flashctrl
         default: return 0;
     }
 }

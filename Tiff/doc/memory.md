@@ -90,3 +90,26 @@ The simulated part has a capacity byte of log2 of the KB count. For example, a 5
 
 Note: vmaccess.c currently uses !AS to write to flash, which should be replaced by the new method to be implemented in tiffuser.c.
 
+Adesto and Winbond status register:
+|bit|name|usage                      |
+|---|----|---------------------------|
+| 7 |SRP0|Status Register Protection |
+| 6 |SEC |Block Protection           |
+| 5 |TB  |Top or Bottom Protection   |
+| 4 |BP2 |Block Protection bit-2     |
+| 3 |BP1 |Block Protection bit-1     |
+| 2 |BP0 |Block Protection bit-0     |
+| 1 |WEL |Write Enable Latch Status  |
+| 0 |BSY |0 = Device is ready, 1=busy|
+
+ISSI status register:
+|bit|name|usage                      |
+|---|----|---------------------------|
+| 7 |SRP0|Status Register Protection |
+| 6 |*QE*|Quad rate enable           |
+| 5 |*BP3*|Block Protection bit-3    |
+| 4 |BP2 |Block Protection bit-2     |
+| 3 |BP1 |Block Protection bit-1     |
+| 2 |BP0 |Block Protection bit-0     |
+| 1 |WEL |Write Enable Latch Status  |
+| 0 |BSY |0 = Device is ready, 1=busy|

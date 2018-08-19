@@ -53,7 +53,7 @@
     static int New; // New trace type, used to mark new sections of trace
     static uint32_t RAM[RAMsize];
     static uint32_t ROM[ROMsize];
-    static uint32_t AXI[AXIsize];
+    uint32_t AXI[AXIsize];
 
     static void SDUP(void)  {
         Trace(New,RidSP,SP,SP-1); New=0;
@@ -92,7 +92,7 @@
 
     static uint32_t RAM[RAMsize];
     static uint32_t ROM[ROMsize];
-    static uint32_t AXI[AXIsize];
+    uint32_t AXI[AXIsize];
 
     static void SDUP(void)  { RAM[--SP & (RAMsize-1)] = N;  N = T; }
     static void SDROP(void) { T = N;  N = RAM[SP++ & (RAMsize-1)]; }
@@ -105,6 +105,7 @@
 /// Tiff's ROM write functions for populating internal ROM.
 /// A copy may be stored to SPI flash for targets that boot from SPI.
 /// An MCU-based system will have ROM in actual ROM.
+/// The target system does not use WriteROM, only the host.
 
 int WriteROM(uint32_t data, uint32_t address) { // EXPORTED
     uint32_t addr = address / 4;
@@ -120,6 +121,13 @@ int WriteROM(uint32_t data, uint32_t address) { // EXPORTED
     return -9;                          // out of range
 }
 
+/// The VM's RAM and ROM are internal to this module.
+/// They are both little endian regardless of the target machine.
+/// RAM and ROM are accessed only through execution of an instruction
+/// group. Writing to ROM is a special case, depending on a USER function
+/// with the restriction that you can't turn '0's into '1's.
+
+// remove this when flash.c is working
 int EraseAXI4K(uint32_t address) { // EXPORTED
     uint32_t addr = address / 4;
     int i;
@@ -131,17 +139,12 @@ int EraseAXI4K(uint32_t address) { // EXPORTED
     return 0;
 }
 
-/// The VM's RAM and ROM are internal to this module.
-/// They are both little endian regardless of the target machine.
-/// RAM and ROM are accessed only through execution of an instruction
-/// group. Writing to ROM is a special case, depending on a USER function
-/// with the restriction that you can't turn '0's into '1's.
-
 
 // Send a stream of RAM words to the AXI bus.
 // The only thing on the AXI bus here is SPI flash.
 // An external function could be added in the future for other stuff.
 // dest is a cell address, length is 0 to 255 meaning 1 to 256 words.
+// ****remove******
 static void SendAXI(int src, unsigned int dest, uint8_t length) {
     uint32_t old, data;     int i;
     src -= ROMsize;

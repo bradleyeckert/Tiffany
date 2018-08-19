@@ -4,6 +4,7 @@
 #ifndef __VM_H__
 #define __VM_H__
 #include <stdint.h>
+#include "config.h"
 
 //================================================================================
 
@@ -15,16 +16,17 @@ uint32_t GetDbgReg(void);                   // read from the debug mailbox
 
 // Defined in vm.c, used for development only. Not on the target system.
 int WriteROM(uint32_t data, uint32_t address);
-int EraseAXI4K(uint32_t address);         // Erase a 4KB sector in SPI flash image
 void Trace(unsigned int Type, int32_t ID, uint32_t Old, uint32_t New);
 void UnTrace(int32_t ID, uint32_t old);
 extern int tiffIOR;                           // error detection, error when not 0
 extern unsigned long cyclecount;
+extern uint32_t AXI[AXIsize];
+int EraseAXI4K(uint32_t address);
 
 // Defined in tiffUser.c:
-int tiffKEYQ (void);                                      // Check for a key press
-int tiffEKEY (void);                                  // Raw console keyboard keys
-void tiffEMIT (uint8_t c);                               // Output char to console
+//int tiffKEYQ (void);                                      // Check for a key press
+//int tiffEKEY (void);                                  // Raw console keyboard keys
+//void tiffEMIT (uint8_t c);                               // Output char to console
 uint32_t UserFunction (uint32_t T, uint32_t N, int fn );
 
 // Defined in tiff.c:

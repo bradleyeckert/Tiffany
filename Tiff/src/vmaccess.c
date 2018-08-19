@@ -895,7 +895,7 @@ Re: DumpRegs();
     #endif
     while (1) {
         ShowParam();
-        c = tiffEKEY();
+        c = UserFunction(0,0,1);
         if (isxdigit(c)) {
             if (c>'9') c-=('A'-10); else c-='0';
             Param = Param*16 + (c&0x0F);

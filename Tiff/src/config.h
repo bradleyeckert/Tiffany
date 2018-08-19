@@ -7,7 +7,8 @@
 // Sizes of internal memories in 32-bit cells
 #define RAMsize   0x400                         /* must be an exact power of 2 */
 #define ROMsize   0x800                         /* must be an exact power of 2 */
-#define AXIsize   0x4000             /* SPI flash, must be a multiple of 0x400 */
+#define AXIbits   14
+#define AXIsize   (1<<AXIbits)       /* SPI flash, must be a multiple of 0x400 */
 
 // Copy internal ROM writes to SPI flash, Defined if SPI gets a copy of the ROM image.
 #define BootFromSPI
