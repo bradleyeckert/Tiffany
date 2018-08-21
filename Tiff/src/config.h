@@ -27,6 +27,9 @@
 #define OKstyle  2     /* Style of OK prompt: 0=classic, 1=openboot, 2=depth */
 // #define VERBOSE     /* for debugging the quit loop, etc. */
 
+// Number of lines in `locate`
+#define LocateLines  10
+
 // A word is reserved for a forward jump to cold boot, kernel starts at 000004.
 // These are byte addresses.
 #define CodePointerOrigin  4                  /* Kernel definitions start here */

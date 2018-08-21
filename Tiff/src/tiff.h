@@ -72,10 +72,12 @@ void UnCase(char *s);
 #define NEXTLIT     termTCB(20)  /* Next literal to be compiled               */
 #define IRACC       termTCB(21)  /* IR accumulator                            */
 #define HEAD        termTCB(22)  /* Points to header of last found word       */
-#define CONTEXT     termTCB(23)  /* 8 cells of context                        */
-#define FORTHWID    termTCB(31)  /* Forth wordlist                            */
-#define HLD         termTCB(32)  /* Numeric input pointer                     */
-#define TIB         termTCB(33)  /* Terminal Input Buffer                     */
+#define LINENUMBER  termTCB(23)  /* 16-bit line number, if used.              */
+// you have 16 bits of spare RAM at termTCB(23)+2
+#define CONTEXT     termTCB(24)  /* 8 cells of context                        */
+#define FORTHWID    termTCB(32)  /* Forth wordlist                            */
+#define HLD         termTCB(33)  /* Numeric input pointer                     */
+#define TIB         termTCB(34)  /* Terminal Input Buffer                     */
 // support 132-column text files plus a little extra in case of zero-terminator
 #define MaxTIBsize  136          /* Maximum bytes allowed in TIB              */
 #define PADsize     64

@@ -88,9 +88,10 @@ void initFilelist (void) {
 */
 // Use Size=-1 if unknown
 void CommaHeader (char *name, uint32_t xte, uint32_t xtc, int Size, int flags){
+    uint16_t LineNum = FetchHalf(LINENUMBER);
 	CommaH ((File.FID << 24) | 0xFFFFFF);              // [-3]: File ID | where
-	CommaH (((File.LineNumber & 0xFF)<<24)  +  (xtc & 0xFFFFFF)); // [-2]
-	CommaH (((File.LineNumber & 0xFF00)<<16) + (xte & 0xFFFFFF)); // [-1]
+	CommaH (((LineNum & 0xFF)<<24)  +  (xtc & 0xFFFFFF)); // [-2]
+	CommaH (((LineNum & 0xFF00)<<16) + (xte & 0xFFFFFF)); // [-1]
 	uint32_t wid = FetchCell(CURRENT);                 // CURRENT -> Wordlist
 	uint32_t link = FetchCell(wid);
 	StoreCell (FetchCell(HP), wid);
@@ -128,10 +129,8 @@ void tiffINCLUDED (char *name) {
         tiffIOR = -199;
     } else {
         uint32_t hp = FetchCell(HP);
-        if (!FileID) {                  // not the first header
-            StoreROM(hp, FilenameListHead);
-            FilenameListHead = hp;
-        }
+        StoreROM(hp, FilenameListHead);
+        FilenameListHead = hp;
         CommaH(0xFFFFFFFF);             // forward link
         CommaHstring(File.FilePath);
         FileID++;
@@ -257,12 +256,54 @@ void tiffTICK (void) {                  // '
 }
 void tiffIS (void) {                    // patch ROM defer
     tiffTICK();
-    uint32_t dest = PopNum();
+    uint32_t dest = PopNum();           // xt
     StoreROM(0xFC000000 + (PopNum() >> 2), dest);
 }
 void tiffBracketTICK (void) {           // [']
     uint32_t ht = Htick();
     Literal(FetchCell(ht-4) & 0xFFFFFF);
+}
+
+char *LocateFilename (int id) {         // get filename from FileID
+    uint32_t p = HeadPointerOrigin;     // link is at the bottom of header space
+    do {
+        p = FetchCell(p);               // traverse to filename
+    } while (id--);
+    FetchString(name, p+4, 32);         // get counted string
+    name[name[0]+1] = 0;
+    return name+1;
+}
+
+void tiffLOCATE (void) {                // locate source text
+    size_t bufsize = MaxTIBsize;        // for getline
+    char *buf;
+    uint32_t ht = Htick();
+    uint8_t fileid = FetchByte(ht-9);
+    uint8_t lineLo = FetchByte(ht-5);
+    uint8_t lineHi = FetchByte(ht-1);
+    uint16_t linenum = (lineHi<<8) + lineLo;
+    int i, length;
+    char *filename = LocateFilename(fileid);
+
+    FILE *fp = fopen(filename, "r");
+    if (!fp) return;                    // can't open file
+    ColorHilight();
+    printf("%s\n", filename);
+    ColorNormal();
+    buf = name;                         // reuse the name buffer for text line
+
+    for (i=1; i<linenum; i++) {         // skip to the definition
+        length = getline(&buf, &bufsize, fp);
+        if (length < 0) goto ex;        // unexpected EOF
+    }
+    for (i=0; i<LocateLines; i++) {
+        length = getline(&buf, &bufsize, fp);
+        if (length < 0) break;          // EOF
+        printf("%-4d %s", linenum-1, buf);
+        linenum++;
+    }
+ex: fclose(fp);
+
 }
 
 void tiffDASM (void) {                  // disassemble range ( addr len )
@@ -409,6 +450,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("anonymous", tiffANON);
     AddKeyword("see",     tiffSEE);
     AddKeyword("dasm",    tiffDASM);
+    AddKeyword("locate",  tiffLOCATE);
     AddKeyword("replace-xt", ReplaceXTs);   // Replace XTs  ( NewXT OldXT -- )
     AddKeyword("save-rom",   tiffSAVEcrom);
     AddKeyword("save-flash", tiffSAVEcaxi);
@@ -483,6 +525,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddEquate ("tibb",       TIBB);
     AddEquate (">in",        TOIN);
     AddEquate ("w_>in",      TEMPTOIN);
+    AddEquate ("w_linenum",  LINENUMBER);
     AddEquate ("c_wids",     WIDS);
     AddEquate ("c_called",   CALLED);
     AddEquate ("c_slot",     SLOT);
@@ -736,6 +779,7 @@ void tiffQUIT (char *cmdline) {
                         if (length > 0) length--; // remove LF or CR
                         File.Line[length] = 0;
                         File.LineNumber++;
+                        StoreHalf(File.LineNumber, LINENUMBER);
                         StoreCell((uint32_t)length, TIBS);
                         StoreString(File.Line, (uint32_t)TIBaddr);
                     }
