@@ -18,7 +18,7 @@ static int Erase4K(uint32_t address) {
 	uint32_t addr = address / 4;
 	int i;
 	if (address & 3) return -23;        // alignment problem
-	if (addr > (AXIsize-1024)) return -9;   // out of range
+	if (addr > (SPIflashSize-1024)) return -9;   // out of range
 	for (i=0; i<1024; i++) {            // erase 4KB sector
 		AXI[addr+i] = 0xFFFFFFFF;
 	}
@@ -55,11 +55,11 @@ uint32_t SPIflashXfer (uint32_t n) {    /*EXPORT*/
 				case 2: cout = wen;   state=1;  break;  // status = WEN, never busy
 				case 3: cout = 0xAA;  state++;  break;	// 3-byte RDJDID
 				case 4: cout = 0x55;  state++;  break;
-				case 5: cout = AXIbits;  state=1;  break;
+				case 5: cout = SPIflashCapacity;  state=1;  break;
 				case 6: addr = cin<<16;  state++;  break;
 				case 7: addr += cin<<8;  state++;  break;
 				case 8: addr += cin;
-                    if (addr < AXIsize*4) {
+                    if (addr < SPIflashSize*4) {
                         switch (command) {
                             case 0x20: if (wen) tiffIOR = Erase4K(addr);	// erase sector
                                 wen=0;  state=1;  break;

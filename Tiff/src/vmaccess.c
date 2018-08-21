@@ -95,6 +95,32 @@ void StoreString(char *s, unsigned int address){
     }
 }
 
+void SPIaddressCmd (uint32_t addr, int command, int ending) {
+    SetDbgReg(command);
+    VMstep((uint32_t)opDUP*0x100000 + (uint32_t)opPORT*0x4000 + opUSER*0x100 + 5, 1);
+    SetDbgReg((addr>>16) & 0xFF);
+    VMstep((uint32_t)opPORT*0x4000 + opUSER*0x100 + 5, 1);
+    SetDbgReg((addr>>8) & 0xFF);
+    VMstep((uint32_t)opPORT*0x4000 + opUSER*0x100 + 5, 1);
+    SetDbgReg((addr & 0xFF) + ending);
+    VMstep((uint32_t)opPORT*0x4000 + opUSER*0x100 + 5, 1);
+    DbgGroup(opDROP, opSKIP, opNOP, opNOP, opNOP);
+}
+
+void SPIonesie (int command) {
+    SetDbgReg(command + 0x100);
+    VMstep((uint32_t)opDUP*0x100000 + (uint32_t)opPORT*0x4000 + opUSER*0x100 + 5, 1);
+    DbgGroup(opDROP, opSKIP, opNOP, opNOP, opNOP);
+}
+
+int EraseSPI4K (uint32_t addr) {        // erase SPI flash
+    SPIonesie(6);
+    SPIaddressCmd(addr, 32, 0);
+    SPIonesie(4);
+    // should insert SPIwait here
+    return 0;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Dictionary Traversal Words
 
@@ -284,45 +310,13 @@ void ReplaceXTs(void) {  // ( newXT oldXT -- )
     }
 }
 
-// The idea is to find the string just below the wordlist.
-// You don't know how many data words prepend a header.
-// Requires some searching for an offset that's -4, -8 or -12.
-// **********untested*************
-void WIDname(uint32_t WID) {
-    uint32_t wid0 = WID;            // display if name not found
-    uint32_t wid;  int i;  uint8_t length;
-    do {
-        uint32_t link = FetchCell(WID);
-        wid = WID;
-        WID = link;
-    } while (WID);                  // find beginning of wordlist
-    wid -= 20;                     // point to the supposed offset, but could be a W
-    for (i=0; i<2; i++) {
-        uint32_t offset = FetchCell(wid);
-        if ((offset & 0xFFFFFFF3) == 0xFFFFFFF0) {
-            wid += offset;             // valid offset
-            goto good;
-        } else {
-            wid -= 4;
-        }
-    }
-    printf("0x%X", wid0);
-    printed = 1;
-    return;
-good:
-    length = FetchByte(wid++) & 0x1F;
-    FetchString(str, wid, length);
-    printf("%s", str);
-    printed = 1;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // Dumb Compilation
 
 void EraseSPIimage (void) {  // Erase SPI flash image and internal ROM
     int i, ior;
-    for (i=0; i < (AXIsize/1024); i++) {
-        ior = EraseAXI4K(i * 4096);     // start at a byte address
+    for (i=0; i < (SPIflashSize/1024); i++) {
+        ior = EraseSPI4K(i * 4096);     // start at a byte address
         if (!tiffIOR) tiffIOR = ior;
     }
     for (i=0; i < ROMsize; i++) {       // size is cells

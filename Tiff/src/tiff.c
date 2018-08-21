@@ -346,7 +346,7 @@ void tiffSTATS (void) {
     printf("\nROM usage: %d bytes of %d",
            FetchCell(CP), ROMsize*4);  printed = 1;
     printf("\nFlash usage: HP = %d of %d, header space is %d bytes of %d",
-           hp, AXIsize*4, hp-HeadPointerOrigin, AXIsize*4-HeadPointerOrigin);
+           hp, SPIflashSize*4, hp-HeadPointerOrigin, SPIflashSize*4-HeadPointerOrigin);
 }
 
 

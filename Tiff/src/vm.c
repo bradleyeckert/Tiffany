@@ -53,7 +53,7 @@
     static int New; // New trace type, used to mark new sections of trace
     static uint32_t RAM[RAMsize];
     static uint32_t ROM[ROMsize];
-    uint32_t AXI[AXIsize];
+    uint32_t AXI[SPIflashSize+AXIRAMsize];
 
     static void SDUP(void)  {
         Trace(New,RidSP,SP,SP-1); New=0;
@@ -92,7 +92,7 @@
 
     static uint32_t RAM[RAMsize];
     static uint32_t ROM[ROMsize];
-    uint32_t AXI[AXIsize];
+    uint32_t AXI[SPIflashSize+AXIRAMsize];
 
     static void SDUP(void)  { RAM[--SP & (RAMsize-1)] = N;  N = T; }
     static void SDROP(void) { T = N;  N = RAM[SP++ & (RAMsize-1)]; }
@@ -114,7 +114,7 @@ int WriteROM(uint32_t data, uint32_t address) { // EXPORTED
         ROM[addr] = data;
         return 0;
     }
-    if (addr < AXIsize)  {
+    if (addr < SPIflashSize) {          // only flash region is writable
         AXI[addr] = data;
         return 0;
     }
@@ -127,30 +127,18 @@ int WriteROM(uint32_t data, uint32_t address) { // EXPORTED
 /// group. Writing to ROM is a special case, depending on a USER function
 /// with the restriction that you can't turn '0's into '1's.
 
-// remove this when flash.c is working
-int EraseAXI4K(uint32_t address) { // EXPORTED
-    uint32_t addr = address / 4;
-    int i;
-    if (address & 3) return -23;        // alignment problem
-    if (addr > (AXIsize-1024)) return -9;   // out of range
-    for (i=0; i<1024; i++) {            // erase 4KB sector
-        AXI[addr+i] = 0xFFFFFFFF;
-    }
-    return 0;
-}
-
 
 // Send a stream of RAM words to the AXI bus.
 // The only thing on the AXI bus here is SPI flash.
 // An external function could be added in the future for other stuff.
 // dest is a cell address, length is 0 to 255 meaning 1 to 256 words.
-// ****remove******
+// *** Modify to only support the AXIRAMsize region after SPI flash.
 static void SendAXI(int src, unsigned int dest, uint8_t length) {
     uint32_t old, data;     int i;
     src -= ROMsize;
     if (src < 0) goto bogus;            // below RAM address
     if (src >= (RAMsize-length)) goto bogus;
-    if (dest >= (AXIsize-length)) goto bogus;
+    if (dest >= (SPIflashSize-length)) goto bogus;
     for (i=0; i<=length; i++) {
         old = AXI[dest];		        // existing flash data
         data = RAM[src++];
@@ -170,9 +158,9 @@ bogus: tiffIOR = -9;                    // out of range
 static void ReceiveAXI(unsigned int src, int dest, uint8_t length) {
     dest -= ROMsize;
     if (dest < 0) goto bogus;            // below RAM address
-    if (dest >= (RAMsize-length)) goto bogus;
-    if (src >= (AXIsize-length)) goto bogus;
-    memmove(&RAM[src], &AXI[dest], length+1);
+    if (dest >= (RAMsize-length)) goto bogus;  // won't fit
+    if (src >= (SPIflashSize+AXIRAMsize-length)) goto bogus;
+    memmove(&AXI[dest], &RAM[src], length+1);  // can read all of AXI space
     return;
 bogus: tiffIOR = -9;                    // out of range
 }
@@ -184,7 +172,7 @@ static int32_t FetchX (int32_t addr, int shift, int mask) {
     } else {
         if (addr < (ROMsize + RAMsize)) {
             return (RAM[addr-ROMsize] >> shift) & mask;
-        } else if (addr < AXIsize) {
+        } else if (addr < (SPIflashSize+AXIRAMsize)) {
             return (AXI[addr] >> shift) & mask;
         } else return 0;
     }

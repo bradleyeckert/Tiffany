@@ -51,7 +51,7 @@ void ReloadFile (void) {                // Reload known ROM image file
     }
 }
 
-uint32_t rom[ROMsize+AXIsize];
+uint32_t rom[ROMsize+SPIflashSize];
 
 int32_t ROMwords (uint32_t size) {     // read ROM image to local memory
     uint32_t i;
@@ -100,7 +100,7 @@ void SaveROMasC (char *filename) {      // save ROM in C format
 // The array will be padded to be sized as a multiple of alignment in cells.
 
 void SaveAXIasC (char *filename, int alignment) {      // save Flash in C format
-    int32_t length = ROMwords(AXIsize); // end of AXI data
+    int32_t length = ROMwords(SPIflashSize); // end of AXI data
             length = (length + alignment - 1) & (-alignment);
     int32_t i;  int32_t offset;
     FILE *ofp;
