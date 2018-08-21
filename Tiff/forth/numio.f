@@ -1,10 +1,16 @@
 \ Numeric conversion and text I/O
 
+\ EMIT pauses for the task loop. User functions 2 and 3 are for text output.
 : term_emit                             \ xchar --
    begin pause dup 3 user until         \ wait until emit is ready
    2 user  drop                         \ send it
 ;
 defer type
+
+\ `defer` means "forward reference". There is no run-time `is`.
+\ `$type` outputs a counted string.
+\ VT100 escape sequences are assumed to work.
+
 : $type      count type ;               \ addr --
 cp @ equ string_cr ," \r\l"             \ CRLF
 cp @ equ string_pg ," \e[2J"            \ ANSI "clear screen"
@@ -40,14 +46,17 @@ cp @ equ term_personality               \ terminal personality
 : spaces  negate begin +if: drop exit | space 1+ again ;
 
 \ Numeric conversion, from eForth mostly.
+\ Output is built starting at the end of a fixed `pad` of `|pad|` bytes.
+\ Many Forths use RAM ahead of HERE for PAD.
+\ That is not available here because the dictionary is in flash.
 
 : digit   9 over < 7 and + [char] 0 + ;
-: <#      pad hld ! ;
-: hold    hld @ 1 - dup hld ! c! ;
+: <#      [ pad |pad| + ] literal hld ! ;
+: hold    hld @ 1- dup hld ! c! ;
 : #       0 base @ um/mod >r base @ um/mod swap digit hold r> ;
 : #s      begin # 2dup or 0= until ;
 : sign    0< if [char] - hold then ;
-: #>      2drop hld @ pad over - ;
+: #>      2drop hld @ [ pad |pad| + ] literal over - ;
 : s.r     over - spaces type ;
 : d.r     >r dup >r dabs <# #s r> sign #> r> s.r ; \ d width --
 : u.r     0 swap d.r ;                  \ u width --

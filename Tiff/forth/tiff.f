@@ -3,6 +3,7 @@
 include core.f
 include tasker.f
 include numio.f
+include flash.f
 \ Here's where you'd reposition CP to run code out of SPI flash
 \ in order to keep the internal ROM small(er). Your app would go there too.
 \ Unplugging the SPI flash should break the interpreter but nothing else.

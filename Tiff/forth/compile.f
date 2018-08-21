@@ -1,28 +1,12 @@
 \ compiler (not tested yet)
 \ incomplete
 
-\ Data space is in initialized RAM.
-\ Code and header space is in SPI flash, accessed by @AS and !AS.
-\ This code cannot compile to internal ROM. It can only write to external ROM
-\ using !AS.
+\ Code and headers are both in flash. Write using SPI!.
 
-: here      dp @ ;                      \ -- DataAddr
-: allot     dp +! ;                     \ bytes --
-: (aligned) over and 0<> -23 and throw ; \ a mask -- a
-: (,x)      3 (aligned)  dup >r @  !+  r>  !+ drop ; \ x a --
-: ,         dp (,x) ;                   \ x --
-: (w,x)     1 (aligned)  dup >r @  w!+  r>  !+ drop ; \ w a --
-: w,        dp (w,x) ;                  \ w --
-: (c,x)     dup >r @  c!+  r>  !+ drop ; \ w a --
-: c,        dp (c,x) ;                  \ c --
+: ,   cp dup >r  @ SPI!  4 r> +! ;
+: ,h  hp dup >r  @ SPI!  4 r> +! ;
 
-: w,     cp dup >r @ w!+  r> w!+ drop ; \ w --
-: c,     cp dup >r @ c!+  r> c!+ drop ; \ c --
-: h,     hp dup >r @  !+  r>  !+ drop ; \ x --
-: hw,    hp dup >r @ w!+  r> w!+ drop ; \ w --
-: hc,    hp dup >r @ c!+  r> c!+ drop ; \ c --
-
-
+\ Create a new header. The source is either the keyboard or blocks.
 
 \ Define a compiler
 \ char params:  c_colondef c_litpend c_slot c_called

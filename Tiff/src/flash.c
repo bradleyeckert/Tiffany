@@ -59,15 +59,17 @@ uint32_t SPIflashXfer (uint32_t n) {    /*EXPORT*/
 				case 6: addr = cin<<16;  state++;  break;
 				case 7: addr += cin<<8;  state++;  break;
 				case 8: addr += cin;
-					switch (command) {
-						case 0x20: if (wen) tiffIOR = Erase4K(addr);	// erase sector
-							wen=0;  state=1;  break;
-						case 0x0B:  state++;  break;
-						case 0x02:  state=11;  break;
-						default: state = 0;
-					} break;
-
-				state++;  break;
+                    if (addr < AXIsize*4) {
+                        switch (command) {
+                            case 0x20: if (wen) tiffIOR = Erase4K(addr);	// erase sector
+                                wen=0;  state=1;  break;
+                            case 0x0B:  state++;  break;
+                            case 0x02:  state=11;  break;
+                            default: state = 0;
+                        } break;
+                    } else {                            // invalid address, ignore
+                        state = 0;
+                    }
 				case 9:	state++;  break;				// dummy byte before read
 				case 10:								// read as long as you want
 					word = AXI[addr/4];
