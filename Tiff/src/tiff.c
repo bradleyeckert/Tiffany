@@ -299,7 +299,7 @@ void tiffLOCATE (void) {                // locate source text
     for (i=0; i<LocateLines; i++) {
         length = getline(&buf, &bufsize, fp);
         if (length < 0) break;          // EOF
-        printf("%-4d %s", linenum-1, buf);
+        printf("%-4d %s", linenum, buf);
         linenum++;
     }
 ex: fclose(fp);

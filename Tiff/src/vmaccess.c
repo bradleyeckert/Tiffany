@@ -830,7 +830,7 @@ void DumpRegs(void) {
     int row = 2;
     int old = printed;
     char name[7][4] = {" T", " N", "RP", "SP", "UP", "PC", "DB"};
-    char term[12][10] = {"STATUS", "FOLLOWER", "SP0", "RP0", "HANDLER", "BASE",
+    char term[13][10] = {"STATUS", "FOLLOWER", "RP0", "SP0", "TOS", "HANDLER", "BASE",
                         "Head: HP", "Code: CP", "Data: DP", "STATE", "CURRENT", "SOURCEID"};
     uint32_t i;
     printf("\033[s");                   // save cursor
