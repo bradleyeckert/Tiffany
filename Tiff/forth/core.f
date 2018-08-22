@@ -59,6 +59,18 @@
    | @+ r> !+ >r -rept                  \ n a1' | a2'
    r> 3drop
 ;
+: cmove  \ a1 a2 n --                   \ move bytes
+   negate |+if 3drop exit |
+   1+ swap >r swap
+   | c@+ r> c!+ >r -rept                \ n a1' | a2'
+   r> 3drop
+;
+: fill  \ a1 n c --                     \ fill with bytes
+   swap negate |+if 3drop exit |        \ a c n
+   1+ swap >r swap                      \ n a | c
+   | r@ swap c!+ -rept                  \ n a' | c
+   r> 3drop
+;
 
 \ Software versions of math functions
 \ May be replaced by user functions.

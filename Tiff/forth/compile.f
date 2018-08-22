@@ -3,10 +3,10 @@
 
 \ Code and headers are both in flash. Write using SPI!.
 
+: aligned  3 + -4 and ;                 \ a -- a'
 : ,   cp dup >r  @ SPI!  4 r> +! ;
 : ,h  hp dup >r  @ SPI!  4 r> +! ;
 
-\ Create a new header. The source is either the keyboard or blocks.
 
 \ Define a compiler
 \ char params:  c_colondef c_litpend c_slot c_called
@@ -86,6 +86,11 @@ defer NewGroup
    dup 33554431 invert 2* and
    if HardLit exit then
    nextlit !  1 c_litpend c!
+;
+
+: compile,  \ xt --
+   head @ 4 + c@  128 and  c_called c!  \ 0 = call-only
+   op_call Explicit
 ;
 
 \

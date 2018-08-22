@@ -22,7 +22,7 @@
 
 \ Dump in cell and char format, 32 bytes per line.
 
-8 equ DumpColumns                       \ Output chars ~ Columns * 13 + 5
+4 equ DumpColumns                       \ Output chars ~ Columns * 13 + 5
 
 : dump  \ addr bytes --
    begin dup while

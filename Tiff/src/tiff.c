@@ -471,13 +471,13 @@ void LoadKeywords(void) {               // populate the list of gator brain func
  //   AddEquate ("op_u2/",   opUtwoDiv);
     AddEquate ("op_no:",   opSKIP);
  //   AddEquate ("op_2+",    opTwoPlus);
- //   AddEquate ("op_jmp",   opJUMP);
+    AddEquate ("op_jmp",   opJUMP);
  //   AddEquate ("op_w!+",   opWstorePlus);
  //   AddEquate ("op_w@+",   opWfetchPlus);
  //   AddEquate ("op_and",   opAND);
     AddEquate ("op_litx",  opLitX);
  //   AddEquate ("op_>r",    opPUSH);
- //   AddEquate ("op_call",  opCALL);
+    AddEquate ("op_call",  opCALL);
  //   AddEquate ("op_0=",    opZeroEquals);
  //   AddEquate ("op_0<",    opZeroLess);
  //   AddEquate ("op_w@",    opWfetch);
@@ -636,9 +636,6 @@ uint32_t tiffPARSENAME (void) {         // ( -- addr length )
 }
 // Interpret the TIB inside the VM, on the VM data stack.
 void tiffINTERPRET(void) {
-#ifdef VERBOSE
-    printf("\nInterpret[");
-#endif
     while (tiffPARSENAME()) {           // get the next blank delimited keyword
 #ifdef VERBOSE
         uint32_t tempLen = PopNum();
@@ -701,9 +698,6 @@ void tiffINTERPRET(void) {
     }
 ex: PopNum();                           // keyword is an empty string
     PopNum();
-#ifdef VERBOSE
-    printf("\n]Interpret");
-#endif
 }
 
 // Keyboard input uses the default terminal cooked mode.

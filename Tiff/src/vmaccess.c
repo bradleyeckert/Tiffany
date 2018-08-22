@@ -218,7 +218,7 @@ void PrintWordlist(uint32_t WID, char *substring, int verbosity) {
                 UnCase(key);
                 UnCase(name);
             }
-            char *s = strstr(key, name);
+            char *s = strstr(name, key);
             if (s != NULL) goto good;
         } else {
 good:       if (verbosity) {            // long version
