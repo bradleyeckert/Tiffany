@@ -119,7 +119,7 @@ void tiffINCLUDED (char *name) {
     strcpy (File.FilePath, name);
     File.fp = fopen(name, "r");
 #ifdef VERBOSE
-    printf("\nOpening file %s, handle 0x%X\n", name, (uint32_t)File.fp);
+    printf("\nOpening file %s, handle 0x%X\n", name, (int)File.fp);
 #endif
     File.LineNumber = 0;
     File.Line[0] = 0;
@@ -636,6 +636,9 @@ uint32_t tiffPARSENAME (void) {         // ( -- addr length )
 }
 // Interpret the TIB inside the VM, on the VM data stack.
 void tiffINTERPRET(void) {
+#ifdef VERBOSE
+    printf("\nInterpret[");
+#endif
     while (tiffPARSENAME()) {           // get the next blank delimited keyword
 #ifdef VERBOSE
         uint32_t tempLen = PopNum();
@@ -698,6 +701,9 @@ void tiffINTERPRET(void) {
     }
 ex: PopNum();                           // keyword is an empty string
     PopNum();
+#ifdef VERBOSE
+    printf("\n]Interpret");
+#endif
 }
 
 // Keyboard input uses the default terminal cooked mode.
@@ -766,7 +772,7 @@ void tiffQUIT (char *cmdline) {
                     length = getline(&buf, &bufsize, File.fp);
                     if (length < 0) {  // EOF
 #ifdef VERBOSE
-                        printf("Closing file handle 0x%X\n", (uint32_t)File.fp);
+                        printf("Closing file handle 0x%X\n", (int)File.fp);
 #endif
                         fclose (File.fp);
                         filedepth--;
@@ -776,7 +782,9 @@ void tiffQUIT (char *cmdline) {
                         tiffCOMMENT();
                     } else {
                         if (length >= MaxTIBsize) tiffIOR = -62;
-                        if (length > 0) length--; // remove LF or CR
+			while ((length > 0) && (File.Line[length-1] < ' ')) {
+			    length--;	// trim trailing lf or crlf
+			}
                         File.Line[length] = 0;
                         File.LineNumber++;
                         StoreHalf(File.LineNumber, LINENUMBER);

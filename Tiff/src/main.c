@@ -11,6 +11,7 @@
 
 int main(int argc, char *argv[]) {
     int Arg = 1;
+
 /*
 #ifdef __linux__
     initscr();
