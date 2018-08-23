@@ -26,11 +26,8 @@ The link and the name should be adjacent in memory to allow for faster fetch fro
 | -2   | Source Line, Low byte            | xtc, Execution token for compile   |
 | -1   | Source Line, High byte           | xte, Execution token for execute   |
 | 0    | # of instructions in definition  | Link                               |
-| 1    | Name Length                      | Name Text, first 3 characters      |
-| 2    | 4th name character               | Name Text, chars 5-7, etc...       |
 
-`immediate` works by clearing xtc. The interpreter uses xte if it's zero. It's done this way because flash can't be patched unless it's blank.
-
+Immediately after the Link field is a counted string whose first byte is a 5-bit length and three flags.
 The name length byte includes `smudge`, `call-only`, and `anonymous` bits that default to '1' and are set to '0' later on.
 
 | Bit | Usage       | Description                                  |
@@ -39,6 +36,9 @@ The name length byte includes `smudge`, `call-only`, and `anonymous` bits that d
 | 6   | Anonymous   | '0' when to be excluded from where list      |
 | 5   | Smudged     | '0' when header is findable (used by : etc.) |
 | 4:0 | Name Length | 0 to 31                                      |
+
+
+`immediate` works by clearing xtc. The interpreter uses xte if it's zero. It's done this way because flash can't be patched unless it's blank.
 
 The `where` list (cell -3) is 0xFFFFFF if the word is not referenced. Every reference to this header will append to the `where` list, which is a forward linked list whose head pointer is re-calculated (by traversal) each time it's needed. If the referencer's `anonymous` bit is '0', it doesn't get appended to the `where` list. Opcode words are anonymous.
 

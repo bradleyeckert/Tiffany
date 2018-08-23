@@ -22,25 +22,36 @@ include interpret.f
 \ | -1   | Source Line, High byte           | xte, Execution token for execute   |
 \ | 0    | # of instructions in definition  | Link                               |
 
-: Header[  \ <name> xte xtc --          \ populate PAD with header data
+: header[  \ <name> xte xtc --          \ populate PAD with header data
    pad 28 -1 fill                       \ default fields are blank
    [ pad 4 + ] literal !+ !+
-   current @ swap !+                    \ add xtc, xte, link
+   current @ @ swap !+                  \ add xtc, xte, link
    >r parse-word dup r> c!+             \ store length
    swap cmove
-   source-id c@ [ pad 3 + ] literal c!  \ file ID
-   w_linenum c@+ >r c@ r>               \ hi lo
-   [ pad 7 + ] literal c!
-   [ pad 11 + ] literal c!              \ insert line number
+   source-id c@ ?dup if
+      [ pad 3 + ] literal c!            \ file ID
+      w_linenum c@+ >r c@ r>            \ hi lo
+      [ pad 7 + ] literal c!
+      [ pad 11 + ] literal c!           \ insert line number
+   then
 ;
 : ]header  \ --                         \ write PAD to flash
    pad  dup
    16 + c@ 1+ aligned  16 + >r
    hp @  r@  SPImove                    \ write to flash
+   hp @ 12 + current @ !                \ add to current definitions
    r> hp +!
 ;
+: flags!  \ c --                        \ change flags
+   [ pad 16 + ] literal c!+
+;
+\ Put this as the last definition.
 : _:  \ <name> --
-   cp @ ['] compile, Header[
+   cp @ ['] compile, header[
+   224 flags!       ]header             \ flags: jumpable, anon, smudged
+   1 c_colondef c!
+;
+
 \ {
 \     FollowingToken(name, 32);
 \     NewGroup();
@@ -49,7 +60,7 @@ include interpret.f
 \     StoreByte(1, COLONDEF);
 \     StoreCell(1, STATE);
 \ }
-;
+
 
 \ Note: interpreter will need the compiler.
 
@@ -73,3 +84,5 @@ cp @ equ s2 ," the quick brown fox"  : str2 s2 count ;
 
 .( `tiff.f` compiled ) CP ? .( bytes of code, ) HP @ 32768 - . .( bytes of header.)
 cr
+
+include wean.f

@@ -1,5 +1,9 @@
 \ Core words for 32-bit Mforth
 
+ 0 equ false
+-1 equ true
+32 equ bl
+
 : !                 !+ drop ; macro     \ x addr --
 : c!               c!+ drop ; macro     \ c addr --
 : w!               w!+ drop ; macro     \ w addr --

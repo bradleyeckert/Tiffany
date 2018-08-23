@@ -56,11 +56,12 @@ void tiffCLS (void) {                   // clear screen
     printf("\033[2J");                  // CLS
     if (ShowCPU) printf("\033[%dH", DumpRows+2);  // cursor below CPU
 }
-void tiffROMstore (void) {
+
+/* void tiffROMstore (void) {
     uint32_t a = PopNum();
     uint32_t n = PopNum();
     StoreROM (n, a);
-}
+}*/
 
 struct FileRec FileStack[MaxFiles];
 int filedepth = 0;
@@ -254,6 +255,11 @@ void tiffTICK (void) {                  // '
     uint32_t ht = Htick();
     PushNum(FetchCell(ht-4) & 0xFFFFFF);
 }
+void xte_is (void) {                    // ( xt -- ) replace xte
+    uint32_t ht = Htick();
+    uint32_t xte = FetchCell(ht-4) & ~0xFFFFFF;
+    WriteROM(xte | PopNum(), ht-4);     // host gets to overwrite ROM
+}
 void tiffIS (void) {                    // patch ROM defer
     tiffTICK();
     uint32_t dest = PopNum();           // xt
@@ -441,7 +447,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("+until",  CompPlusUntil);
     AddKeyword("while",   CompWhile);
     AddKeyword("repeat",  CompRepeat);
-    AddKeyword("rom!",    tiffROMstore);
+//    AddKeyword("rom!",    tiffROMstore);
     AddKeyword("h'",      tiffHTICK);
     AddKeyword("'",       tiffTICK);
     AddKeyword("[']",     tiffBracketTICK);
@@ -452,12 +458,13 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("dasm",    tiffDASM);
     AddKeyword("locate",  tiffLOCATE);
     AddKeyword("replace-xt", ReplaceXTs);   // Replace XTs  ( NewXT OldXT -- )
+    AddKeyword("xte-is",  xte_is);          // Replace a word's xte  ( NewXT -- )
     AddKeyword("save-rom",   tiffSAVEcrom);
     AddKeyword("save-flash", tiffSAVEcaxi);
     AddKeyword("iwords",   ListKeywords);   // internal words, after the dictionary
     // CPU opcode names
  //   AddEquate ("op_dup",   opDUP);
- //   AddEquate ("op_exit",  opEXIT);
+    AddEquate ("op_exit",  opEXIT);
  //   AddEquate ("op_+",     opADD);
  //   AddEquate ("op_user",  opUSER);
  //   AddEquate ("op_drop",  opDROP);
@@ -542,10 +549,6 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddEquate ("hld",        HLD);
     AddEquate ("pad",        PAD);
     AddEquate ("|pad|",      PADsize);
-    // Some useful constants
-    AddEquate ("bl",         32);
-    AddEquate ("true",       -1);
-    AddEquate ("false",      0);
 
 }
 

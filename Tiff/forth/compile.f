@@ -75,9 +75,7 @@ defer NewGroup
     drop if
        op_no: Implicit                  \ skip unused slots
     then
-    iracc @
-    cr 7 h.x \ dump to screen
-    \ ,
+    iracc @ ,
     ClearIR
 ; is NewGroup
 
@@ -88,17 +86,35 @@ defer NewGroup
    nextlit !  1 c_litpend c!
 ;
 
+\ untested...
+
 : compile,  \ xt --
    head @ 4 + c@  128 and  c_called c!  \ 0 = call-only
    op_call Explicit
 ;
 
-\
-\ First, let's wean the pre-built headers off the C functions.
-\ Note that replace-xt is only available in the host system due to
-\ the constraints of run-time flash programming.
+: ,exit  \ --
+   c_called c@ if
+      calladdr link>
+      8  [ calladdr 3 + ] literal c@  lshift
+      invert swap SPI!                  \ convert CALL to JUMP
+      0 c_called c!
+      0 calladdr ! exit
+   then op_exit Implicit
+;
 
-\ EQU pushes or compiles W parameter
-: equ_e   head @ -16 + @ ;      \ -- n
-' equ_e  -1 replace-xt          \ execution part of EQU
+: ,;  \ --
+   ,exit  NewGroup
+   current @ @                          \ link
+   dup 4 + @ 32 and if                  \ smudge bit is set?
+      dup 4 + 32 invert SPI!            \ clear it
+   then
+   c_colondef c@ if                     \ wid
+      0 c_colondef c!
+      cp @  over 4 - link>  2/ 2/       \ length
+      255 min
+      pad c!  pad swap 1 SPImove
+   then
+   0 state !
+;
 
