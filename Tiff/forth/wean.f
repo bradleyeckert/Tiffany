@@ -1,12 +1,11 @@
-
 \ Wean the pre-built headers off the C functions in tiffFUNC.
 \ Note that replace-xt is only available in the host system due to
 \ the constraints of run-time flash programming.
 
 \ EQU pushes or compiles W parameter
-: equ_ee   head @ -16 + @ ;             \ -- n
+: equ_ee   head @ 16 - @ ;              \ -- n
 ' equ_ee  -1 replace-xt                 \ execution part of EQU
-:noname equ_ee litral ;  -2 replace-xt  \ compilation part of EQU
+:noname equ_ee literal, ; -2 replace-xt \ compilation part of EQU
 
 \ Executing an implicit opcode is not possible without the host VM.
 \ Instead, the xte is replaced with a noname definition.
@@ -84,7 +83,7 @@
 
 :noname  equ_ee up ; -10 replace-xt     \ execute user variable
 :noname                                 \ compile user variable
-   equ_ee litral  op_up Implicit
+   equ_ee literal,  op_up Implicit
 ; -11 replace-xt
 
 : get-xte  \ xte --                     \ from HEAD
@@ -97,7 +96,7 @@
          drop 3 and >r  @+ 26 r>
       else
          2dup rshift 63 and
-         swap 6 - swap
+         >r 6 - r>
       then                              \ addr IR slot opcode
       dup op_exit = if
          2drop 2drop exit
@@ -105,8 +104,7 @@
    again
 ;
 
-\ this stuff is broken, need to fix
-\ :noname  get-xte compile, ; -17 replace-xt
-\ :noname  get-xte compilemacro ; -21 replace-xt
+:noname  get-xte compile, ; -17 replace-xt
+:noname  get-xte compilemacro ; -21 replace-xt
 
 

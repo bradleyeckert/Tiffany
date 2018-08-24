@@ -5,15 +5,16 @@ include tasker.f
 include numio.f
 include flash.f
 \ Here's where you'd reposition CP to run code out of SPI flash.
-\ Put the time critical parts your application here.
-\ Unplugging the SPI flash should break the interpreter but nothing else.
+\ Put the time critical parts of your application here.
+\ Omitting the SPI flash should break the interpreter but nothing else.
 
 cp ?                                    \ display bytes of internal ROM used
-hp0 16384 + cp !
+hp0 16384 + cp !                        \ leave 16kB for headers
 
-include tools.f
-include compile.f    \ work in progress
+include compile.f
+include wean.f
 include interpret.f
+include tools.f
 
 \ Create a new header. The source is either the keyboard or blocks.
 
@@ -42,7 +43,7 @@ include interpret.f
    hp @ 12 + current @ !                \ add to current definitions
    r> hp +!
 ;
-: flags!  \ c --                        \ change flags
+: flags!  \ c --                        \ change flags (from 0)
    [ pad 16 + ] literal c!+
 ;
 \ Put this as the last definition.
@@ -73,7 +74,6 @@ cp @ equ s2 ," the quick brown fox"  : str2 s2 count ;
 
 : try  ['] interpret catch ?dup if oops then ;
 
-include wean.f
 
 .( bytes in internal ROM, ) CP @ hp0 16384 + - .
 .( bytes of code in flash, ) HP @ hp0 - .

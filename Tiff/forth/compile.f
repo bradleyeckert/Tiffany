@@ -1,5 +1,4 @@
-\ compiler (not tested yet)
-\ incomplete
+\ compiler
 
 \ Code and headers are both in flash. Write using SPI!.
 
@@ -26,20 +25,19 @@ defer NewGroup
    c_slot c@ 0=  over 60 and  and if    \ doesn't fit in the last slot
       NewGroup
    then
-\ cr ." Appending " dup . ." to IR"
    0 AppendIR
    c_slot c@  dup if
-      6 - -if: dup xor |                \ sequence: 26, 20, 14, 8, 2, 0
+      6 -  dup 0< invert and            \ sequence: 26, 20, 14, 8, 2, 0
       c_slot c! exit
    then
    drop NewGroup                        \ slot 0 -> slot 26
 ;
 
-: Explicit  \ opcode imm --
-   FlushLit
-   1  c_slot c@  dup >r  lshift         \ opcode imm maximum
-   over 1+ - 0<  r> 0=
-   + 0= |ifz NewGroup |                 \ it doesn't fit
+: Explicit  \ imm opcode --
+   swap FlushLit
+   1  c_slot c@  dup >r  lshift         \ opcode imm maximum | slot
+   over <  r> 0= or                     \ imm doesn't fit of slot=0
+   if  NewGroup  then
    AppendIR
    c_slot c@  24 lshift
    cp @ +  calladdr !                   \ remember call address in case of ;
@@ -49,15 +47,15 @@ defer NewGroup
 : HardLit  \ n --                       \ compile a hard literal
    dup >r -if: negate |                 \ u
    dup 33554431 invert 2* and if        \ too wide
-      r> drop op_lit  over 24 rshift  Explicit   \ upper part
-      op_litx swap    16777215 and    Explicit   \ lower part
+      r> drop   dup 24 rshift  op_lit Explicit   \ upper part
+      16777215 and  op_litx Explicit    \ lower part
       exit
    then
    r> 0< if                             \ compile negative
-      1- op_lit swap Explicit
+      1- op_lit Explicit
       op_com Implicit  exit
    then
-   op_lit swap Explicit                 \ compile positive
+   op_lit Explicit                      \ compile positive
 ;
 
 :noname \ FlushLit  \ --                \ compile a literal if it's pending
@@ -75,23 +73,20 @@ defer NewGroup
     drop if
        op_no: Implicit                  \ skip unused slots
     then
-\ cr ." Comma " iracc @ u. ." at " cp ?
     iracc @ ,
     ClearIR
 ; is NewGroup
 
-: litral  \ n --
+: literal,  \ n --                      \ compile a literal
    FlushLit
    dup 33554431 invert 2* and
    if HardLit exit then
    nextlit !  1 c_litpend c!
 ;
 
-\ untested...
-
-: compile,  \ xt --
+: compile,  \ xt --                     \ compile a call
+   2/ 2/ op_call Explicit
    head @ 4 + c@  128 and  c_called c!  \ 0 = call-only
-   op_call Explicit
 ;
 
 : ,exit  \ --

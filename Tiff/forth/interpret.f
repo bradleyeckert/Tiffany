@@ -158,16 +158,17 @@
       hfind                             \ addr len | 0 ht
       over if
          isnumber
-         state @ if ." Literal:" . then \ literal (don't have yet)
+         state @ if literal, then
       else
          nip
+         dup head !                     \ save last found word's head
          state @ 0= 0= 4 and            \ get offset to the xt
          cell+ -  link>                 \ get xtc or xte
          dup 8388608 and 0<>            \ is it a C function?
          -21 and throw                  \ that's a problem
          execute                        \ execute the xt
       then
-\ you could check stacks here
+      depth 0< -4 and throw             \ stack underflow
    repeat  2drop
 ;
 
