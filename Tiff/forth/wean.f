@@ -1,17 +1,16 @@
 
-
 \ Wean the pre-built headers off the C functions in tiffFUNC.
 \ Note that replace-xt is only available in the host system due to
 \ the constraints of run-time flash programming.
 
 \ EQU pushes or compiles W parameter
-: equ_ee   head @ -16 + @ ;      \ -- n
-' equ_ee  -1 replace-xt          \ execution part of EQU
-:noname equ_ee litral ;   -2 replace-xt          \ compilation part of EQU
-:noname equ_ee Implicit ; -4 replace-xt          \ compilation part of implicit opcode
+: equ_ee   head @ -16 + @ ;             \ -- n
+' equ_ee  -1 replace-xt                 \ execution part of EQU
+:noname equ_ee litral ;  -2 replace-xt  \ compilation part of EQU
 
 \ Executing an implicit opcode is not possible without the host VM.
 \ Instead, the xte is replaced with a noname definition.
+\ So, there's no "-3 replace-xt"
 
 \ Run-time actions of primitives
 :noname dup    ; xte-is dup
@@ -56,16 +55,58 @@
 :noname swap   ; xte-is swap
 :noname 0=     ; xte-is 0=
 :noname 0<     ; xte-is 0<
+:noname        ; xte-is nop
 
-\             case 4: tiffIOR = -14;  break;
-\             case 5: Immediate(w);   break;  // compile immediate opcode
-\             case 6: SkipOp(w);      break;  // compile skip opcode
-\             case 7: HardSkipOp(w);  break;  // compile skip opcode in slot 0
-\             case 8: FlushLit();  NewGroup();   break;  // skip to new instruction group
-\ 			case 9: PushNum (w);  FakeIt(opUP); break;     // execute user variable
-\ 			case 10: Literal (w);  Implicit(opUP); break;  // compile user variable
-\ // Compile xt must be multiple of 8 so that clearing bit2 converts to a macro
-\             case 16: Compile     (FetchCell(ht-4) & 0xFFFFFF); break;  // compile call to xte
-\             case 20: CompileMacro(FetchCell(ht-4) & 0xFFFFFF); break;
+:noname equ_ee Implicit ; -4 replace-xt \ compilation part of implicit opcode
+:noname -14 throw ;       -5 replace-xt \ "Interpreting a compile-only word"
+
+:noname                                 \ immediate opcode
+   c_litpend dup c@ if
+      0 swap c!
+      equ_ee  nextlit @  Explicit
+      exit
+   then  -59 throw
+; -6 replace-xt
+
+:noname                                 \ place "skip" instruction
+   FlushLit
+   c_slot 8 < if NewGroup then
+   equ_ee Implicit
+; -7 replace-xt
+
+:noname                                 \ place "skip" instruction in a new group
+   NewGroup  equ_ee Implicit
+; -8 replace-xt
+
+:noname                                 \ skip to new group
+   FlushLit NewGroup
+; -9 replace-xt
+
+:noname  equ_ee up ; -10 replace-xt     \ execute user variable
+:noname                                 \ compile user variable
+   equ_ee litral  op_up Implicit
+; -11 replace-xt
+
+: get-xte  \ xte --                     \ from HEAD
+   head @ invert cell+ invert link>
+;
+
+: compilemacro  \ addr --
+   @+ 26 begin                          \ addr IR slot
+      dup 0< if
+         drop 3 and >r  @+ 26 r>
+      else
+         2dup rshift 63 and
+         swap 6 - swap
+      then                              \ addr IR slot opcode
+      dup op_exit = if
+         2drop 2drop exit
+      then  Implicit
+   again
+;
+
+\ this stuff is broken, need to fix
+\ :noname  get-xte compile, ; -17 replace-xt
+\ :noname  get-xte compilemacro ; -21 replace-xt
 
 

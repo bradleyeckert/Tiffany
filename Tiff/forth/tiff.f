@@ -4,11 +4,13 @@ include core.f
 include tasker.f
 include numio.f
 include flash.f
-\ Here's where you'd reposition CP to run code out of SPI flash
-\ in order to keep the internal ROM small(er). Your app would go there too.
+\ Here's where you'd reposition CP to run code out of SPI flash.
+\ Put the time critical parts your application here.
 \ Unplugging the SPI flash should break the interpreter but nothing else.
 
-\ At this point, 1.4K bytes are in the internal ROM image.
+cp ?                                    \ display bytes of internal ROM used
+hp0 16384 + cp !
+
 include tools.f
 include compile.f    \ work in progress
 include interpret.f
@@ -28,12 +30,10 @@ include interpret.f
    current @ @ swap !+                  \ add xtc, xte, link
    >r parse-word dup r> c!+             \ store length
    swap cmove
-   source-id c@ ?dup if
-      [ pad 3 + ] literal c!            \ file ID
-      w_linenum c@+ >r c@ r>            \ hi lo
-      [ pad 7 + ] literal c!
-      [ pad 11 + ] literal c!           \ insert line number
-   then
+   c_fileid c@ [ pad 3 + ] literal c!   \ file ID
+   w_linenum c@+  >r c@ r>              \ hi lo
+   [ pad 7 + ] literal c!
+   [ pad 11 + ] literal c!              \ insert line number
 ;
 : ]header  \ --                         \ write PAD to flash
    pad  dup
@@ -51,15 +51,6 @@ include interpret.f
    224 flags!       ]header             \ flags: jumpable, anon, smudged
    1 c_colondef c!
 ;
-
-\ {
-\     FollowingToken(name, 32);
-\     NewGroup();
-\     CommaHeader(name, FetchCell(CP), ~16, -1, 0xE0);
-\     // xtc must be multiple of 8 ----^
-\     StoreByte(1, COLONDEF);
-\     StoreCell(1, STATE);
-\ }
 
 
 \ Note: interpreter will need the compiler.
@@ -82,7 +73,9 @@ cp @ equ s2 ," the quick brown fox"  : str2 s2 count ;
 
 : try  ['] interpret catch ?dup if oops then ;
 
-.( `tiff.f` compiled ) CP ? .( bytes of code, ) HP @ 32768 - . .( bytes of header.)
-cr
-
 include wean.f
+
+.( bytes in internal ROM, ) CP @ hp0 16384 + - .
+.( bytes of code in flash, ) HP @ hp0 - .
+.( bytes of header.) cr
+

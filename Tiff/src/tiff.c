@@ -90,7 +90,9 @@ void initFilelist (void) {
 // Use Size=-1 if unknown
 void CommaHeader (char *name, uint32_t xte, uint32_t xtc, int Size, int flags){
     uint16_t LineNum = FetchHalf(LINENUMBER);
-	CommaH ((File.FID << 24) | 0xFFFFFF);              // [-3]: File ID | where
+	uint8_t fileid = FetchByte(FILEID);
+
+	CommaH ((fileid << 24) | 0xFFFFFF);                   // [-3]: File ID | where
 	CommaH (((LineNum & 0xFF)<<24)  +  (xtc & 0xFFFFFF)); // [-2]
 	CommaH (((LineNum & 0xFF00)<<16) + (xte & 0xFFFFFF)); // [-1]
 	uint32_t wid = FetchCell(CURRENT);                 // CURRENT -> Wordlist
@@ -125,6 +127,7 @@ void tiffINCLUDED (char *name) {
     File.LineNumber = 0;
     File.Line[0] = 0;
     File.FID = FileID;
+	StoreByte(FileID, FILEID);
     tiffCOMMENT();
     if (File.fp == NULL) {
         tiffIOR = -199;
@@ -509,7 +512,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
  //   AddEquate ("op_ifc:",  opSKIPNC);
  //   AddEquate ("op_ifz:",  opSKIPNZ);
     AddEquate ("op_lit",   opLIT);
- //   AddEquate ("op_up",    opUP);
+    AddEquate ("op_up",    opUP);
  //   AddEquate ("op_!as",   opStoreAS);
  //   AddEquate ("op_up!",   opSetUP);
  //   AddEquate ("op_r@",    opRfetch);
@@ -533,6 +536,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddEquate (">in",        TOIN);
     AddEquate ("w_>in",      TEMPTOIN);
     AddEquate ("w_linenum",  LINENUMBER);
+    AddEquate ("c_fileid",   FILEID);
     AddEquate ("c_wids",     WIDS);
     AddEquate ("c_called",   CALLED);
     AddEquate ("c_slot",     SLOT);
@@ -776,12 +780,14 @@ void tiffQUIT (char *cmdline) {
                         if (filedepth == 0) {
                             StoreCell(0, SOURCEID);
                         }
+						StoreByte(File.FID, FILEID);
+						StoreHalf(File.LineNumber, LINENUMBER);
                         tiffCOMMENT();
                     } else {
                         if (length >= MaxTIBsize) tiffIOR = -62;
-			while ((length > 0) && (File.Line[length-1] < ' ')) {
-			    length--;	// trim trailing lf or crlf
-			}
+						while ((length > 0) && (File.Line[length-1] < ' ')) {
+							length--;	// trim trailing lf or crlf
+						}
                         File.Line[length] = 0;
                         File.LineNumber++;
                         StoreHalf(File.LineNumber, LINENUMBER);

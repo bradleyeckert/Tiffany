@@ -73,7 +73,8 @@ void UnCase(char *s);
 #define IRACC       termTCB(21)  /* IR accumulator                            */
 #define HEAD        termTCB(22)  /* Points to header of last found word       */
 #define LINENUMBER  termTCB(23)  /* 16-bit line number, if used.              */
-// you have 16 bits of spare RAM at termTCB(23)+2
+#define FILEID      termTCB(23)+2  /* 8-bit file ID, if used.                 */
+// you have 8 bits of spare RAM at termTCB(23)+3
 #define CONTEXT     termTCB(24)  /* 8 cells of context                        */
 #define FORTHWID    termTCB(32)  /* Forth wordlist                            */
 #define HLD         termTCB(33)  /* Numeric input pointer                     */
