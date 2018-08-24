@@ -83,12 +83,10 @@ defer NewGroup
    if HardLit exit then
    nextlit !  1 c_litpend c!
 ;
-
 : compile,  \ xt --                     \ compile a call
    2/ 2/ op_call Explicit
    head @ 4 + c@  128 and  c_called c!  \ 0 = call-only
 ;
-
 : ,exit  \ --
    c_called c@ if
       calladdr link>
@@ -97,37 +95,5 @@ defer NewGroup
       0 c_called c!
       0 calladdr ! exit
    then op_exit Implicit
-;
-
-: ,;  \ --
-   ,exit  NewGroup
-   current @ @                          \ link
-   dup 4 + @ 32 and if                  \ smudge bit is set?
-      dup 4 + 32 invert SPI!            \ clear it
-   then
-   c_colondef c@ if                     \ wid
-      0 c_colondef c!
-      cp @  over 4 - link>  2/ 2/       \ length
-      255 min
-      pad c!  pad swap 1 SPImove
-   then
-   0 state !
-;
-
-\ header flag manipulation (of current def)
-
-: macro  \ --
-   current @ @                          \ current head
-   4 invert  swap 8 - SPI!              \ flip xtc from compile to macro
-;
-
-: immediate  \ --
-   current @ @                          \ current head
-   8 invert  swap 8 - SPI!              \ flip xtc from compile to immediate
-;
-
-: call-only  \ --
-   current @ @                          \ current head
-   128 invert  swap 4 - SPI!            \ flip xtc from compile to macro
 ;
 

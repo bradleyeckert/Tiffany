@@ -5,7 +5,8 @@
 \ EQU pushes or compiles W parameter
 : equ_ee   head @ 16 - @ ;              \ -- n
 ' equ_ee  -1 replace-xt                 \ execution part of EQU
-:noname equ_ee literal, ; -2 replace-xt \ compilation part of EQU
+: equ_ec   equ_ee literal, ;
+' equ_ec  -2 replace-xt                 \ compilation part of EQU
 
 \ Executing an implicit opcode is not possible without the host VM.
 \ Instead, the xte is replaced with a noname definition.

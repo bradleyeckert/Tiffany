@@ -436,8 +436,43 @@ void CompType(uint32_t cp) {
 
 int32_t breakpoint = -1;
 
-void tiffFUNC (int32_t n) {   /*EXPORT*/
+void Execute(uint32_t xt) {
     uint32_t i;
+#ifdef VERBOSE
+    printf(", Executing at %X", n);  printed = 1;
+#endif // VERBOSE
+    SetDbgReg(DbgPC);
+    DbgGroup(opDUP, opPORT, opPUSH, opSKIP, opNOP); // Push current PC
+    SetDbgReg(0xDEADC0DC);
+    DbgGroup(opDUP, opPORT, opPUSH, opSKIP, opNOP); // Push bogus return address
+    SetDbgReg(xt);
+    DbgGroup(opDUP, opPORT, opPUSH, opEXIT, opNOP); // Jump to code to run
+    DbgPC = xt;
+    for (i=1; i<RunLimit; i++) {
+        if (DbgPC == breakpoint) {
+            DbgPC = vmTEST();
+            breakpoint = -1;
+        }
+        uint32_t ir = FetchCell(DbgPC);
+#ifdef VERBOSE
+        printf("\nStep %d: IR=%08X, PC=%X", i, ir, DbgPC);
+#endif // VERBOSE
+        DbgPC = 4 * VMstep(ir, 0);
+#ifdef VERBOSE
+        printf(" ==> PC=%X", DbgPC);
+#endif // VERBOSE
+        if (DbgPC == 0xDEADC0DC) {                  // Terminator found
+            DbgGroup(opEXIT, opSKIP, opNOP, opNOP, opNOP); // restore PC
+#ifdef VERBOSE
+                printf("\nFinished after %d groups\n", i);
+#endif // VERBOSE
+            return;
+        }
+    }
+    printf("\nHit the RunLimit in compile.c");  printed = 1;
+}
+
+void tiffFUNC (int32_t n) {   /*EXPORT*/
     if (n & 0x800000) n |= 0xFF000000; // sign extend 24-bit n
 	if (n<0) { // internal C function
 #ifdef VERBOSE
@@ -460,41 +495,11 @@ void tiffFUNC (int32_t n) {   /*EXPORT*/
 // Compile xt must be multiple of 8 so that clearing bit2 converts to a macro
             case 16: Compile     (FetchCell(ht-4) & 0xFFFFFF); break;  // compile call to xte
             case 20: CompileMacro(FetchCell(ht-4) & 0xFFFFFF); break;
+            case 24: Execute     (FetchCell(ht-4) & 0xFFFFFF); break;
 			default: break;
 		}
-	} else { // execute in the VM
-#ifdef VERBOSE
-        printf(", Executing at %X", n);  printed = 1;
-#endif // VERBOSE
-        SetDbgReg(DbgPC);
-        DbgGroup(opDUP, opPORT, opPUSH, opSKIP, opNOP); // Push current PC
-        SetDbgReg(0xDEADC0DC);
-        DbgGroup(opDUP, opPORT, opPUSH, opSKIP, opNOP); // Push bogus return address
-        SetDbgReg(n);
-        DbgGroup(opDUP, opPORT, opPUSH, opEXIT, opNOP); // Jump to code to run
-        DbgPC = n;
-        for (i=1; i<RunLimit; i++) {
-            if (DbgPC == breakpoint) {
-                DbgPC = vmTEST();
-                breakpoint = -1;
-            }
-            uint32_t ir = FetchCell(DbgPC);
-#ifdef VERBOSE
-            printf("\nStep %d: IR=%08X, PC=%X", i, ir, DbgPC);
-#endif // VERBOSE
-            DbgPC = 4 * VMstep(ir, 0);
-#ifdef VERBOSE
-            printf(" ==> PC=%X", DbgPC);
-#endif // VERBOSE
-            if (DbgPC == 0xDEADC0DC) {                  // Terminator found
-                DbgGroup(opEXIT, opSKIP, opNOP, opNOP, opNOP); // restore PC
-#ifdef VERBOSE
-                printf("\nFinished after %d groups\n", i);
-#endif // VERBOSE
-                return;
-            }
-        }
-        printf("\nHit the RunLimit in compile.c");  printed = 1;
+	} else {
+	    Execute(n); // execute in the VM
 	}
 }
 
