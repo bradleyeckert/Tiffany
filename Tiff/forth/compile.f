@@ -114,3 +114,20 @@ defer NewGroup
    0 state !
 ;
 
+\ header flag manipulation (of current def)
+
+: macro  \ --
+   current @ @                          \ current head
+   4 invert  swap 8 - SPI!              \ flip xtc from compile to macro
+;
+
+: immediate  \ --
+   current @ @                          \ current head
+   8 invert  swap 8 - SPI!              \ flip xtc from compile to immediate
+;
+
+: call-only  \ --
+   current @ @                          \ current head
+   128 invert  swap 4 - SPI!            \ flip xtc from compile to macro
+;
+

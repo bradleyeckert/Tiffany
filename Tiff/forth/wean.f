@@ -90,8 +90,15 @@
    head @ invert cell+ invert link>
 ;
 
-: compilemacro  \ addr --
-   @+ 26 begin                          \ addr IR slot
+\ Lower 4 bits of CP must be 4.
+cp @ 4 - 12 and  cp +!                  \ align to 4 bytes past 16-byte boundary
+defer do-immediate                      \ 1st cell -> immediate
+defer get-macro                         \ 2nd cell -> macro
+: get-compile  get-xte compile, ;       \ 3rd cell -> compile
+
+:noname  \ get-macro
+   get-xte  @+  26                      \ addr IR slot
+   begin
       dup 0< if
          drop 3 and >r  @+ 26 r>
       else
@@ -102,9 +109,12 @@
          2drop 2drop exit
       then  Implicit
    again
-;
+; is get-macro
 
-:noname  get-xte compile, ; -17 replace-xt
-:noname  get-xte compilemacro ; -21 replace-xt
+' get-compile -17 replace-xt
+' get-macro   -21 replace-xt
 
+:noname  \ do-immediate
+   get-xte execute
+; is do-immediate
 

@@ -52,17 +52,19 @@ The xtc of defined words is either `compile,` (by default) or `macrocomp,`. The 
 2. The first function of the pair is macro expansion.
 3. The pair starts at an address that's a multiple of 8.
 
-The structure for doing this is:
-
-```
-:noname ( code for macro expansion )
-; cp @  8 aligns  cp !
-jump  \ compile a machine opcode
-: compile, ( xt -- ) ( code for compile, )
-;
-```
-
 Macro expansion is amazingly simple. Each slot of an instruction in a definition that's marked as a macro is compiled until `exit` is encountered.
+
+### Immediate
+
+IMMEDIATE means something different in a flash-based dual-xt Forth. We would like to patch `xtc` to match `xte`, but it's not feasible since `xtc` contains some '0' bits. The same trick used by `macro` is used. `immediate` and `macro` are used only with definitions, which have a limited selection of `xtc`s. Among these are `compile,`,  `comp-macro`, and `immediate`. Using 16-byte alignment, the code for these words can form a jump table:
+
+cp @ 4 - 12 and  cp +!  \ align to 4 bytes past 16-byte boundary
+
+- jmp do-immediate
+- jmp comp-macro
+- jmp compile,
+
+This allows the default compile action to be `compile,`. By flipping bit 2 or bit 3 in `xtc` from '1' to '0', that gets changed to `comp-macro` or `do-immediate` respectively.
 
 ## Wordlists
 
