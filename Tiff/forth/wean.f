@@ -92,7 +92,7 @@
 ;
 
 \ Lower 4 bits of CP must be 4.
-cp @ 4 - 12 and  cp +!                  \ align to 4 bytes past 16-byte boundary
+4 cp @ -  12 and  cp +!                 \ align to 4 bytes past 16-byte boundary
 defer do-immediate                      \ 1st cell -> immediate
 defer get-macro                         \ 2nd cell -> macro
 : get-compile  get-xte compile, ;       \ 3rd cell -> compile

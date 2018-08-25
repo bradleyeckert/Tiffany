@@ -7,7 +7,7 @@
 #include "tiff.h"
 #include "colors.h"
 #include <string.h>
-#define RunLimit 1000000
+#define RunLimit 50000000
 
 /// The compiler keeps all state inside the VM when compiling code
 /// so that executable code can take over later by redirecting
