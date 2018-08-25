@@ -14,8 +14,8 @@
 // Return stack has a generous 32 cells.
 // With CATCH using 4 cells in the terminal, 16 doesn't do it.
 
-#define TiffRP0     ((ROMsize + 255)*4)             /* Initial stack pointers */
-#define TiffSP0     ((ROMsize + 223)*4)                    /* Byte addressing */
+#define TiffRP0     ((ROMsize + 250)*4)             /* Initial stack pointers */
+#define TiffSP0     ((ROMsize + 210)*4)                    /* Byte addressing */
 #define termTCB(n)  ((ROMsize + 256 + (n))*4)      /* Terminal USER variables */
 
 // error message handling

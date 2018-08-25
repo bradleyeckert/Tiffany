@@ -16,15 +16,24 @@ include wean.f                          \ replace C functions in existing header
 include interpret.f                     \ parse, interpret, convert to number
 include tools.f
 
+\ include define.f    \ not quite working.
+
+
 \ Some test words
 
 : foo hex decimal ;
 
-cp @ equ s1 ," 123456"
-    : str1 s1 count ;
-cp @ equ s2 ," the quick brown fox"
+cp @ equ s1
+   ," 123456"
+   : str1 s1 count ;
+
+cp @ equ s2
+    ," the quick brown fox"
     : str2 s2 count ;
 
+\ causes: Attempt to write to non-blank flash memory
+\ tiff.f[26]: cp @ equ s1 ," 123456"
+\ if placed earlier...
 
 : oops
    cr ." Error#" .
@@ -33,12 +42,6 @@ cp @ equ s2 ," the quick brown fox"
 ;
 
 : try  ['] interpret catch ?dup if oops then ;
-
-include define.f    \ not quite working.
-\ causes: Attempt to write to non-blank flash memory
-\ tiff.f[26]: cp @ equ s1 ," 123456"
-\ if placed earlier...
-
 
 .( bytes in internal ROM, ) CP @ hp0 16384 + - .
 .( bytes of code in flash, ) HP @ hp0 - .

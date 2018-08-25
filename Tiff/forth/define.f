@@ -31,9 +31,11 @@
 : flags!  \ c --                        \ change flags (from 0)
    [ pad 16 + ] literal c+!
 ;
-: equ  \ n --                           \ new equ
+: _equ  \ n --                           \ new equ
    ['] equ_ee  ['] equ_ec
-   header[ ,h ]header
+   header[ ,h
+   ]header
+   cr ." EQU "
 ;
 
 : last  current @ @ + ;       \ n -- a  \ index into last defined header

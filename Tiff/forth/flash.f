@@ -15,9 +15,6 @@
    r> SPIxfer drop
    r> r> + SPIxfer drop
 ;
-: SPIbyte  \ a -- a+1
-   255 SPIxfer swap c!+
-;
 : SPISR  \ -- status
    5 SPIxfer drop                       \ read status register
    511 SPIxfer                          \ LSB is `busy`, bit1 is WEN
@@ -58,12 +55,15 @@
    swap SPI![   begin                   \ a len
       1- >r count                       \ a c | len
       r@ 0= if
-        ]SPI! r> 2drop exit
+        ]SPI! r> 2drop  exit
       then
       SPIxfer drop r>
    again
 ;
 
+: SPIbyte  \ a -- a+1
+   255 SPIxfer swap c!+
+;
 \ @ should already do this, but SPI@ operates the SPI to test the interface.
 : SPI@  \ addr -- x                     \ 32-bit fetch
    11 0 SPIaddress  dup SPIxfer drop    \ command and dummy byte
