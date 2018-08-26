@@ -646,7 +646,7 @@ void InitializeTermTCB (void) {
     VMpor();                            // clear VM and RAM
     initFilelist();
     EraseSPIimage();                    // clear SPI flash image
-    StoreCell(HeadPointerOrigin+8, HP); // leave forward link to filename list
+    StoreCell(HeadPointerOrigin+20, HP); // leave 5 cells for filelist, widlist, hp, cp, and dp
     StoreCell(CodePointerOrigin, CP);
     StoreCell(DataPointerOrigin, DP);
     StoreCell(10, BASE);                // decimal

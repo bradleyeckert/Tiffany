@@ -331,6 +331,19 @@ void tiffSEE (void) {                   // disassemble word
     uint8_t length = FetchByte(ht+3);
     if (ht) Disassemble(addr, length);
 }
+// Resolve the info needed for EMPTY
+void tiffGILD (void) {                  // resolve wids in the headers
+    int32_t link = HeadPointerOrigin+4; // point to the list of {link, value, wid}
+    link = FetchCell(link);
+    do {
+        uint32_t wid = FetchCell(link+8) & 0xFFFFFF;
+        StoreROM(FetchCell(wid) & 0xFFFFFF, link+4);
+        link = FetchCell(link);         // -1 if end of list
+    } while (link != -1);
+    StoreROM(FetchCell(HP), HeadPointerOrigin+8);
+    StoreROM(FetchCell(CP), HeadPointerOrigin+12);
+    StoreROM(FetchCell(DP), HeadPointerOrigin+16);
+}
 void tiffCPUon (void) {                 // enable CPU display mode
     ShowCPU = 1;
 }
@@ -458,6 +471,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("call-only", tiffCALLONLY);
     AddKeyword("anonymous", tiffANON);
     AddKeyword("see",     tiffSEE);
+    AddKeyword("gild",    tiffGILD);
     AddKeyword("dasm",    tiffDASM);
     AddKeyword("locate",  tiffLOCATE);
     AddKeyword("replace-xt", ReplaceXTs);   // Replace XTs  ( NewXT OldXT -- )
@@ -503,14 +517,14 @@ void LoadKeywords(void) {               // populate the list of gator brain func
  //   AddEquate ("op_rp",    opRP);
  //   AddEquate ("op_rp!",   opSetRP);
  //   AddEquate ("op_@",     opFetch);
- //   AddEquate ("op_-if:",  opSKIPGE);
+    AddEquate ("op_-if:",  opSKIPGE);
  //   AddEquate ("op_sp",    opSP);
  //   AddEquate ("op_@as",   opFetchAS);
  //   AddEquate ("op_sp!",   opSetSP);
  //   AddEquate ("op_c@",    opCfetch);
  //   AddEquate ("op_port",  opPORT);
- //   AddEquate ("op_ifc:",  opSKIPNC);
- //   AddEquate ("op_ifz:",  opSKIPNZ);
+    AddEquate ("op_ifc:",  opSKIPNC);
+    AddEquate ("op_ifz:",  opSKIPNZ);
     AddEquate ("op_lit",   opLIT);
     AddEquate ("op_up",    opUP);
  //   AddEquate ("op_!as",   opStoreAS);
@@ -553,7 +567,6 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddEquate ("hld",        HLD);
     AddEquate ("pad",        PAD);
     AddEquate ("|pad|",      PADsize);
-
 }
 
 // strlwr(*s) etc. is not standard C: Linux is not amused.

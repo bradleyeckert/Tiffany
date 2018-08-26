@@ -55,7 +55,8 @@
 : pick    dup cells sp @ swap drop ;
 : decimal 10 base ! ;                   \ --
 : hex     16 base ! ;                   \ --
-: link>   @ 16777215 and ;              \ a1 -- a2, mask off upper 8 bits
+16777215 equ mask24
+: link>   @ mask24 and ;                \ a1 -- a2, mask off upper 8 bits
 
 : umove  \ a1 a2 n --                   \ move cells, assume cell aligned
    negate |+if 3drop exit |

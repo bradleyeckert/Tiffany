@@ -44,6 +44,7 @@ uint32_t SPIflashXfer (uint32_t n) {    /*EXPORT*/
 	uint8_t cout = 0xFF;
 	int shift;
 	uint32_t word, data, mask;
+//	printf("%02X ", n);
 	if (n & 0x200) {                 	// inactive bus
 		state = 0;
 		return cout;                    // is floating hi
@@ -81,6 +82,7 @@ uint32_t SPIflashXfer (uint32_t n) {    /*EXPORT*/
 					data = mask | (cin << shift);
 					if (~(word|data)) {
 						tiffIOR = -60;              	// not erased
+						printf("\nOops: Addr=%X, old=%X, new=%X ", addr, word, data);
 						state=0;
 						break;
 					}
@@ -88,6 +90,7 @@ uint32_t SPIflashXfer (uint32_t n) {    /*EXPORT*/
 					addr++;
 					if (((addr & 0xFF) == 0) && ((n & 0x100) == 0)) {
 						tiffIOR = -60;              	// page overflow
+						printf("\nPage Overflow: Addr=%X, old=%X, new=%X ", addr, word, data);
 						state=0;
 					}
 					break;

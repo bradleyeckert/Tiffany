@@ -439,7 +439,7 @@ int32_t breakpoint = -1;
 void Execute(uint32_t xt) {
     uint32_t i;
 #ifdef VERBOSE
-    printf(", Executing at %X", n);  printed = 1;
+    printf(", Executing at %X", xt);  printed = 1;
 #endif // VERBOSE
     SetDbgReg(DbgPC);
     DbgGroup(opDUP, opPORT, opPUSH, opSKIP, opNOP); // Push current PC

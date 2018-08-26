@@ -3,7 +3,7 @@
 \ convert char to uppercase, also used by `hfind`
 : toupper  \ c -- c'
    dup [char] a [char] { within \ }
-   32 and +
+   32 and -
 ;
 \ convert char to digit, return `ok` flag
 : digit?  \ c base -- n ok?
@@ -171,5 +171,4 @@
       depth 0< -4 and throw             \ stack underflow
    repeat  2drop
 ;
-
 
