@@ -2,12 +2,12 @@
 
 An embeddable model Forth for small MCUs and FPGAs. The VM forms a sandbox in a C system, relying on C libraries for middleware and other wheels that you don't want to reinvent.
 
-## Group-oriented Stack Machines
+## Small Instruction Stack Machines
 
 Although RISC-V and other CPUs are available for embedded system use, they have a complexity cost in terms of software and hardware.
-They tend to be a bit bulky for mere mortals to build up the CPU and the tools from scratch. Computers and compilers don't have to be complex. Group oriented stack machines use small, implicit opcodes in an instruction group. The opcodes operate on stacks rather than registers, so each opcode can be 5 or 6 bits. They are packed into an instruction word between 24 and 32 bits wide.
+They tend to be a bit bulky for mere mortals to build up the CPU and the tools from scratch. Computers and compilers don't have to be complex. Small instruction stack machines use small, implicit opcodes in an instruction group. The opcodes operate on stacks rather than registers, so each opcode can be 5 or 6 bits. They are packed into an instruction word between 24 and 32 bits wide.
 
-The opcodes of this stack machine map directly to Forth primitives. This leads to a diferent way of programming. Instead of writing to an abstract virtual machine, you're writing to an actual machine. You don't need that abstraction because the machine will always be there in whatever model is most convenient. It's a "Run Anywhere" machine model. Optimizations are minimal because the language of the machine is so closely matched to the Forth language.
+The opcodes of this stack machine map directly to Forth primitives. The advantage here is that instead of writing to an abstract virtual machine, you're writing to an actual machine. You don't need that abstraction because the machine will always be there in whatever model is most convenient. It's a "Run Anywhere" machine model. Optimizations are minimal because the language of the machine is so closely matched to the Forth language.
 
 Executing an instruction in a group allows looping and conditional skips inside the group. While the group executes a loop, no instructions need to be fetched from code space. In practice maybe not too useful, but it's nice for `move` and `fill`.
 

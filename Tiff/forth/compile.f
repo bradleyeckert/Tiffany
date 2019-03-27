@@ -2,10 +2,9 @@
 
 \ Code and headers are both in flash. Write using SPI!.
 
-: align        cp @ aligned cp ! ;      \ --
+: aligned  3 + -4 and ;                 \ a -- a'
 : ,   cp dup >r  @ SPI!  4 r> +! ;      \ n --
-: ,h  hp dup >r  @ SPI!  4 r> +! ;      \ n --
-: c,  cp dup >r  @ SPIC! 1 r> +! ;      \ c --
+: ,h  hp dup >r  @ SPI!  4 r> +! ;
 
 \ Define a compiler
 \ char params:  c_colondef c_litpend c_slot c_called
@@ -49,7 +48,7 @@ defer NewGroup
    dup >r -if: negate |                 \ u
    dup 33554431 invert 2* and if        \ too wide
       r> drop   dup 24 rshift  op_lit Explicit   \ upper part
-      mask24 and  op_litx Explicit      \ lower part
+      16777215 and  op_litx Explicit    \ lower part
       exit
    then
    r> 0< if                             \ compile negative

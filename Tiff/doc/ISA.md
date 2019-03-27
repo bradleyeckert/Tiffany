@@ -165,3 +165,7 @@ In a hardware implementation, the instruction group provides natural protection 
 A typical Forth kernel will have a number of sequential calls, which take four bytes per call. This is a little bulky, especially if the equivalent macro can fit in a group. The call and return overhead is eight clock cycles, so it’s also slow. Using the macro sequence should replace the call when possible. Code that’s inlineable is copied directly except for its `;`, leaving that slot open for the next instruction.
 
 Hardware multiply and divide, if provided, are accessed via the USER instruction. `um*` takes about 500 cycles when done by shift-and-add.
+
+### How are those fatso 32-bit instruction groups working for you?
+
+Not bad. Code is still puny compared to data storage requirements in typical apps. Semantic density is maybe 1/3 less, but who cares?

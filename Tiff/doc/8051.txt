@@ -2,7 +2,7 @@
 
 Getting opcode from IR in direct RAM:
 NextSlot is jump offset from Slot0 (initially 0)
-Instruction timings for LB12 with prefetch on (slower jumps)
+Instruction timings for SiLabs LB12 (72MHz) with prefetch on (slower jumps)
 
 Next:	mov dptr, #Slot0
 	mov a, NextSlot

@@ -91,11 +91,16 @@
    head @ invert cell+ invert link>
 ;
 
+\ COMPILE is converted to other types by clearing select bits.
+\ 11xx Compile     \ compile call to xte
+\ 10xx CompileMacro
+\ 01xx Execute
+
 \ Lower 4 bits of CP must be 4.
 4 cp @ -  12 and  cp +!                 \ align to 4 bytes past 16-byte boundary
 defer do-immediate                      \ 1st cell -> immediate
-defer get-macro                         \ 2nd cell -> macro
-: get-compile  get-xte compile, ;       \ 3rd cell -> compile
+defer get-macro                         \ 2nd cell -> macro (address bit2=0)
+: get-compile  get-xte compile, ;       \ 3rd cell -> compile (address bit2=1)
 
 :noname  \ get-macro
    get-xte  @+  26                      \ addr IR slot
@@ -112,10 +117,10 @@ defer get-macro                         \ 2nd cell -> macro
    again
 ; is get-macro
 
-' get-compile -17 replace-xt
 ' get-macro   -21 replace-xt
 
 :noname  \ do-immediate
    get-xte execute
 ; is do-immediate
 
+\ To do: replace -16

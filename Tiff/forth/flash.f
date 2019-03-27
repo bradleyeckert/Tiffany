@@ -50,47 +50,27 @@
    count SPIxfer drop
    c@ ]SPI!
 ;
-: SPIC!  \ c addr --                    \ store one byte
-   SPI![  hld tuck !
-   c@ ]SPI!
-;
-: _SPImove  \ as ad len -- as' ad'      \ byte array to flash
-   dup ifz: drop exit |
-   over SPI![  tuck + >r                \ as len | ad'
-   begin
-      1- >r count                       \ a c | ad' len
+: SPImove  \ asrc adest len --          \ byte array to flash
+   dup ifz: 3drop exit |
+   swap SPI![   begin                   \ a len
+      1- >r count                       \ a c | len
       r@ 0= if
-        ]SPI! r> drop r> exit
+        ]SPI! r> 2drop  exit
       then
       SPIxfer drop r>
    again
 ;
-: SPImove  \ asrc adest len --          \ don't cross page boundary
-   begin
-      over invert 255 and 1+            \ max bytes on page
-      2dup - >r  min                    \ limit for this page
-      _SPImove  r>                      \ remainder
-   dup 0< until  3drop
-;
-: ReGild  \ --                          \ reset wids and pointers
-   [ hp0 cell+ ] literal @              \ -> wid_list
-   begin
-      @+ >r @+ >r @  r> swap !  r>
-   dup 0< until  drop
-   [ hp0 2 cells + ] literal            \ -> hp0 cp0 dp0
-   hp 3 umove                           \ 3-cell move
-;
 
-\ : SPIbyte  \ a -- a+1
-\    255 SPIxfer swap c!+
-\ ;
-\ \ @ should already do this, but SPI@ operates the SPI to test the interface.
-\ : SPI@  \ addr -- x                     \ 32-bit fetch
-\    11 0 SPIaddress  dup SPIxfer drop    \ command and dummy byte
-\    hld  SPIbyte SPIbyte SPIbyte SPIbyte drop
-\    511 SPIxfer drop                     \ end the command
-\    hld @
-\ ;
+: SPIbyte  \ a -- a+1
+   255 SPIxfer swap c!+
+;
+\ @ should already do this, but SPI@ operates the SPI to test the interface.
+: SPI@  \ addr -- x                     \ 32-bit fetch
+   11 0 SPIaddress  dup SPIxfer drop    \ command and dummy byte
+   hld  SPIbyte SPIbyte SPIbyte SPIbyte drop
+   511 SPIxfer drop                     \ end the command
+   hld @
+;
 
 \ used SPI flash commands:
 \ 0x05 RDSR   opcd -- n1

@@ -1,9 +1,12 @@
 \ Forth kernel for Tiff
 
+4 equ DumpColumns                       \ Output chars ~ Columns * 13 + 5
+
 include core.f
 include tasker.f
 include numio.f
 include flash.f
+
 \ Here's where you'd reposition CP to run code out of SPI flash.
 \ Put the time critical parts of your application here.
 \ Omitting the SPI flash should break the interpreter but nothing else.
@@ -14,16 +17,23 @@ hp0 16384 + cp !                        \ leave 16kB for headers
 include compile.f                       \ compile opcodes, macros, calls, etc.
 include wean.f                          \ replace C functions in existing headers
 include interpret.f                     \ parse, interpret, convert to number
-include define.f
-include tools.f
+include tools.f                         \ dump, .s
+include define.f                        \ defining words
+
+\ If you XWORDS at this point, you'll see that all XTEs and XTCs are now Forth words.
 
 
 \ Some test words
 
 : foo hex decimal ;
 
-cp @ equ s1  ," 123456"                : str1 s1 count ;
-cp @ equ s2  ," the quick brown fox"   : str2 s2 count ;
+cp @ equ s1
+   ," 123456"
+   : str1 s1 count ;
+
+cp @ equ s2
+    ," the quick brown fox"
+    : str2 s2 count ;
 
 : oops
    cr ." Error#" .
@@ -32,8 +42,6 @@ cp @ equ s2  ," the quick brown fox"   : str2 s2 count ;
 ;
 
 : try  ['] interpret catch ?dup if oops then ;
-
-gild
 
 .( bytes in internal ROM, ) CP @ hp0 16384 + - .
 .( bytes of code in flash, ) HP @ hp0 - .

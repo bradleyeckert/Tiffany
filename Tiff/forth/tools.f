@@ -20,9 +20,7 @@
    again
 ;
 
-\ Dump in cell and char format, 32 bytes per line.
-
-4 equ DumpColumns                       \ Output chars ~ Columns * 13 + 5
+\ Dump in cell and char format
 
 : dump  \ addr bytes --
    begin dup while
@@ -32,25 +30,14 @@
       begin dup while >r                \ dump cells in 32-bit hex
          @+ 7 h.x r> 1-
       repeat  2drop  r> spaces
-      2dup  [ DumpColumns cells ] literal min
+      2dup  [ DumpColumns 2* 2* ] literal min
       begin dup while >r                \ dump chars in ASCII
          c@+
-         dup bl 192 within |ifz drop [char] . |
+         dup bl 192 within |ifz drop [char] .
          emit  r> 1-                    \ outside of 32 to 191 is '.'
       repeat 2drop
-      [ DumpColumns cells ] literal /string
+      [ DumpColumns 2* 2* ] literal /string
       0 max
    repeat  2drop
    cr
 ;
-
-\ cp @ equ dis_names
-\     ," ."     ," dup"  ," exit" ," +"    ," user" ," 0<"  ," r>"  ," 2/"
-\     ," ifc:"  ," 1+"   ," swap" ," -"    ," ?"    ," c!+" ," c@+" ," u2/"
-\     ," _"     ," 2+"   ," ifz:" ," jmp"  ," ?"    ," w!+" ," w@+" ," and"
-\     ," ?"     ," litx" ," >r"   ," call" ," ?"    ," 0="  ," w@"  ," xor"
-\     ," rept"  ," 4+"   ," over" ," c+"   ," ?"    ," !+"  ," @+"  ," 2*"
-\     ," -rept" ," ?"    ," rp"   ," drop" ," ?"    ," rp!" ," @"   ," 2*c"
-\     ," -if:"  ," ?"    ," sp"   ," @as"  ," ?"    ," sp!" ," c@"  ," port"
-\     ," +if:"  ," lit"  ," up"   ," !as"  ," ?"    ," up!" ," r@"  ," com"
-\
