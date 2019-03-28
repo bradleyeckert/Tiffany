@@ -34,3 +34,4 @@ Programming a 4K page involves the 70ms erase time and 40ms data transfer at 3M 
 A cheap FTDI USB adapter can handle that, allowing a 1MB update in 30 seconds.
 Time-out is easy: If there's no ':' within a short time after POR, the app launches.
 The app should be protected by length and checksum. No match, no launch.
+If the app expects a wrong internal ROM build number, the appropriate error message should appear.
