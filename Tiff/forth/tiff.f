@@ -11,6 +11,24 @@ include tasker.f
 include numio.f
 include flash.f
 
+: initialize                            \ ? -- | R: ? a --
+   r> base !
+   [ 0 up ] literal             up!     \ terminal task
+   [ 4 sp ] literal  dup sp0 !  sp!     \ empty data stack
+   [ 0 rp ] literal  dup rp0 !  4 - rp! \ empty return stack
+   untask
+   base @ >r  decimal                   \ init base
+;
+
+: coldboot
+   initialize
+   ." Hello World"
+   6 user                               \ exit to OS
+;  \ return stack is empty, you can't return to caller
+
+cp @  0 cp !  :noname coldboot ; drop
+cp !
+
 \ Here's where we reposition CP to run code out of SPI flash.
 \ Put the less time-critical parts of your application here.
 \ Omitting the SPI flash should break the interpreter but nothing else.
@@ -31,6 +49,8 @@ include define.f                        \ defining words
 \ Some test words
 
 : foo hex decimal ;
+: zoo dup over ;
+
 
 cp @ equ s1
    ," 123456"
@@ -51,10 +71,12 @@ cp @ equ s2
 
 : try  ['] interpret catch ?dup if oops then ;
 
+: _bye  6 user ; \ VM function version of bye
+
 .( bytes in internal ROM, ) CP @ hp0 0x8000 + - .
 .( bytes of code in flash, ) HP @ hp0 - .
 .( bytes of header.) cr
 
 
 save-rom IntRom.c
-save-flash ExtRom.c
+\ save-flash ExtRom.c

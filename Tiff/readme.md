@@ -2,9 +2,15 @@
 
 Tiff is a C console application that implements a minimal Forth. “Tiff” is short for “Tiffany”, the main character in the film “Bride of Chucky”.
 
-Tiff uses a simulated Em Forth CPU to execute compiled code as needed. It’s designed to load a Forth system mostly from scratch,
+Tiff uses a simulated Forth CPU to execute compiled code as needed. It’s designed to load a Forth system mostly from scratch,
 gradually handing off all control to the simulated CPU. The resulting ROM image is binary compatible with the FPGA or ASIC based CPU,
 which runs the same Forth system (big or small) as Tiff.
+
+Tiff is intended to generate C code that encapsulates the Forth application.
+The code exports the state of Tiff (dictionaries etc) to something you can include in a C project.
+The rationale for this is that Forth's utility as a stand-alone platform is diminishing.
+It's better to host a smaller Forth in a C system that leverages the libraries and middleware of today's complex IDEs.
+That brings Forth-like scripting and interactivity to C applications.
 
 ## Host Forth
 

@@ -2,7 +2,7 @@
 
 Tiff is a straight C console application that implements a minimal Forth. “Tiff” is short for “Tiffany”, the main character in the film “Bride of Chucky”.
 
-Tiff uses a simulated Mforth CPU to execute compiled code as needed. It’s designed to load a Forth system mostly from scratch, 
+Tiff uses a simulated Mforth CPU to execute compiled code as needed. It’s designed to load a Forth system mostly from scratch,
 gradually handing off all control to the simulated CPU. The resulting ROM image is binary compatible with the FPGA or ASIC based CPU,
 which runs the same Forth system (big or small) as Tiff.
 
@@ -25,7 +25,7 @@ When files are INCLUDED, the TIB filled by the keyboard is cleared because files
 
 SOURCEID identifies the source of the input stream to be used when re-filling a buffer. 0 = keyboard, 1 = command line (*argv[]), 2 = file (top of file stack), negative for blocks.
 
-The QUIT loop doesn’t use CATCH and THROW. In a loop, it resets the stacks, points TIBB to TIB, and executes the buffer at TIBB until an error is encountered. 
+The QUIT loop doesn’t use CATCH and THROW. In a loop, it resets the stacks, points TIBB to TIB, and executes the buffer at TIBB until an error is encountered.
 
 ```
 int tiffIOR = 0;
@@ -41,12 +41,12 @@ void tiffQUIT (void) {
          tiffINTERPRET(); // interpret the TIBB until it’s exhausted
          if (!SOURCEID) printf(“ ok\n”);
       } while (tiffIOR == 0);
-      // display error type 
+      // display error type
       if (tiffIOR != -99999) break; // produced by BYE
       switch (tiffIOR) {
       default: printf(“\nError %d”, tiffIOR);
       }
-   } 
+   }
 }
 ```
 
@@ -97,7 +97,7 @@ The target system erases RAM and processes a run-length compressed table in ROM 
 
 The interpreter loop takes text tokens from the input stream until it’s exhausted. This stream is usually the TIB, filled by either the keyboard or the next line of a file, or a 1K block buffer. Since it’s a dual xt system, FIND is replaced by LOCATE ( c-addr u – ht | c-addr u 0 ), where ht is the header token. If the counted name string is not found, the ht is 0. Otherwise, ht points to the H2 word of the header. Depending on STATE, the xt at either H2 or H4 is executed.
 
-If not found, an attempt is made to convert the string to a number. This where we break with classic Forth and its use of decimal. Decimal does not produce a double number. Instead, it converts the number to IEEE floating point format. Built-in C-style radix and quotes are also supported. The number is pushed onto the stack. If STATE is -1 (compiling), a LitPending flag is set. A literal will be compiled by the next instruction, if can integrate it, or a literal opcode will be compiled. 
+If not found, an attempt is made to convert the string to a number. This where we break with classic Forth and its use of decimal. Decimal does not produce a double number. Instead, it converts the number to IEEE floating point format. Built-in C-style radix and quotes are also supported. The number is pushed onto the stack. If STATE is -1 (compiling), a LitPending flag is set. A literal will be compiled by the next instruction, if can integrate it, or a literal opcode will be compiled.
 
 Finally, if it can’t be converted to a number, then it’s an error. The tiffIOR variable is set to -13 and the rest of the input buffer is discarded.
 
@@ -123,13 +123,13 @@ Tiff only understands how to execute a word in the VM and append code to header 
 
 For example, \ discards all TIB content to the end-of-line. The C version manipulates data space to pull this off, but once \ is compiled the xts are modified to use the new version. The new \ uses the existing header rather than creating a new one. The EXEC: keyword uses the existing header and patches its xte and its xtc. The default xtc does a simple compile. COMP: is similar but only patches xtc.
 
-Tiff ends up being a full Forth, built from the input file. If the output file is missing, the embedded VM isn’t generated. Since the sandbox only talks to your machine through an API list. The VM’s API function uses stdio to connect to the console for things like TYPE and KEY. 
+Tiff ends up being a full Forth, built from the input file. If the output file is missing, the embedded VM isn’t generated. Since the sandbox only talks to your machine through an API list. The VM’s API function uses stdio to connect to the console for things like TYPE and KEY.
 
-When the VM is generated, source code is created for the ROM array, which is an ASCII representation of the binary code space image. Code and headers are kept in separate sections of the ROM array to allow groups of words to be beheaded and buried to save on code space. 
+When the VM is generated, source code is created for the ROM array, which is an ASCII representation of the binary code space image. Code and headers are kept in separate sections of the ROM array to allow groups of words to be beheaded and buried to save on code space.
 
 Keywords recognized by Tiff are defined at run-time using the NewHeader function, which creates a new header.
 
-Code sections use two pointers for HERE: CP and HP for code and header spaces. 
+Code sections use two pointers for HERE: CP and HP for code and header spaces.
 STDIO is used for I/O in Tiff. The VM invokes them via API calls. The hard VM emulates getch and putch in hardware, which operates a UART directly. Terminals operate in cooked (or canonical) mode or raw mode. It appears that the mode can’t be switched in real time by an escape sequence. Raw mode requires the target to handle line editing, cut and paste, etc. That’s a bit limiting, given the nice clipboard integration that modern terminal emulators have. Cooked mode allows for a dumber ACCEPT. Cut and paste in raw mode needs to be researched.
 
 ### Compile Order

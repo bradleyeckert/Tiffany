@@ -7,7 +7,8 @@
 : SPIxfer     \ command -- result
    5 user                               \ Flash, a-ah, king of the impossible
 ;
-: SPIaddress  \ addr command final --   \ initiate a command with 24-bit address
+
+: SPIaddr  \ addr command final --   \ initiate a command with 24-bit address
    >r
    SPIxfer drop  hld dup >r ! r>        \ use a cell for extracting bytes
    count >r  count >r  c@               \ low med high
@@ -15,6 +16,18 @@
    r> SPIxfer drop
    r> r> + SPIxfer drop
 ;
+
+: SPIaddress  \ addr command final --   \ initiate a command with 24-bit address
+   hld dup @ >r  swap >r >r             \ R: hld final 'hld
+   SPIxfer drop                         \ send command
+   r@ ! r>                              \ use HLD cell for extracting bytes
+   count >r  count >r  c@               \ high | R: hld final low med
+   SPIxfer drop                         \ assuming a little-endian model
+   r> SPIxfer drop
+   r> r> + SPIxfer drop
+   r> hld !                             \ untrash hld
+;
+
 : SPISR  \ -- status
    5 SPIxfer drop                       \ read status register
    511 SPIxfer                          \ LSB is `busy`, bit1 is WEN
@@ -34,31 +47,33 @@
    260 SPIxfer drop                     \ WRDI
    SPIwait
 ;
-: SPI![  \ addr --                      \ start a write command
+: _SPImove  \ asrc adest len -- asrc'   \ write byte array to flash
    262 SPIxfer drop                     \ WREN
-   2 0 SPIaddress
-;
-: ]SPI!  \ c --                         \ send last byte to SPI flash
-   256 + SPIxfer drop
-   260 SPIxfer drop                     \ WRDI
-   SPIwait
-;
-: SPI!  \ n addr --                     \ store one cell
-   SPI![  hld tuck !
-   count SPIxfer drop
-   count SPIxfer drop
-   count SPIxfer drop
-   c@ ]SPI!
-;
-: SPImove  \ asrc adest len --          \ byte array to flash
-   dup ifz: 3drop exit |
-   swap SPI![   begin                   \ a len
-      1- >r count                       \ a c | len
+   swap 2 0 SPIaddress                  \ start page write command
+   begin                                \ as len
+      1- >r count                       \ as c | len
       r@ 0= if
-        ]SPI! r> 2drop  exit
+         256 + SPIxfer drop
+         260 SPIxfer drop               \ WRDI
+         SPIwait
+         r> drop exit
       then
       SPIxfer drop r>
    again
+;
+\ Break up page writes, if necessary, to avoid crossing page boundaries
+: SPImove  \ asrc adest len --          \ byte array to flash
+   begin
+      dup ifz: 3drop exit |             \ nothing left to move
+      over invert 255 and 1+            \ maximum run length (1 to 256)
+      over >r  min >r                   \ as ad | len sublen
+      tuck r@ _SPImove                  \ ad as' | len sublen
+      swap r@ +  r> r> swap -
+   again
+;
+: SPI!  \ n addr --                     \ store one cell
+   swap hld !
+   hld swap 4 SPImove
 ;
 
 : SPIbyte  \ a -- a+1
@@ -71,6 +86,7 @@
    511 SPIxfer drop                     \ end the command
    hld @
 ;
+
 
 \ used SPI flash commands:
 \ 0x05 RDSR   opcd -- n1

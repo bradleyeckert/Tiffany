@@ -18,8 +18,11 @@
 :noname  up! tos @ sp!  drop rp!
 ; equ wake
 
-status follower !                       \ put terminal in task list
-wake status !                           \ let it run
+: untask                                \ --
+   status follower !                    \ put terminal in task list
+   wake status !                        \ let it run
+; untask
+
 \ pause takes 30 cycles with only the terminal task active
 
 : pause                                 \ --
@@ -33,6 +36,7 @@ wake status !                           \ let it run
 
 \ u+s+r = total size of task RAM in bytes
 \ u includes user variables, so it should be at least 20.
+
 
 : onlytask      \ u s r tid --          \ put first task in the queue
    dup up!  dup follower !              \ task points to itself
@@ -53,4 +57,12 @@ wake status !                           \ let it run
    over tos local !                     \ save sp in tos
    awake
 ;
-
+: counter       \ -- timer
+   dup 4 user
+;
+: ms            \ ms --
+   10 * counter +
+   begin
+      dup counter <
+   until drop
+;

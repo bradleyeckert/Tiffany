@@ -91,6 +91,7 @@ uint32_t UserFunction (uint32_t T, uint32_t N, int fn ) {
         case 3: return 1;                       // `emit?`
         case 4: return Counter();               // counter
         case 5: return SPIflashXfer(T);         // flashctrl
+        case 6: exit(10);                       // bye
         default: return 0;
     }
 }
