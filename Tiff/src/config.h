@@ -7,9 +7,11 @@
 // Sizes of internal memories in 32-bit cells
 #define RAMsize   0x400                         /* must be an exact power of 2 */
 #define ROMsize   0x800                         /* must be an exact power of 2 */
-#define SPIflashCapacity   16    /* Log2 of flash size in bytes, minimum is 12 */
+#define SPIflashCapacity   18    /* Log2 of flash size in bytes, minimum is 12 */
 #define SPIflashSize (1<<(SPIflashCapacity-2))  /* Must be a multiple of 0x400 */
-#define AXIRAMsize 0x800                                 /* RAM on the AXI bus */
+// The AXIRAMsize is not used, feature not implemented.
+// The idea was to have RAM in the AXI space, after SPI flash.
+#define AXIRAMsize 0                                     /* RAM on the AXI bus */
 
 // Copy internal ROM writes to SPI flash, Defined if SPI gets a copy of the ROM image.
 #define BootFromSPI
@@ -35,7 +37,7 @@
 // These are byte addresses.
 #define CodePointerOrigin  4                  /* Kernel definitions start here */
 #define HeadPointerMin    ((ROMsize+RAMsize)*4)     /* Lowest SPI code address */
-#define HeadPointerOrigin  0x8000       /* Headers are in AXI space above code */
+#define HeadPointerOrigin  0x10000      /* Headers are in AXI space above code */
 
 //===============================================================================
 // Sanity checks

@@ -439,7 +439,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("equ",     tiffEQU);
     AddKeyword("words",   tiffWORDS);
     AddKeyword("xwords",  tiffXWORDS);
-    AddKeyword("buffer:", tiffBUFFER);
+//    AddKeyword("buffer:", tiffBUFFER);
     AddKeyword(":noname", tiffNONAME);
     AddKeyword(":",       tiffCOLON);
     AddKeyword(";",       CompSemi);
@@ -707,14 +707,14 @@ void tiffINTERPRET(void) {
 #ifdef VERBOSE
             else printf(" <<< Local Keyword\n");
 #endif
-            if (Sdepth()<0) {
-                tiffIOR = -4;
-            }
-            if (Rdepth()<0) {
-                tiffIOR = -6;
-            }
-            if (tiffIOR) goto ex;
         }
+        if (Sdepth()<0) {
+            tiffIOR = -4;
+        }
+        if (Rdepth()<0) {
+            tiffIOR = -6;
+        }
+        if (tiffIOR) goto ex;
     }
 ex: PopNum();                           // keyword is an empty string
     PopNum();

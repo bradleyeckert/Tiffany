@@ -49,6 +49,7 @@
 
 : last  current @ @ + ;       \ n -- a  \ index into last defined header
 : clrlast    last dup >r SPI@ and r> SPI! ;   \ bits offset --
+\ : clrlast    last dup SPI! ;   \ bits offset --
 : clr-xtcbits  invert -8 clrlast ;      \ n --   flip bits in the current xtc
 : clr-flagbits  invert 4 clrlast ;      \ n --   flip bits in the flags
 : macro      4 clr-xtcbits ;  \ --      \ flip xtc from compile to macro
@@ -80,5 +81,10 @@
    1 c_colondef c!  ]
 ;
 
-' get-compile   -17 replace-xt
+\ Now that Tiff's : and ; are hidden, only Forth XTs will be used.
+\ Replace Tiff XTs with equivalent Forth XTs.
+
 ' do-immediate  -25 replace-xt
+' get-macro     -21 replace-xt
+' get-compile   -17 replace-xt
+

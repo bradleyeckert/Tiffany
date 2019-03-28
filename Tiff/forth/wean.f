@@ -12,7 +12,7 @@
 \ Instead, the xte is replaced with a noname definition.
 \ So, there's no "-3 replace-xt"
 
-\ Run-time actions of primitives
+\ Run-time actions of primitives are headerless
 :noname dup    ; xte-is dup
 :noname +      ; xte-is +
 :noname -      ; xte-is -
@@ -117,10 +117,6 @@ defer get-macro                         \ 2nd cell -> macro (address bit2=0)
    again
 ; is get-macro
 
-' get-macro   -21 replace-xt
-
 :noname  \ do-immediate
    get-xte execute
 ; is do-immediate
-
-\ To do: replace -16

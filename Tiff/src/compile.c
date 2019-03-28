@@ -317,19 +317,21 @@ void CompLiteral (void){
     NoExecute(); Literal(PopNum());
 }
 
-void CompAhead (void){  // ( -- addr slot )
+void NeedSlot(int s) {
     NoExecute();
-    if (FetchByte(SLOT)<14)
-        NewGroup();
+    uint32_t cp = FetchCell(CP);
+    if (cp > 0xEFFF) s += 6;    // large address, leave room for >16-bit address
+    if (FetchByte(SLOT)<s)  NewGroup();
+}
+void CompAhead (void){  // ( -- addr slot )
+    NeedSlot(14);
     PushNum(FetchCell(CP));
     int slot = FetchByte(SLOT);
     PushNum(slot);
     Explicit(opJUMP, ~(-1<<slot));
 }
 void CompIfNC (void){  // ( -- addr slot )
-    NoExecute();
-    if (FetchByte(SLOT)<20)
-        NewGroup();
+    NeedSlot(20);
     PushNum(FetchCell(CP));
     Implicit(opSKIPNC);
     int slot = FetchByte(SLOT);
@@ -337,9 +339,7 @@ void CompIfNC (void){  // ( -- addr slot )
     Explicit(opJUMP, ~(-1<<slot));
 }
 void CompIf (void){  // ( -- addr slot )
-    NoExecute();
-    if (FetchByte(SLOT)<20)
-        NewGroup();
+    NeedSlot(20);
     PushNum(FetchCell(CP));
     Implicit(opSKIPNZ);
     int slot = FetchByte(SLOT);
@@ -347,9 +347,7 @@ void CompIf (void){  // ( -- addr slot )
     Explicit(opJUMP, ~(-1<<slot));
 }
 void CompPlusIf (void){  // ( -- addr slot )
-    NoExecute();
-    if (FetchByte(SLOT)<20)
-        NewGroup();
+    NeedSlot(20);
     PushNum(FetchCell(CP));
     Implicit(opSKIPGE);
     int slot = FetchByte(SLOT);
@@ -392,17 +390,13 @@ void CompRepeat (void){  // ( addr2 slot2 addr1 )
     CompThen();
 }
 void CompPlusUntil (void){  // ( addr -- )
-    NoExecute();
-    if (FetchByte(SLOT)<20)
-        NewGroup();
+    NeedSlot(20);
     uint32_t dest = PopNum();
     Implicit(opSKIPGE);
     Explicit(opJUMP, dest>>2);
 }
 void CompUntil (void){  // ( addr -- )
-    NoExecute();
-    if (FetchByte(SLOT)<20)
-        NewGroup();
+    NeedSlot(20);
     uint32_t dest = PopNum();
     Implicit(opSKIPNZ);
     Explicit(opJUMP, dest>>2);
