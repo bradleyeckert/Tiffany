@@ -16,18 +16,20 @@ include flash.f
    [ 0 up ] literal             up!     \ terminal task
    [ 4 sp ] literal  dup sp0 !  sp!     \ empty data stack
    [ 0 rp ] literal  dup rp0 !  4 - rp! \ empty return stack
-   untask
+   untask io=term
    base @ >r  decimal                   \ init base
 ;
 
 : coldboot
-   initialize
+   initialize                           \ return stack is now empty, you can't return to caller
    ." Hello World"
    6 user                               \ exit to OS
-;  \ return stack is empty, you can't return to caller
+;
 
-cp @  0 cp !  :noname coldboot ; drop
+cp @  0 cp !  :noname coldboot ; drop   \ resolve the forward jump to coldboot
 cp !
+
+\ The demo doesn't use anything after this...
 
 \ Here's where we reposition CP to run code out of SPI flash.
 \ Put the less time-critical parts of your application here.
@@ -49,7 +51,6 @@ include define.f                        \ defining words
 \ Some test words
 
 : foo hex decimal ;
-: zoo dup over ;
 
 
 cp @ equ s1
@@ -71,12 +72,10 @@ cp @ equ s2
 
 : try  ['] interpret catch ?dup if oops then ;
 
-: _bye  6 user ; \ VM function version of bye
-
 .( bytes in internal ROM, ) CP @ hp0 0x8000 + - .
 .( bytes of code in flash, ) HP @ hp0 - .
 .( bytes of header.) cr
 
 
-save-rom IntRom.c
+save-rom ../demo/IntRom.c
 \ save-flash ExtRom.c

@@ -1,0 +1,12 @@
+The demo program runs Tiff's VM out of an internal ROM, IntRom.c, compiled by Tiff.
+It simply prints "Hello World" to the console.
+
+The program size is 25.5 kB when compiled as a Code::Blocks console application.
+Since the ROM is under 2K bytes, most of that is C scaffolding.
+The VM could be implemented in MASM if you wanted to get crazy about code size,
+but this demonstrates that you can have small compiled Forth apps.
+The idea is to embedded Forth apps in C apps to enable interactive testing.
+
+An interesting experiment would be to specify the ROM file from the command line.
+That way, the "Hello World" app would be more like 2KB (it has some library bloat)
+and the same puny (26KB) executable would host arbitrary apps.
