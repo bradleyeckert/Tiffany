@@ -1,14 +1,14 @@
 #include <stdio.h>
 #include "vm.h"
-//#include <string.h>
-
 
 int main() {
-    uint32_t DbgPC = 0;
+    uint32_t PC = 0;
     VMpor();
-    while (DbgPC < 4096){
-        uint32_t ir = FetchROM(DbgPC);
-//        printf("PC=%X, IR=%08X\n", DbgPC, ir);
-        DbgPC = VMstep(ir, 0);
+    while (PC < 4096) {
+        uint32_t IR = FetchROM(PC);
+        PC = VMstep(IR, 0);
     }
+
+//    VMrun(0);
+//    VMrun(10000);
 }

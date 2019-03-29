@@ -77,5 +77,4 @@ cp @ equ s2
 .( bytes of header.) cr
 
 
-save-rom ../demo/IntRom.c
-\ save-flash ExtRom.c
+make ../templates/template.c ../demo/vm.c

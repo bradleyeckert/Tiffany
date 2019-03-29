@@ -15,6 +15,7 @@
 #define File FileStack[filedepth]
 
 char name[MaxTIBsize+1];                // generic scratchpad (maybe not such a great idea making it global)
+char name2[MaxTIBsize+1];
 
 int tiffIOR = 0;                        // Interpret error detection when not 0
 int ShowCPU = 0;                        // Enable CPU status display
@@ -194,13 +195,10 @@ void tiffXWORDS (void) {
     FollowingToken(name, 32);
     tiffWords (name, 1);
 }
-void tiffSAVEcrom (void) {
-    FollowingToken(name, 32);
-    SaveROMasC (name);
-}
-void tiffSAVEcaxi (void) {
-    FollowingToken(name, 32);
-    SaveAXIasC (name, 1024);
+void tiffMAKE (void) {
+    FollowingToken(name, 80);   // template filename
+    FollowingToken(name2, 80);  // generated file
+    MakeFromTemplate(name, name2);
 }
 
 void TiffLitChar (void) {
@@ -417,7 +415,6 @@ void ListKeywords(void) {
     }   printed = 1;
 }
 
-
 void LoadKeywords(void) {               // populate the list of gator brain functions
     keywords = 0;                       // start empty
     AddKeyword("bye",     tiffBYE);
@@ -476,9 +473,8 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("locate",  tiffLOCATE);
     AddKeyword("replace-xt", ReplaceXTs);   // Replace XTs  ( NewXT OldXT -- )
     AddKeyword("xte-is",  xte_is);          // Replace a word's xte  ( NewXT -- )
-    AddKeyword("save-rom",   tiffSAVEcrom);
-    AddKeyword("save-flash", tiffSAVEcaxi);
-    AddKeyword("iwords",   ListKeywords);   // internal words, after the dictionary
+    AddKeyword("make",    tiffMAKE);
+    AddKeyword("iwords",  ListKeywords);    // internal words, after the dictionary
     // CPU opcode names
  //   AddEquate ("op_dup",   opDUP);
     AddEquate ("op_exit",  opEXIT);
