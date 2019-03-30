@@ -1,4 +1,4 @@
-# Em Forth
+# Mforth
 
 An embeddable model Forth for small MCUs and FPGAs. The VM forms a sandbox in a C system, relying on C libraries for middleware and other wheels that you don't want to reinvent.
 
@@ -13,7 +13,7 @@ Executing an instruction in a group allows looping and conditional skips inside 
 
 Although this kind of stack machine has less semantic density per clock cycle than register machines (after code-in-a-blender optimizations), that doesn't matter with a machine that's trivial to customize to the application.
 
-## Platforms for Em Forth
+## Platforms for Mforth
 
 SPI flash is a very useful device for expansion of code space. This is especially true for Forth, since it spends most of its time in internal ROM. An MCU with attached SPI flash provides a huge system at minimal cost. RAM is the only thing that's constrained, which is okay since Forth is very stingey with RAM. At slightly more cost, an FPGA can replace the MCU. The ISA is oriented toward implementation in an FPGA using a block RAM for stack space.
 
@@ -21,4 +21,8 @@ Instruction set simulation is very simple, so it can run quickly in even an MCU.
 
 A C console application provides a minimal Forth that has a built-in VM model for executing code. This VM model simulates the instruction set of the FPGA or other versions of the CPU so that if a full Forth system is built up in that environment, a text file in C, assembly, Verilog, or VHDL can be generated to provide the same system on embedded hardware. This is simpler than traditional cross complation because the host runs target code at compile time. Code that's binary compatible with the target can be tested on the desktop.
 
-Simplicity is more than antidote to complexity in the modern age. It's a Zen practice in its own right that benefits developers as thinking beings. People are shaped by their tools.
+## Why Forth?
+
+Programmers are shaped by their tools. Simplicity is more than antidote to complexity in the modern age. It's a Zen practice in its own right that benefits developers as thinking beings. The Forth flow is about programming in the moment. You can type in a word at the console and immediately test it. Of course, you could code up a bunch of words in a file and compile the file, but that's not the Forth flow. Files are where you collect the useful concepts that worked.
+
+The `ok>` prompt means something. You are here now. Try to live there.
