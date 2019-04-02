@@ -1,4 +1,4 @@
-\ Forth kernel for Tiff
+﻿\ Forth kernel for Tiff
 
 \ CP, HP, and DP point to the first free bytes in code, header, and data space.
 \ System variables are already defined in Tiff because it uses them internally.
@@ -24,6 +24,11 @@ include flash.f
    initialize                           \ return stack is now empty, you can't return to caller
    ." Hello World"
    6 user                               \ exit to OS
+;
+
+\ if using ConEmu, type "chcp 65001" on the command line to activate UTF8
+: chin
+   ." 你好，世界"                         \ Chinese Hello World in UTF8 format
 ;
 
 cp @  0 cp !  :noname coldboot ; drop   \ resolve the forward jump to coldboot
@@ -52,14 +57,13 @@ include define.f                        \ defining words
 
 : foo hex decimal ;
 
-
 cp @ equ s1
    ," 123456"
    : str1 s1 count ;
 
 cp @ equ s2
-    ," the quick brown fox"
-    : str2 s2 count ;
+    ," +你~好~，~世~界+"
+: str2 s2 count ;
 
 : oops
    cr ." Error#" .

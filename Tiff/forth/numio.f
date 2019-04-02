@@ -36,12 +36,38 @@ cp @ equ term_personality               \ terminal personality
 : cr      1 personality_exec ;          \ 1: newline
 : page    2 personality_exec ;          \ 2: clear screen
 
+\ TYPE accepts a UTF8 string where len is the length in bytes.
+\ There could be fewer than len glyphs. EMIT takes a UTF code point.
+
+\ UTF-8 encoding:
+\ 0zzzzzzz                                0000-007F
+\ 110yyyyy 10zzzzzz                       0080-07FF
+\ 1110xxxx 10yyyyyy 10zzzzzz              0800-FFFF
+\ 11110www 10xxxxxx 10yyyyyy 10zzzzzz     over FFFF
+
+: char@u  \ addr len -- addr' len' c    \ get the next byte
+   over >r 1- swap 1+ swap r> c@
+;
+: char@6  \ addr len n -- addr' len' n'
+   6 lshift >r  char@u 63 and  r> +
+;
+: utf8@   \ addr len -- addr' len' utf  \ get next UTF8 character
+   begin char@u dup 192 and 128 = while drop repeat \ 10xxxxxx not supported
+   dup 128 and if
+   dup 32 and if
+   dup 16 and if
+    7 and char@6 char@6 char@6 exit then \ 11110xxx
+   15 and char@6 char@6        exit then \ 1110xxxx
+   31 and char@6               exit then \ 110xxxxx
+                                         \ 0xxxxxxx
+;
+
 :noname \ addr len --                   \ send chars
-   negate                               \ len=0 sends 1 char
-   begin  swap count emit
-          swap 1+
-   +until 2drop
+   begin dup 1- 0< invert while
+      utf8@ emit
+   repeat 2drop
 ; is type
+
 : space   bl emit ;
 : spaces  negate begin +if: drop exit | space 1+ again ;
 

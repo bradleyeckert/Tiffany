@@ -71,6 +71,7 @@ void tiffEMIT(uint32_t xchar) {
                 c[1] = (char) (((xchar >> 6) & 63) + 0x80);
                 c[2] = (char) ((xchar & 63) + 0x80);
                 c[3] = 0;
+                printf("%02x %02x %02x\n", c[0], c[1], c[2]);
             } else {
                 c[0] = (char) ((xchar >> 18) + 0xF0);
                 c[1] = (char) (((xchar >> 12) & 63) + 0x80);

@@ -117,11 +117,21 @@ void FollowingToken (char *str, int max) {  // parse the next blank delimited st
 // When a file is included, the rest of the TIB is discarded.
 // A new file is pushed onto the file stack
 
+static char BOMmarker[4] = {0xEF, 0xBB, 0xBF, 0x00};
+
+void SwallowBOM(FILE *fp) {             // swallow leading UTF8 BOM marker
+    char BOM[4];
+    fgets(BOM, 4, fp);
+    if (strcmp(BOM, BOMmarker)) {
+        rewind(fp);                     // keep beginning of file if no BOM
+    }
+}
+
 void tiffINCLUDED (char *name) {
     StoreCell(1, SOURCEID);
     filedepth++;
     strcpy (File.FilePath, name);
-    File.fp = fopen(name, "r");
+    File.fp = fopen(name, "rb");
 #ifdef VERBOSE
     printf("\nOpening file %s, handle 0x%X\n", name, (int)File.fp);
 #endif
@@ -140,6 +150,7 @@ void tiffINCLUDED (char *name) {
         CommaHstring(File.FilePath);
         FileID++;
         if (FileID == 255) tiffIOR = -99;
+        SwallowBOM(File.fp);
     }
 }
 
@@ -292,8 +303,9 @@ void tiffLOCATE (void) {                // locate source text
     int i, length;
     char *filename = LocateFilename(fileid);
 
-    FILE *fp = fopen(filename, "r");
+    FILE *fp = fopen(filename, "rb");
     if (!fp) return;                    // can't open file
+    SwallowBOM(fp);
     ColorHilight();
     printf("%s\n", filename);
     ColorNormal();
@@ -749,7 +761,7 @@ void tiffQUIT (char *cmdline) {
                         printf("%d\nAttempting to include file %s\n", tiffIOR, DefaultFile);
                         printed = 1;
 #endif
-                        FILE *test = fopen(DefaultFile, "r");
+                        FILE *test = fopen(DefaultFile, "rb");
                         if (test != NULL) {
                             fclose(test);           // if default file exists
                             tiffINCLUDED(DefaultFile);
