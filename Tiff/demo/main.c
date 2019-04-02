@@ -6,9 +6,7 @@ int main() {
     VMpor();
     while (PC < 4096) {
         uint32_t IR = FetchROM(PC);
+        printf("PC=%04Xh, IR=%08Xh\n", PC*4, IR);
         PC = VMstep(IR, 0);
     }
-
-//    VMrun(0);
-//    VMrun(10000);
 }

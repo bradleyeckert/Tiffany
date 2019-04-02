@@ -7,7 +7,7 @@
 #define IMM    (IR & ~(-1<<slot))
 
 int tiffIOR; // error code
-static uint32_t ROM[`1`] = {`3`};
+static const uint32_t ROM[`1`] = {`3`};
 
 uint32_t FetchROM(uint32_t addr) {
   if (addr < `1`) {

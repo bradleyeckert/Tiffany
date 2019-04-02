@@ -1,0 +1,34 @@
+Broke demo, see where it's hanging.
+
+Add DO LOOP, FOR NEXT, etc.
+Add SPI bootloader that waits for hex file for 1 second then attempts boot.
+Note: Underlying system should VMPOR when it sees the first byte after its own POR.
+      It should also handle XON/XOFF and serial buffering.
+Add CREATE DOES>
+
+Add testbench generator:
+   Syntax of Tiff instruction: "N tblength" sets the number of instructions N.
+   The default N is 100.
+   Use make to generate the testbench from a template using the appropriate macro.
+   N is the number of instructions to execute after VMPOR.
+   The file of expected values is a C "static const uint8_t expected[]" table.
+   Each line of the table is record count followed by that many records. 0=end.
+   Each record is a 1-byte register ID and 4-byte expected value.
+   The PC is expected to be PC+1 if not specified. 
+   Unlisted expected values are expected not to have changed.
+   The `10` macro generates the tabular data in C format.
+      0x01, 0x00, 0x12, 0x34, 0x56, 0x78, // PC=124h IR=E0004321
+      Last line omits trailing comma.
+   The `11` macro generates the tabular data in VHDL format.
+      when 10 => expected <= x"12345678"; reg <= 0; -- PC=124h IR=E0004321
+      10 is twice the record number: Even if first record in a new group else odd.
+
+Add a simple version of tiff.f (maybe testbench.f) that has some test code.
+   Compile to ROM location 0 instructions that exercise one opcode at a time until
+   all of them have been hit at least once.
+
+Add C version of testbench:
+   Using the 'expected' table, step the VM and look at expected values.
+   If an error occurs, display the line number it occurred at, the offending registers,
+   and the expected and actual values. Stop after the first error.
+

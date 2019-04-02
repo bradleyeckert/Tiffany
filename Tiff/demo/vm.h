@@ -10,6 +10,7 @@
 
 void VMpor(void);
 uint32_t VMstep(uint32_t IR, int Paused);
+uint32_t FetchROM(uint32_t addr);
 
 // Defined in vm.c, the basic debug and simulation interface.
 int VMrun(int run);      // Execute the VM
