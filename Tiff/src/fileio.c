@@ -101,10 +101,13 @@ void MakeFromTemplate(char *infile, char *outfile) {
                         switch (n) {        // execute the macro function
 case 0: fprintf(ofp, "%s", GetTime());  // 0: time and date
     break;
-case 1:                                 // 1: words in ROM
+case 1:                                 // 1: non-blank words in ROM
     fprintf(ofp, "%d", ROMwords(ROMsize));
     break;
-case 2:                                 // 2: C syntax internal ROM dump
+case 2:                                 // 2: words in RAM
+    fprintf(ofp, "%d", RAMsize);
+    break;
+case 3:                                 // 3: C syntax internal ROM dump
     C_Columns = 6;
     length = ROMwords(ROMsize);
     for (int i=0; i<length; i++) {
@@ -119,7 +122,7 @@ case 2:                                 // 2: C syntax internal ROM dump
         }
     }
     break;
-case 3:                                 // 3: Assembler syntax internal ROM dump
+case 4:                                 // 4: Assembler syntax internal ROM dump
     length = ROMwords(ROMsize);
     char * directive = ".word";
     char * format = "0x%08X";
@@ -137,8 +140,7 @@ dumpasm:
     }
     fprintf(ofp, "\n");
     break;
-
-case 4:                                 // 4: Assembler syntax for 8051
+case 5:                                 // 5: Assembler syntax for 8051
     length = ROMwords(ROMsize);
     directive = "DW";
     format = "%08XH";

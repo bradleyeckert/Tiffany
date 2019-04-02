@@ -77,4 +77,5 @@ cp @ equ s2
 .( bytes of header.) cr
 
 
-make ../templates/template.c ../demo/vm.c
+make ../templates/template.c ../demo/vm.c       \ C version
+make ../templates/template.a51 ../8051/vm.a51   \ 8051 version
