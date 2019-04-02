@@ -26,11 +26,6 @@ include flash.f
    6 user                               \ exit to OS
 ;
 
-\ if using ConEmu, type "chcp 65001" on the command line to activate UTF8
-: chin
-   ." 你好，世界"                         \ Chinese Hello World in UTF8 format
-;
-
 cp @  0 cp !  :noname coldboot ; drop   \ resolve the forward jump to coldboot
 cp !
 
@@ -56,6 +51,17 @@ include define.f                        \ defining words
 \ Some test words
 
 : foo hex decimal ;
+
+\ if using ConEmu, type "chcp 65001" on the command line to activate UTF8
+\ you can't paste UTF8 strings onto console input, so can't directly test 平方.
+: chin
+   ." 你好，世界"                         \ Chinese Hello World in UTF8 format
+;
+: 平方  dup * ;                          \ use a UTF8 word name
+: dist  \ x y -- dist^2
+   平方 swap 平方 +
+;
+
 
 cp @ equ s1
    ," 123456"

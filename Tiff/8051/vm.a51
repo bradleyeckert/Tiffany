@@ -14,7 +14,7 @@ XRAMsize    EQU 1000H                  ;XRAM size of MCU in bytes
 ;The RAM (with RAMsize 32-bit words) is implemented in XRAM.
 ;XRAMsize is used to place the VM's RAM at the top of XRAM. The linker will see it.
 
-ROMsize     EQU 512 ;longs in ROM (at end of this file)
+ROMsize     EQU 504 ;longs in ROM (at end of this file)
 
 ;-------------------------------------------------------------------------------
 ;The Keil C51/A51 compiler (assembled code/data) is big endian.
