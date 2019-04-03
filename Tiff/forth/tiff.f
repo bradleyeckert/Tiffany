@@ -52,8 +52,9 @@ include define.f                        \ defining words
 
 : foo hex decimal ;
 
-\ if using ConEmu, type "chcp 65001" on the command line to activate UTF8
-\ you can't paste UTF8 strings onto console input, so can't directly test 平方.
+\ If using ConEmu, set it up to handle UTF8 output. UTF8 input can't paste onto
+\ console input, so you can't directly test 平方.
+\ However, Linux GNOME terminal has proper UTF8 handling. Command buffering kind of sucks.
 : chin
    ." 你好，世界"                         \ Chinese Hello World in UTF8 format
 ;

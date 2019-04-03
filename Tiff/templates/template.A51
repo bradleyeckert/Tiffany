@@ -392,14 +392,14 @@ IMMmasks:   DL 03FFFFFFH
             DL 00000003H
 
 ;IMM is IR & IMMmask.
-;Since all IMM users won't need the IR anymore, IMM (unsigned data) is put in IR.
+;Place IMM in @R0
 GetIMM:     MOV R0, #IR
-            MOV DPTR, IMMmasks
+            MOV DPTR, #IMMmasks
             MOV A, SLOTID
             RLC A
             RLC A
             ANL A, #03CH
-            MOV R1, A
+            MOV R1, A                   ;A is offset into IMMmasks table
             MOVC A, @A+DPTR
             ANL A, @R0
             MOV @R0, A
@@ -454,28 +454,129 @@ opADD:      MOV A, N+3
             LJMP NEXT
 
 
-opUSER:
-			case opUSER: M = UserFunction (T, N, IMM);          // user
-                T = M;  goto ex;
+opUSER:     MOV R0, #IR
+            LCALL GetIMM                ;IR = immediate data
+            LCALL CallImmFn
+            LJMP EX
 
+CallImmFn:  MOV DPTR, #ExtFnTable
+            CLR A
+            MOVC A, @A+DPTR             ;get size of table
+            INC DPTR
+            CLR C
+            SUBB A, IR+3                ;lower 8 bits are function number
+            JC CallImmFnX               ;Index must be in range
+                MOV R0, N+3
+                MOV R1, N+2
+                MOV R2, N+1             ;load pointer from N
+                MOV B, #3
+                MOV A, IR+3
+                MUL AB
+                PUSH ACC
+                MOV A, B
+                ADD A, DPH
+                MOV DPH, A
+                POP ACC
+                JMP @A+DPTR
+CallImmFnX: RET
 
-opZeroLess:
-opPOP:
-opTwoDiv:
+opZeroLess: MOV A, R4
+            RLC A
+            CLR A
+            RLC A                       ;1 if T<0 else 0
+            DEC A
+            CPL A
+            MOV R7, A
+            MOV R6, A
+            MOV R5, A
+            MOV R4, A
+            LJMP NEXT
 
-opSKIPNC:
-opOnePlus:
-opSWAP:
+opPOP:      LCALL SDUP
+            MOV Temp, Scratch
+            LCALL RDROP
+ScratchToTOS:
+            MOV R4, Scratch
+            MOV R5, Scratch+1
+            MOV R6, Scratch+2
+            MOV R7, Scratch+3
+            LJMP NEXT
+
+opUtwoDiv:  CLR C
+            SJMP opTwoDiv1
+opTwoDiv:   MOV A, R4
+            RLC A                       ;signed right shift
+opTwoDiv1:  MOV A, R4
+            RRC A
+            MOV R4, A
+            MOV A, R5
+            RRC A
+            MOV R5, A
+            MOV A, R6
+            RRC A
+            MOV R6, A
+            MOV A, R7
+            RRC A
+            MOV R7, A
+qnext:      LJMP NEXT
+
+opSKIPNC:   MOV C, CARRY
+            JC qnext
+opSKIP:     LJMP EX
+opSKIPNZ:   MOV A, R4
+            ORL A, R5
+            ORL A, R6
+            ORL A, R7
+            JNZ opSKIP
+            LJMP NEXT
+opSKIPGE:   MOV A, R4
+            RLC A
+            JNC opSKIP
+            LJMP NEXT
+opSKIPLT:   MOV A, R4
+            RLC A
+            JC opSKIP
+            LJMP NEXT
+
+opFourPlus: MOV Temp, #4
+            SJMP opXPlus
+opTwoPlus:  MOV Temp, #2
+            SJMP opXPlus
+opOnePlus:  MOV Temp, #1
+opXPlus:    MOV A, R7
+            ADD A, Temp
+            MOV R7, A
+            MOV A, R6
+            ADDC A, #0
+            MOV R6, A
+            MOV A, R5
+            ADDC A, #0
+            MOV R5, A
+            MOV A, R4
+            ADDC A, #0
+            MOV R4, A
+            LJMP NEXT
+
+opSWAP:     MOV A, R4
+            XCH A, N
+            MOV R4, A
+            MOV A, R5
+            XCH A, N+1
+            MOV R5, A
+            MOV A, R6
+            XCH A, N+2
+            MOV R6, A
+            MOV A, R7
+            XCH A, N+3
+            MOV R7, A
+            LJMP NEXT
+
 opSUB:
 
 opCstorePlus
 opCfetchPlus
-opUtwoDiv
 
-opSKIP          LJMP EX
 
-opTwoPlus
-opSKIPNZ
 opJUMP
 
 opWstorePlus
@@ -483,7 +584,18 @@ opWfetchPlus
 opAND
 
 
-opLitX
+opLitX:     ;T = (T<<24) | (IMM & 0xFFFFFF);
+            MOV R0, #IR
+            LCALL GetIMM
+            MOV A, R7
+            MOV R4, A
+            MOV A, IR+1
+            MOV R5, A
+            MOV A, IR+2
+            MOV R6, A
+            MOV A, IR+3
+            LJMP EX
+
 opPUSH
 opCALL
 
@@ -492,13 +604,30 @@ opWfetch
 opXOR
 
 opREPT
-opFourPlus
 opOVER
 opADDC
 
 opStorePlus
 opFetchPlus
-opTwoStar
+
+opTwoStarC: MOV C, CARRY
+            SJMP opTwoStar1
+opTwoStar:  CLR C
+opTwoStar1: MOV A, R7
+            RLC A
+            MOV R7, A
+            MOV A, R6
+            RLC A
+            MOV R6, A
+            MOV A, R5
+            RLC A
+            MOV R5, A
+            MOV A, R4
+            RLC A
+            MOV R4, A
+            MOV CARRY, A
+            LJMP NEXT
+
 
 opMiREPT
 
@@ -507,9 +636,7 @@ opDROP
 
 
 opFetch
-opTwoStarC
 
-opSKIPGE
 
 opSP
 opFetchAS
@@ -517,8 +644,14 @@ opSetSP
 opCfetch
 opPORT
 
-opSKIPLT
-opLIT
+
+opLIT:      LCALL GetIMM
+            MOV R4, IR
+            MOV R5, IR+1
+            MOV R6, IR+2
+            MOV R7, IR+3
+            LJMP EX
+
 opUP
 opStoreAS
 
@@ -552,40 +685,12 @@ opSetSP:    MOV R0, #T
             LJMP NEXT
 
 opRfetch:   LCALL SDUP
-            MOV Temp, #T+3
+            MOV Temp, #Scratch
             LCALL RDROP
-            LJMP NEXT
+            LJMP ScratchToTOS
 
 
 
-			case opUSER: M = UserFunction (T, N, IMM);          // user
-#ifdef TRACEABLE
-                Trace(New, RidT, T, M);  New=0;
-#endif // TRACEABLE
-                T = M;  goto ex;
-			case opZeroLess:
-                M=0;  if ((signed)T<0) M--;
-#ifdef TRACEABLE
-                Trace(New, RidT, T, M);  New=0;
-#endif // TRACEABLE
-                T = M;                                  break;  // 0<
-			case opPOP:  SDUP();  M = RDROP();
-#ifdef TRACEABLE
-                Trace(0, RidT, T, M);
-#endif // TRACEABLE
-			    T = M;      				            break;	// r>
-			case opTwoDiv:
-#ifdef TRACEABLE
-                Trace(New, RidT, T, T / 2);  New=0;
-                Trace(0, RidCY, CARRY, T&1);
-#endif // TRACEABLE
-			    T = (signed)T / 2;  CARRY = T&1;        break;	// 2/
-			case opSKIPNC: if (!CARRY) goto ex;	        break;	// ifc:
-			case opOnePlus:
-#ifdef TRACEABLE
-                Trace(New, RidT, T, T + 1);  New=0;
-#endif // TRACEABLE
-			    T = T + 1;                              break;	// 1+
 			case opPUSH:  RDUP(T);  SDROP();            break;  // >r
 			case opSUB:
 			    DX = (uint64_t)N - (uint64_t)T;
@@ -616,11 +721,7 @@ opRfetch:   LCALL SDUP
                 Trace(0, RidCY, CARRY, T&1);
 #endif // TRACEABLE
 			    T = T / 2;   CARRY = T&1;               break;	// u2/
-			case opTwoPlus:
-#ifdef TRACEABLE
-                Trace(New, RidT, T, T + 2);  New=0;
-#endif // TRACEABLE
-			    T = T + 2;                              break;	// 2+
+
 			case opOVER: M = N;  SDUP();
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
@@ -653,20 +754,6 @@ opRfetch:   LCALL SDUP
                 Trace(New, RidT, T, T & N);  New=0;
 #endif // TRACEABLE
                 T = T & N;  SNIP();	                    break;	// and
-            case opLitX:
-				M = (T<<24) | (IMM & 0xFFFFFF);
-#ifdef TRACEABLE
-                Trace(New, RidT, T, M);  New=0;
-#endif // TRACEABLE
-                T = M;
-                goto ex;                                        // litx
-			case opSWAP: M = N;                                 // swap
-#ifdef TRACEABLE
-                Trace(New, RidN, N, T);  N = T;  New=0;
-                Trace(0, RidT, T, M);    T = M;         break;
-#else
-                N = T;  T = M;  break;
-#endif // TRACEABLE
 			case opCALL:  RDUP(PC<<2);                        	// call
 #ifdef TRACEABLE
                 Trace(0, RidPC, PC, IMM);  PC = IMM;
@@ -693,15 +780,7 @@ opRfetch:   LCALL SDUP
 #endif // TRACEABLE
                 T = T ^ N;  SNIP();	                    break;	// xor
 			case opREPT:  slot = 32;                    break;	// rept
-			case opFourPlus:
-#ifdef TRACEABLE
-                Trace(New, RidT, T, T + 4);  New=0;
-#endif // TRACEABLE
-			    T = T + 4;                              break;	// 4+
-            case opSKIPNZ:
-				M = T;  SDROP();
-                if (M == 0) break;
-                goto ex;  										// ifz:
+
 			case opADDC:  // carry into adder
 			    DX = (uint64_t)N + (uint64_t)T + (uint64_t)(CARRY & 1);
 #ifdef TRACEABLE
@@ -755,8 +834,6 @@ opRfetch:   LCALL SDUP
 
 #endif // TRACEABLE
                 CARRY = T>>31;   T = M;                 break;  // 2*c
-			case opSKIPGE: if ((signed)T < 0) break;            // -if:
-                goto ex;
 			case opSP: M = SP;                                  // sp
 GetPointer:     M = T + (M + ROMsize)*4;
 #ifdef TRACEABLE
@@ -779,8 +856,6 @@ GetPointer:     M = T + (M + ROMsize)*4;
                 T=DebugReg;
                 DebugReg=M;
                 break;	// port
-			case opSKIPLT: if ((signed)T >= 0) break;           // +if:
-                goto ex;
 			case opLIT: SDUP();
 #ifdef TRACEABLE
                 Trace(0, RidT, T, IMM);
