@@ -99,15 +99,18 @@ void MakeFromTemplate(char *infile, char *outfile) {
                     seek = 0;
                     if (c == '`') {     // found terminator
                         switch (n) {        // execute the macro function
-case 0: fprintf(ofp, "%s", GetTime());  // 0: time and date
+case 0: fprintf(ofp, "\n");             // 0: newline
     break;
-case 1:                                 // 1: non-blank words in ROM
+case 1: fprintf(ofp, "%s", GetTime());  // 1: time and date
+    break;
+case 2:                                 // 2: non-blank words in ROM
     fprintf(ofp, "%d", ROMwords(ROMsize));
     break;
-case 2:                                 // 2: words in RAM
-    fprintf(ofp, "%d", RAMsize);
+case 3: fprintf(ofp, "%d", ROMsize);    // 3: words in ROM space
     break;
-case 3:                                 // 3: C syntax internal ROM dump
+case 4: fprintf(ofp, "%d", RAMsize);    // 4: words in RAM space
+    break;
+case 5:                                 // 5: C syntax internal ROM dump
     C_Columns = 6;
     length = ROMwords(ROMsize);
     for (int i=0; i<length; i++) {
@@ -122,12 +125,12 @@ case 3:                                 // 3: C syntax internal ROM dump
         }
     }
     break;
-case 4:                                 // 4: Assembler syntax internal ROM dump
+case 6:                                 // 6: Assembler syntax internal ROM dump
     length = ROMwords(ROMsize);
     char * directive = ".word";
     char * format = "0x%08X";
     C_Columns = 6;
-dumpasm:
+//dumpasm:
     for (int i=0; i<length; i++) {
         int col = i % C_Columns;
         if (!col) {
@@ -140,12 +143,30 @@ dumpasm:
     }
     fprintf(ofp, "\n");
     break;
-case 5:                                 // 5: Assembler syntax for 8051
+case 7:                                 // 7: Assembler syntax for 8051
     length = ROMwords(ROMsize);
     directive = "DW";
-    format = "%08XH";
-    C_Columns = 8;
-    goto dumpasm;
+    format = "0%04XH,0%04XH";             // no support for 32-bit words
+    C_Columns = 6;
+    for (int i=0; i<length; i++) {
+        int col = i % C_Columns;
+        if (!col) {
+            fprintf(ofp, "\n%s ", directive);
+        }
+        fprintf(ofp, format, rom[i]>>16, rom[i]&0xFFFF);
+        if ((i != (length-1)) && (col != (C_Columns-1))) {
+            fprintf(ofp, ", ");
+        }
+    }
+    fprintf(ofp, "\n");
+    break;
+case 8:                                 // 8: VHDL syntax internal ROM dump
+    length = ROMwords(ROMsize);
+    for (int i=0; i<length; i++) {
+        fprintf(ofp, "when %d => ROMdata <= x""%08X"";\n", i, rom[i]);
+    }
+    fprintf(ofp, "when others => ROMdata <= x""FFFFFFFF"";\n");
+    break;
 
 default: fprintf(ofp, "/*%d*/", n);
     break;

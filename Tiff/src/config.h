@@ -5,8 +5,10 @@
 #define __CONFIG_H__
 
 // Sizes of internal memories in 32-bit cells
-#define RAMsize   0x400                         /* must be an exact power of 2 */
-#define ROMsize   0x800                         /* must be an exact power of 2 */
+#define StackSpace 128                 /* combined stack space at bottom of RAM */
+#define RAMsize    0x200                         /* must be an exact power of 2 */
+#define ROMsize    0x800                         /* must be an exact power of 2 */
+
 #define SPIflashCapacity   18    /* Log2 of flash size in bytes, minimum is 12 */
 #define SPIflashSize (1<<(SPIflashCapacity-2))  /* Must be a multiple of 0x400 */
 // The AXIRAMsize is not used, feature not implemented.
