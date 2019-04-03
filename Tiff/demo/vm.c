@@ -8,7 +8,7 @@
 
 //
 int tiffIOR; // error code
-
+//
 static const uint32_t ROM[504] = {
 /*0000*/ 0x4C0001EF, 0x96B09000, 0x36B09000, 0x56B09000, 0x05AB8318, 0x96B09000,
 /*0006*/ 0x05AD8318, 0x36B09000, 0xFC909000, 0xFC9FC240, 0x9E709000, 0x68A18A08,
@@ -94,12 +94,17 @@ static const uint32_t ROM[504] = {
 /*01E6*/ 0x0790000C, 0xEA5AF540, 0xE40021F0, 0x07900008, 0xEA5AF904, 0x2ED6C0CC,
 /*01EC*/ 0x6C00010F, 0xE4002218, 0xB9A4C047, 0x6C0001E3, 0x4C0001F4, 0x6C65480B,
 /*01F2*/ 0x57206F6C, 0x646C726F, 0xE40007C4, 0x39B00103, 0x10000006, 0x09000000};
-
+//
 uint32_t FetchROM(uint32_t addr) {
+//
   if (addr < 504) {
+//
     return ROM[addr];
+//
   }
+//
   return -1;
+//
 }
 
 /// Virtual Machine for 32-bit MachineForth.
@@ -148,6 +153,9 @@ uint32_t FetchROM(uint32_t addr) {
 
     static int New; // New trace type, used to mark new sections of trace
     static uint32_t RAM[RAMsize];
+#ifndef ROM
+    static uint32_t ROM[ROMsize];
+#endif
     uint32_t AXI[SPIflashSize+AXIRAMsize];
 
     static void SDUP(void)  {
@@ -186,6 +194,9 @@ uint32_t FetchROM(uint32_t addr) {
     static uint32_t CARRY;  static uint32_t DebugReg;
 
     static uint32_t RAM[RAMsize];
+#ifndef ROM
+    static uint32_t ROM[ROMsize];
+#endif
     uint32_t AXI[SPIflashSize+AXIRAMsize];
 
     static void SDUP(void)  { RAM[--SP & (RAMsize-1)] = N;  N = T; }
@@ -195,6 +206,27 @@ uint32_t FetchROM(uint32_t addr) {
     static uint32_t RDROP(void) { return RAM[RP++ & (RAMsize-1)]; }
 
 #endif // TRACEABLE
+
+#ifndef FetchROM
+/// Tiff's ROM write functions for populating internal ROM.
+/// A copy may be stored to SPI flash for targets that boot from SPI.
+/// An MCU-based system will have ROM in actual ROM.
+/// The target system does not use WriteROM, only the host.
+
+int WriteROM(uint32_t data, uint32_t address) { // EXPORTED
+    uint32_t addr = address / 4;
+    if (address & 3) return -23;        // alignment problem
+    if (addr < ROMsize)  {
+        ROM[addr] = data;
+        return 0;
+    }
+    if (addr < SPIflashSize) {          // only flash region is writable
+        AXI[addr] = data;
+        return 0;
+    }
+    return -9;                          // out of range
+}
+#endif
 
 /// The VM's RAM and ROM are internal to this module.
 /// They are both little endian regardless of the target machine.
@@ -372,7 +404,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 			    T = M;      				            break;	// r>
 			case opTwoDiv:
 #ifdef TRACEABLE
-                Trace(New, RidT, T, T / 2);  New=0;
+                Trace(New, RidT, T, (signed)T / 2);  New=0;
                 Trace(0, RidCY, CARRY, T&1);
 #endif // TRACEABLE
 			    T = (signed)T / 2;  CARRY = T&1;        break;	// 2/

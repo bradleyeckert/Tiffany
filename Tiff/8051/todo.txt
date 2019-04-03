@@ -1,0 +1,4 @@
+I hacked out a VM and got it to assemble cleanly. Should be riddled with bugs.
+
+
+NOTE: 8051 assembly file extension for Keil must be A51, not a51.
