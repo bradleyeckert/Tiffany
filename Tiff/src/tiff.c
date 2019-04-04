@@ -230,6 +230,20 @@ void GetQuotedString (char terminator) {
     FetchString(name, address, (uint8_t)length); // name is the string
 }
 
+// ( comment style expects a ).
+// TIBnotExhausted can check if EOL was reached, but in this case we don't care.
+// The file extension of ( allows multi-line comments, which we don't support.
+void TiffParen (void) {
+    GetQuotedString(')');
+}
+void TiffDotParen (void) {
+    TiffParen();
+    printf("%s", name);
+}
+void TiffCR (void) {
+    printf("\n");
+}
+
 void tiffCommaString (void) {
     GetQuotedString('"');
     CommaCstring(name);
@@ -435,6 +449,9 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("\\",      tiffCOMMENT);
     AddKeyword("//",      tiffCOMMENT); // too much cog dis switching between C and Forth
     AddKeyword(".",       tiffDOT);
+    AddKeyword("(",       TiffParen);
+    AddKeyword(".(",      TiffDotParen);
+    AddKeyword("cr",      TiffCR);
     AddKeyword("stats",   tiffSTATS);
     AddKeyword(".static", ListOpcodeCounts);
     AddKeyword("+cpu",    tiffCPUon);

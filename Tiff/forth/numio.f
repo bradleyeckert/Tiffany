@@ -16,6 +16,8 @@ cp @ equ string_cr ," \r\l"             \ CRLF
 cp @ equ string_pg ," \e[2J"            \ ANSI "clear screen"
 : term_cr    string_cr $type ;          \ --
 : term_page  string_pg $type ;          \ --
+: term_key?  dup 0 user ;               \ -- flag
+: term_key   dup 1 user ;               \ -- char
 
 \ `personality` is an execution table for I/O.
 \ The default personality is the following table in ROM:
@@ -24,6 +26,8 @@ cp @ equ term_personality               \ terminal personality
 ' term_emit ,
 ' term_cr ,
 ' term_page ,
+' term_key? ,
+' term_key ,
 
 : io=term  \ --                         \ use terminal for I/O
    term_personality personality !
@@ -35,6 +39,8 @@ cp @ equ term_personality               \ terminal personality
 : emit    0 personality_exec ;          \ 0: EMIT
 : cr      1 personality_exec ;          \ 1: newline
 : page    2 personality_exec ;          \ 2: clear screen
+: key?    3 personality_exec ;          \ 3: check for key
+: key     4 personality_exec ;          \ 4: get key char
 
 \ TYPE accepts a UTF8 string where len is the length in bytes.
 \ There could be fewer than len glyphs. EMIT takes a UTF code point.

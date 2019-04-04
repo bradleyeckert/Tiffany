@@ -3,6 +3,7 @@
 \ CP, HP, and DP point to the first free bytes in code, header, and data space.
 \ System variables are already defined in Tiff because it uses them internally.
 \ See `config.h`.
+.( Tiff.f: )
 
 4 equ DumpColumns                       \ Output chars ~ Columns * 13 + 5
 

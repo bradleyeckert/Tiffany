@@ -37,7 +37,7 @@ static int tiffEKEY (void) { return getch(); }
 uint32_t SPIflashXfer (uint32_t n);     // import from flash.c
 
 /**
-* Returns the current time in hundreds of microseconds.
+* Returns the current time in microseconds.
 */
 static long getMicrotime(){
     struct timeval currentTime;
@@ -54,6 +54,7 @@ static uint32_t Counter (void) {
 
 
 // Emit outputs a xchar in UTF8 format
+// putwchar would have been nice, if it worked for Unicode.
 
 void tiffEMIT(uint32_t xchar) {
     char c[5];
@@ -71,7 +72,6 @@ void tiffEMIT(uint32_t xchar) {
                 c[1] = (char) (((xchar >> 6) & 63) + 0x80);
                 c[2] = (char) ((xchar & 63) + 0x80);
                 c[3] = 0;
-                printf("%02x %02x %02x\n", c[0], c[1], c[2]);
             } else {
                 c[0] = (char) ((xchar >> 18) + 0xF0);
                 c[1] = (char) (((xchar >> 12) & 63) + 0x80);
@@ -81,7 +81,10 @@ void tiffEMIT(uint32_t xchar) {
             }
         }
     }
-    printf("%s",c);
+    char* s = c;  char b;
+    while ((b = *s++)) {
+        putchar(b);     // avoid printf dependency
+    }                   // else use printf("%s",c);
 }
 
 uint32_t UserFunction (uint32_t T, uint32_t N, int fn ) {
