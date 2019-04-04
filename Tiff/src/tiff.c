@@ -243,6 +243,12 @@ void TiffDotParen (void) {
 void TiffCR (void) {
     printf("\n");
 }
+void TiffMonoTheme (void) {
+    ColorTheme = 0;
+}
+void TiffColorTheme (void) {
+    ColorTheme = 1;
+}
 
 void tiffCommaString (void) {
     GetQuotedString('"');
@@ -452,6 +458,9 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("(",       TiffParen);
     AddKeyword(".(",      TiffDotParen);
     AddKeyword("cr",      TiffCR);
+    AddKeyword("theme-mono",  TiffMonoTheme);
+    AddKeyword("theme-color", TiffColorTheme);
+
     AddKeyword("stats",   tiffSTATS);
     AddKeyword(".static", ListOpcodeCounts);
     AddKeyword("+cpu",    tiffCPUon);

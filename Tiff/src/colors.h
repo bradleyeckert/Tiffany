@@ -6,6 +6,8 @@
 
 // Hilighting colors
 
+extern int ColorTheme;
+
 void ColorHilight(void);                // set color to hilighted
 void ColorNormal(void);                	// set color to normal
 void ColorError(void);                	// set color to error
