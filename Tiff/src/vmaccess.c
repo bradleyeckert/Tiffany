@@ -784,19 +784,23 @@ void DumpReturnStack(void){
     }
 }
 
+void ResetColor(void) {
+	printf("\033[0m");          		// reset colors
+}
+
 uint32_t DisassembleGroup(uint32_t addr) {
     uint32_t r;
     uint32_t ir = FetchCell(addr);
-    ColorNone();
+    ResetColor();
     printf("%04X %08X ", addr, ir);
     r = DisassembleIR(ir);
     char *name = GetXtName(addr);
     if (name) {
-        ColorNone();
+        ResetColor();
         printf("  \\ ");
         ColorDef();
         printf("%s", name);
-        ColorNone();
+        ResetColor();
     }
     printed = 1;
     return r;
@@ -862,7 +866,7 @@ void DumpRegs(void) {
     printf("\033[s");                   // save cursor
     printf("\033[%d;0H", DumpRows+2);
     printf("\033[1J\033[H");            // erase to top of screen, home cursor
-    ColorNone();
+    ResetColor();
     printf("\033[4m");                  // hilight header
     printf("Data Stack  ReturnStack Registers  Terminal Vars  ");
     printf("ROM at PC     Instruction Disassembly"); // ESC [ <n> m
@@ -906,8 +910,8 @@ uint32_t vmTEST (void) {
     int c;
     printf("\033[2J");                  // CLS
 Re: DumpRegs();
-    SetCursorPosition(0, DumpRows+5);   // help along the bottom
-    printf("(0..F)=digit, Enter=Clear, O=pOp, P=Push, R=Refresh, X=eXecute, \\=POR, ESC=Bye\n");
+    SetCursorPosition(0, DumpRows+4);   // help along the bottom
+    printf("\n(0..F)=digit, Enter=Clear, O=pOp, P=Push, R=Refresh, X=eXecute, \\=POR, ESC=Bye\n");
     #ifdef TRACEABLE
     printf("G=Goto, S=Step, @=Fetch, U=dUmp, W=WipeHistory, Y=Redo, Z=Undo \n");
     #else
@@ -927,6 +931,9 @@ Re: DumpRegs();
             switch (c) {
                 case 3:                                    // ^C
                 case 27: SetCursorPosition(0, DumpRows+7); // ESC = bye
+#ifdef __linux__
+                    CookedMode();
+#endif // __linux__
                     return RegRead(5);
                 case 13:  Param=0;  break;                 // ENTER = clear
                 case 'p':

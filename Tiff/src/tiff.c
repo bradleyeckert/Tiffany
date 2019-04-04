@@ -805,7 +805,7 @@ void tiffQUIT (char *cmdline) {
                         buf = File.Line;
 #ifdef __linux__
                         CookedMode();
-#endif
+#endif // __linux__
                         length = getline(&buf, &bufsize, stdin);   // get input line
                         if (length >= MaxTIBsize) tiffIOR = -62;
 #if (OKstyle==0)        // undo the newline that getline generated
