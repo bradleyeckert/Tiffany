@@ -28,11 +28,13 @@ A stack machine is simulated by the VM, so the code looks like machine code that
 
 Run-time code space, when it's writable, is assumed to be flash. You can change '1's to '0's but not vice versa. You also shouldn't try writing '0's twice, as some chips will over-charge the bit's gate charge making for unreliable behavior. Certain xts are chosen such they can be flipped to other xts by clearing select bits. For example, an xt can be flipped (by IMMEDIATE) from `compile` to `interpret`.
 
+## Dual-xt
+
 To support the current syntax of `create` and `does>`, let's have the interpreter gracefully handle undefined xts.
 
 Normally, STATE selects which xt to execute. If the xt is blank (all '1's), it is not executed. Instead, it assumes a default action that uses the `w` field in the header. If STATE=0, push `w` onto the stack. Otherwise, compile `w` as a literal. This allows `create` to have blank xts and a 'w' field set to whatever address space is used for the data.
 
 `does>` patches the xts of a header made by `create`, which it can only do because they are blank. `>body` returns the `w` value.
 
-There are two or three possible memory spaces that can be used by `create` and similar words. The normative cross compiler standard provides CDATA, IDATA and UDATA to select these. Good enough. That standard went down the dual wordlist road, but otherwise has a lot of good ideas.
+There are two or three possible memory spaces that can be used by `create` and similar words. The normative cross compiler standard provides CDATA, IDATA and UDATA to select these. Good enough. That standard went down the dual-wordlist road, but otherwise has a lot of good ideas.
 
