@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <sys/time.h>
 
 // Console I/O needs a little help here. stdin is cooked input on Windows.
 // We need raw input from the keyboard. The console is expected to be
@@ -9,7 +10,6 @@
 // corresponding to {KEY?, EKEY, EMIT}.
 
 #ifdef __linux__
-#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/select.h>
@@ -29,15 +29,15 @@ void RawMode() {
     struct termios new_termios;
 
     if (!isRawMode) {
+        isRawMode = 1;
         /* take two copies - one for now, one for later */
         tcgetattr(0, &orig_termios);
         memcpy(&new_termios, &orig_termios, sizeof(new_termios));
 
         /* register cleanup handler, and set the new terminal mode */
-        atexit(reset_terminal_mode);
+        atexit(CookedMode);
         cfmakeraw(&new_termios);
         tcsetattr(0, TCSANOW, &new_termios);
-        isRawMode = 1;
     }
 }
 
@@ -64,7 +64,6 @@ int tiffEKEY()
 }
 
 #elif _WIN32
-#include <sys/time.h>
 #include <conio.h>
 static int tiffKEYQ (void) { return kbhit(); }
 static int tiffEKEY (void) { return getch(); }
