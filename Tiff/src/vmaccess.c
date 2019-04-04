@@ -900,7 +900,7 @@ uint32_t Param = 0;     // parameter
 
 void ShowParam(void){
     SetCursorPosition(0, DumpRows+2);
-    ColorNormal();
+    ResetColor();
     printf("%08X\n", Param);
     DisassembleIR(Param);
     printf("\033[K\n");  // erase to end of line
