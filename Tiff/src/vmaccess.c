@@ -1,5 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
+#if _WIN32
+#include <windows.h>
+#endif
+
 #include "vm.h"
 #include "tiff.h"
 #include "fileio.h"
@@ -8,6 +12,28 @@
 #include "colors.h"
 #include <string.h>
 #include <ctype.h>
+
+#ifdef __linux__
+#include <sys/ioctl.h>
+#include <unistd.h>
+
+int TermWidth(void) {
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+    return w.ws_col);
+}
+
+#elif _WIN32
+// Get width of console
+int TermWidth(void) {
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    int columns;
+    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+    columns = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+//     rows = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+    return columns;
+}
+#endif
 
 /// Stacks, RAM and ROM are inside the VM, accessed through a narrow channel,
 /// see vm.c. This abstraction allows you to put the VM anywhere, such as in
@@ -887,6 +913,10 @@ Re: DumpRegs();
     #else
     printf("G=Goto, S=Step, @=Fetch, U=dUmp\n");
     #endif
+    int width = TermWidth();
+    if (width < 95) {
+        printf("*** ATTENTION: Console is %d columns. At least 95 columns are recommended. ***", width);
+    }
     while (1) {
         ShowParam();
         c = UserFunction(0,0,1);
