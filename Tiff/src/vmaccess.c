@@ -20,7 +20,7 @@
 int TermWidth(void) {
     struct winsize w;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
-    return w.ws_col);
+    return w.ws_col;
 }
 
 #elif _WIN32
