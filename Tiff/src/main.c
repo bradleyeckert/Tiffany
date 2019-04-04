@@ -12,16 +12,6 @@
 int main(int argc, char *argv[]) {
     int Arg = 1;
 
-/*
-#ifdef __linux__
-    initscr();
-    cbreak();
-    noecho();
-    scrollok(stdscr, TRUE);
-    nodelay(stdscr, TRUE);
-#endif
-*/
-
 // You can put quotes around the Forth command line text to allow spaces in it,
 // but you will lose the quotes. Characters 147 and 148 (open and close quotes)
 // of the ANSI code page 1252 are translated to ASCII quotes.

@@ -33,6 +33,9 @@ void initFilelist(void);
 uint32_t vmTEST(void);
 extern char *DefaultFile;
 
+// reference to TiffUser function when Linux is used for I/O
+void CookedMode(void);
+
 // substitute for strlwr
 void UnCase(char *s);
 
