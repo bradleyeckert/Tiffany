@@ -7,16 +7,17 @@
 4 equ DumpColumns                       \ Output chars ~ Columns * 13 + 5
 
 include core.f
-include tasker.f
-include numio.f
-include flash.f
+: pause ; : /pause ; \ include tasker.f \ no multitasker
+include timing.f
+include numio.f                         \ numeric I/O
+include flash.f                         \ SPI flash programming
 
 : initialize                            \ ? -- | R: ? a --
    r> base !
    [ 0 up ] literal             up!     \ terminal task
    [ 4 sp ] literal  dup sp0 !  sp!     \ empty data stack
    [ 0 rp ] literal  dup rp0 !  4 - rp! \ empty return stack
-   untask io=term
+   /pause io=term
    base @ >r  decimal                   \ init base
 ;
 

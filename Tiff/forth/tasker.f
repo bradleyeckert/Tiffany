@@ -18,10 +18,10 @@
 :noname  up! tos @ sp!  drop rp!
 ; equ wake
 
-: untask                                \ --
+: /pause                                \ --
    status follower !                    \ put terminal in task list
-   wake status !                        \ let it run
-; untask
+   wake status !                        \ let it run by itself
+; /pause
 
 \ pause takes 30 cycles with only the terminal task active
 
@@ -56,13 +56,4 @@
    over !                               \ save rp at sp, save stack context for wake
    over tos local !                     \ save sp in tos
    awake
-;
-: counter       \ -- timer
-   dup 4 user
-;
-: ms            \ ms --
-   10 * counter +
-   begin
-      dup counter <
-   until drop
 ;
