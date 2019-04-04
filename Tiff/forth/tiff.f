@@ -91,4 +91,4 @@ cp @ equ s2
 
 
 make ../templates/template.c ../demo/vm.c       \ C version
-make ../templates/template.a51 ../8051/vm.A51   \ 8051 version
+make ../templates/template.A51 ../8051/vm.A51   \ 8051 version
