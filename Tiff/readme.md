@@ -1,6 +1,8 @@
 # Tiff, a PC host for Mforth
 
 Tiff is a C console application that implements a minimal Forth. “Tiff” is short for “Tiffany”, the main character in the film “Bride of Chucky”.
+This is the Forth that Chuck should have written. I'm not as smart a programmer as Chuck Moore (who is?) but I'm giving it a go.
+Forth needs to work with the rest of the world, which means being highly embeddable.
 
 Tiff uses a simulated Forth CPU to execute compiled code as needed. It’s designed to load a Forth system mostly from scratch,
 gradually handing off all control to the simulated CPU. The resulting ROM image is binary compatible with the FPGA or ASIC based CPU,
@@ -22,18 +24,9 @@ After loading up a system, Tiff can be used to run a Forth application, but it's
 
 A stack machine is simulated by the VM, so the code looks like machine code that's made from Forth primitives. The dictionary uses a dual-xt model. Depending on `state`, one xt or the other of the word from the input stream is executed. A dual-xt model allows for a classical search order, which is the feature of Forth most useful in creating domain-specific languages.
 
-## Not ANS
+## Flash-based
 
-Wait, what? Okay, mostly ANS. Flash-based Forths require small syntax differences. The main difference has to do with compiling headers. You don't want to define now and patch later because patching non-blank flash contents is tricky business. I mean you can, but you shouldn't assume you can. For example, instead of declaring a word `immediate` after it's been defined, it should be declared as such before the header is compiled.
-
-Word headers have dual xts as well as optional data fields. In other to compile various kinds of words, multiple flavors of `:` are provided. These flavors are:
-
-- `:` compiles a word whose compile-time action compiles the word.
-- `macro:` compiles a word whose compile-time action copies the word as a macro.
-- `immed:` compiles a word whose compile-time action is the word.
-- `::` compiles a word whose compile-time action is on the stack.
-
-With these, there will be some minor incompatibility with ANS Forths, but not so much that a compatibility layer is hard to make so as to run your code on those systems. For example, an application might use `immed:`.
+Run-time code space, when it's writable, is assumed to be flash. You can change '1's to '0's but not vice versa. You also shouldn't try writing '0's twice, as some chips will over-charge the bit's gate charge making for unreliable behavior. Certain xts are chosen such they can be flipped to other xts by clearing select bits. For example, an xt can be flipped (by IMMEDIATE) from `compile` to `interpret`.
 
 To support the current syntax of `create` and `does>`, let's have the interpreter gracefully handle undefined xts.
 

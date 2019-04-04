@@ -15,6 +15,11 @@
 #include <sys/select.h>
 #include <termios.h>
 
+// Linux uses cooked mode to input a command line (see Tiff.c's QUIT loop).
+// Any keyboard input uses raw mode.
+// Apparently, Windows getch does this switchover for us.
+// Thanks to ncurses for providing a way to switch modes.
+
 struct termios orig_termios;
 int isRawMode=0;
 
@@ -35,7 +40,7 @@ void RawMode() {
         memcpy(&new_termios, &orig_termios, sizeof(new_termios));
 
         /* register cleanup handler, and set the new terminal mode */
-        atexit(CookedMode);
+        atexit(CookedMode); // in case BYE executes while in raw mode
         cfmakeraw(&new_termios);
         tcsetattr(0, TCSANOW, &new_termios);
     }
@@ -70,6 +75,9 @@ static int tiffEKEY (void) { return getch(); }
 #else
 #error Unknown OS for console I/O
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+// Non-keyboard stuff...
 
 uint32_t SPIflashXfer (uint32_t n);     // import from flash.c
 
