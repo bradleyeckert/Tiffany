@@ -25,8 +25,10 @@ ROMsize     EQU `2`*4 ;bytes in ROM (at end of this file)
 
             NAME VMstuff
 
-            PUBLIC _VM                  ;uint32_t VM(uint32_t IR);
+            PUBLIC _VMstep              ;uint32_t VMstep(uint32_t IR);
             PUBLIC VMpor                ;void VMpor(void);
+            PUBLIC SetDbgReg            ;void SetDbgReg(uint32_t n);
+            PUBLIC _GetDbgReg           ;uint32_t GetDbgReg(void);
 
 ExtFnTable  EQU 0x00A0
 

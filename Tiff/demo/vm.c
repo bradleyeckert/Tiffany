@@ -153,8 +153,10 @@ uint32_t FetchROM(uint32_t addr) {
 
     static int New; // New trace type, used to mark new sections of trace
     static uint32_t RAM[RAMsize];
-#ifndef ROM
+//
+#ifdef __NEVER_INCLUDE__
     static uint32_t ROM[ROMsize];
+//
 #endif
     uint32_t AXI[SPIflashSize+AXIRAMsize];
 
@@ -194,8 +196,10 @@ uint32_t FetchROM(uint32_t addr) {
     static uint32_t CARRY;  static uint32_t DebugReg;
 
     static uint32_t RAM[RAMsize];
-#ifndef ROM
+//
+#ifdef __NEVER_INCLUDE__
     static uint32_t ROM[ROMsize];
+//
 #endif
     uint32_t AXI[SPIflashSize+AXIRAMsize];
 
@@ -207,7 +211,8 @@ uint32_t FetchROM(uint32_t addr) {
 
 #endif // TRACEABLE
 
-#ifndef FetchROM
+//
+#ifdef __NEVER_INCLUDE__
 /// Tiff's ROM write functions for populating internal ROM.
 /// A copy may be stored to SPI flash for targets that boot from SPI.
 /// An MCU-based system will have ROM in actual ROM.
@@ -226,6 +231,7 @@ int WriteROM(uint32_t data, uint32_t address) { // EXPORTED
     }
     return -9;                          // out of range
 }
+//
 #endif
 
 /// The VM's RAM and ROM are internal to this module.

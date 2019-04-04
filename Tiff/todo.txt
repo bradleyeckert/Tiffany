@@ -1,5 +1,3 @@
-Broke demo, see where it's hanging.
-
 Add DO LOOP, FOR NEXT, etc.
 Add SPI bootloader that waits for hex file for 1 second then attempts boot.
 Note: Underlying system should VMPOR when it sees the first byte after its own POR.
