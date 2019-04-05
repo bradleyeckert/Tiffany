@@ -7,7 +7,7 @@ The stack machine used by MachineForth is based on small, zero-operand opcodes o
 
 MISC computers are minimal instruction set computers. They were pioneered by Chuck Moore, Jeff Fox, and GreenArrays using an asynchronous design flow. Since industry design flows are based on synchronous logic, a practical stack machine should use leverage synchronous memories. This affects the ISA. With synchronous memories, you need to start a read a cycle before it’s needed. This forces an extra pipeline stage, but also affords more sophisticated decoding.
 
-The MISC paradigm executes small instructions very fast, from an instruction group. The instruction group is fetched from memory, and then the opcodes are executed in sequence within the group. An opcode can conditionally loop or skip the sequence, removing the need to change the PC to execute a loop or a short conditional.
+The MISC paradigm executes small instructions very fast, from an instruction group. The instruction group is fetched from memory, and then the opcodes are executed in sequence within the group. An opcode can conditionally loop or skip the sequence, removing the need to change the PC to execute a loop or a short conditional. One way that this ISA deviates from MISC it that MISC is more focused on power consumption. You can burn power by accessing either a register file or a RAM. MISC uses stacks instead, where the stacks are implemented using bidirectional shift register logic. Maybe I'm being a little naughty, but one block RAM is used for stacks and fast user variables. It follows a model from the 1970s, where stacks in RAM are accessible by the app. What are the odds that I'll need a Forth CPU in silicon that minimizes power consumption in the way MISC does?
 
 An instruction word may be any number of bits. 16, 18 and 32 are popular sizes. Optimal semantic density is in the 20 bit range due to more slots being discarded at higher widths. This affects only the size, not the speed. Since the desired hardware talks to an AXI bus, the chosen word size is 32-bit to match AXI's minimum bus width.
 
@@ -168,4 +168,4 @@ Hardware multiply and divide, if provided, are accessed via the USER instruction
 
 ### How are those fatso 32-bit instruction groups working for you?
 
-Not bad. Code is still puny compared to data storage requirements in typical apps. Semantic density is maybe 1/3 less, but who cares?
+Not bad. Code is still puny compared to data storage requirements in typical apps. Semantic density is maybe 1/3 less than what I could get with 16-bit instructions.

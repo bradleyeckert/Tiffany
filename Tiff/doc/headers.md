@@ -44,6 +44,8 @@ The `where` list (cell -3) is 0xFFFFFF if the word is not referenced. Every refe
 
 `where` elements are 3-cell chunks initialized to -1, in header space. The first cell is a forward link and the other two are addresses. Each reference takes 6+ bytes of header space, which may be an expense you can do without. So, the `nowhere` flag disables this feature.
 
+WHERE is not implemented yet.
+
 ### Macro Compilation
 
 The xtc of defined words is either `compile,` (by default) or `macrocomp,`. The two xts observe certain rules so that `macro` can flip bit 2 in xtc from `1` to`0`. These rules are:

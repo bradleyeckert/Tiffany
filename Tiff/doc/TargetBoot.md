@@ -1,4 +1,4 @@
-# Target Boot
+# Target Boot (preliminary)
 
 Tiff builds a VM model that can be exported to run on anything. The model includes a ROM image that initializes RAM to match the contents of the RAM in Tiff at the time of export.
 
@@ -35,3 +35,7 @@ A cheap FTDI USB adapter can handle that, allowing a 1MB update in 30 seconds.
 Time-out is easy: If there's no ':' within a short time after POR, the app launches.
 The app should be protected by length and checksum. No match, no launch.
 If the app expects a wrong internal ROM build number, the appropriate error message should appear.
+
+The underlying serial buffering should implement XON/XOFF.
+If may also look for a "reboot" token that resets the VM to enter safe mode.
+Use `REBOOT<cr><lf>` for the token.

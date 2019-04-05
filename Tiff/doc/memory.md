@@ -3,10 +3,10 @@
 The memory model uses 32-bit byte addresses in little endian format. Physical memory consists of:
 
 - Internal ROM for code
-- Internal dual-port RAM for data
+- Internal dual-port or single-port RAM for data
 - External AXI space
 
-Code ROM is synchronous-read ROM. Data RAM is dual-port synchronous RAM. In an ASIC, masked ROM is 1/10th to 1/20th the die area of dual-port RAM (per bit), so a decent amount of area is available for code. In an FPGA, you typically have 18Kb blocks of DPRAM, so 512-word chunks. The RAM needs byte lane enables.
+Code ROM is synchronous-read ROM. Data RAM is dual-port synchronous RAM. In an ASIC, masked ROM is 1/10th to 1/20th the die area of dual-port RAM (per bit), so a decent amount of area is available for code. In an FPGA, you typically have 18Kb blocks of DPRAM, so 512-word chunks. The RAM needs byte lane enables. It can also be single-port, with a performance hit. The VM should alter clock cycle counts depending on the RAM type.
 
 AXI is a streaming-style system interface where data is best transferred in bursts due to long latency times. It's the standard industry interface. Rather than abstracting it away, the ISA gives direct control to the programmer. Several opcodes are multi-cycle instructions that stream RAM data to and from the AXI bus.
 

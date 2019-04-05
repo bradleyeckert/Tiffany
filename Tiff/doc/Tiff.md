@@ -1,19 +1,15 @@
 # Tiff, a PC host for Mforth
 
-Tiff is a straight C console application that implements a minimal Forth. “Tiff” is short for “Tiffany”, the main character in the film “Bride of Chucky”.
+Tiff is a straight C console application that implements a "minimal" Forth. “Tiff” is short for “Tiffany”, the main character in the film “Bride of Chucky”.
 
 Tiff uses a simulated Mforth CPU to execute compiled code as needed. It’s designed to load a Forth system mostly from scratch,
-gradually handing off all control to the simulated CPU. The resulting ROM image is binary compatible with the FPGA or ASIC based CPU,
+gradually handing off all control to the simulated CPU. The resulting ROM image is binary compatible with models implemented with an FPGA or ASIC,
 which runs the same Forth system (big or small) as Tiff.
-
-Note: This page not actively updated.
 
 ## Input Streams
 
-Input Streams
-Although Tiff doesn’t use blocks, the target system does, so that should be considered now. A 1K block buffer is used by block input. LOAD and THRU need their input state saved and restored. This involves saving the block system byte address and >IN when LOAD is started and restoring them when finished.
-
-So, the interpreter has two different input buffers: TIB and BLOCK. BLOCK may take on different addresses depending on how much RAM is dedicated to buffers. The interpreter gets its buffer parameters from three cells fixed in memory:
+The interpreter can have an arbitrary input buffer. By default it's TIB. Blocks may also be used as input, or even arbitrary sized chunks of external flash.
+The interpreter gets its buffer parameters from three cells fixed in memory:
 
 ```
 1 cell	TIBB	Buffer start address
@@ -21,34 +17,7 @@ So, the interpreter has two different input buffers: TIB and BLOCK. BLOCK may ta
 1 cell	TOIN	Index (>IN) to the next byte to be interpreted
 ```
 
-When files are INCLUDED, the TIB filled by the keyboard is cleared because files are loaded into the TIB a line at a time. Line length is restricted to the size of the TIB. Tiff saves filenames, file handles, and line numbers on a stack (in C space) when nesting files. When a file is opened, that data structure is pushed onto the filename stack. When the EOF is reached, the top of the filename stack is discarded and that file is closed. The TIB is cleared and then filled from the previous file or the keyboard. If Tiff hits an error, the filename stack is dumped to stdout.
-
-SOURCEID identifies the source of the input stream to be used when re-filling a buffer. 0 = keyboard, 1 = command line (*argv[]), 2 = file (top of file stack), negative for blocks.
-
-The QUIT loop doesn’t use CATCH and THROW. In a loop, it resets the stacks, points TIBB to TIB, and executes the buffer at TIBB until an error is encountered.
-
-```
-int tiffIOR = 0;
-void tiffQUIT (void) {
-   while (1) {
-      // reset stacks and input streams
-      // reset STATE
-      do {
-         switch(SOURCEID) {
-         case 0: // load TIBB from keyboard
-         default: // load TIBB using getline(&buffer, &buffer_size, file)
-         }
-         tiffINTERPRET(); // interpret the TIBB until it’s exhausted
-         if (!SOURCEID) printf(“ ok\n”);
-      } while (tiffIOR == 0);
-      // display error type
-      if (tiffIOR != -99999) break; // produced by BYE
-      switch (tiffIOR) {
-      default: printf(“\nError %d”, tiffIOR);
-      }
-   }
-}
-```
+When files are INCLUDED, the TIB filled by the keyboard is cleared because files are loaded into the TIB a line at a time. Line length is restricted to the size of the TIB. Tiff saves filenames, file handles, and line numbers on a stack (in C space) when nesting files. When a file is opened, that data structure is pushed onto the filename stack. When the EOF is reached, the top of the filename stack is discarded and that file is closed. The TIB is cleared and then filled from the previous file or the keyboard. If Tiff hits an error, the filename stack is dumped to stdout. This is in `Tiff.c`.
 
 ### Flash-friendly Wordlist Structure
 ![Header Links](https://github.com/bradleyeckert/Mforth/blob/master/Tiff/doc/header.png "Header Lists in Flash")
@@ -62,11 +31,9 @@ A section of lexicon can be removed without wiping out the whole dictionary (of 
 ![Header Detail](https://github.com/bradleyeckert/Mforth/blob/master/Tiff/doc/headstruct.png "Header Detail")
 
 ## Interleaved vs Non-interleaved
-Code and head spaces may be interleaved or not. Code memory is divided between internal ROM and external flash. In the case of an FPGA implementation, a quad-rate SPI flash can be clocked at the same frequency as the CPU. It takes eight beats to read in a 32-bit code word. That’s a lot slower than the single cycle access of internal ROM. It’s also much cheaper than internal ROM. Tiff should have separate head and code spaces when building the ROM image.
+Code and head spaces in a Forth may be interleaved or not. The current implementation does not. They use different chunks of code memory.
 
-In an FPGA or ASIC, the SPI flash should be loadable through JTAG or other interface. In manufacturing, the FPGA bitstream is loaded through JTAG. If possible, the same JTAG should be able to load the SPI. Xilinx has LUT6 elements that nicely fit 6-bit opcodes. The low-cost devices boot from SPI flash.
-
-On the target, internal ROM is fixed. All add-on code is in external flash, so interleaving is okay there. Interleaving rules out multiple entry points, however. A useful word for multiple entry is “;:”. For example:
+Portability: Interleaving rules out multiple entry points. A useful word for multiple entry is “;:”. For example:
 
 ```
 : FOO  ( – ) MyLiteral
@@ -82,7 +49,7 @@ CDATA HERE
 EQU POWERS_10
 ```
 
-So, interleaved systems have workarounds. Tiff uses three dictionary pointers: CP, HP, and DP corresponding to code space, head space and data space. The pointer used by HERE (and ORG) is determined by the keywords CDATA, HDATA, and DATA. The programming model excludes the initialized RAM (IDATA) supplied by typical Forth cross compilers because the model is different. The Tiff model erases RAM at power-up. As Forth code is loaded, it loads non-zero values into various RAM locations. When outputting code to the target, it includes code to initialize these non-zero values.
+So, interleaved systems have workarounds. Tiff uses three dictionary pointers: CP, HP, and DP corresponding to code space, head space and data space. The pointer used by HERE (and ORG) is determined by the keywords CDATA, HDATA, and DATA (preliminary). The programming model excludes the initialized RAM (IDATA) supplied by typical Forth cross compilers because the model is different. The Tiff model erases RAM at power-up. As Forth code is loaded, it loads non-zero values into various RAM locations. When outputting code to the target, it includes code to initialize these non-zero values.
 
 The target system erases RAM and processes a run-length compressed table in ROM to initialize the RAM to the same state that Tiff had when creating the table. This sparsely-populated RAM uses run length compression controlled by a stream of 8-bit bytecodes:
 
@@ -133,5 +100,5 @@ Code sections use two pointers for HERE: CP and HP for code and header spaces.
 STDIO is used for I/O in Tiff. The VM invokes them via API calls. The hard VM emulates getch and putch in hardware, which operates a UART directly. Terminals operate in cooked (or canonical) mode or raw mode. It appears that the mode can’t be switched in real time by an escape sequence. Raw mode requires the target to handle line editing, cut and paste, etc. That’s a bit limiting, given the nice clipboard integration that modern terminal emulators have. Cooked mode allows for a dumber ACCEPT. Cut and paste in raw mode needs to be researched.
 
 ### Compile Order
-As much is done by the VM as possible. It starts out brain dead. Tiff loads header space with a few headers that have native functions (numbered by index into a function table). It has its own version of QUIT, which implements a simple version of the Forth interpreter. Later on, when the system has been compiled, a new QUIT is defined (using EXEC: instead of :) to change the xte in QUIT’s header. Since all of the headers are in the ROM image, they will be intact when the ROM image is exported as C or Assembly source code for embedded VMs.
+Tiff loads header space with a few headers that have native functions (numbered by index into a function table). It has its own version of QUIT, which implements a simple version of the Forth interpreter. Later on, when the system has been compiled, a new QUIT is defined (using EXEC: instead of :) to change the xte in QUIT’s header. Since all of the headers are in the ROM image, they will be intact when the ROM image is exported as C or Assembly source code for embedded VMs.
 
