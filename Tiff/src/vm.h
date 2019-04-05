@@ -23,7 +23,7 @@ extern unsigned long cyclecount;
 extern uint32_t AXI[SPIflashSize+AXIRAMsize];
 int EraseAXI4K(uint32_t address);
 
-// Defined in tiffUser.c:
+// Defined in vmUser.c:
 //int tiffKEYQ (void);                                      // Check for a key press
 //int tiffEKEY (void);                                  // Raw console keyboard keys
 //void tiffEMIT (uint8_t c);                               // Output char to console

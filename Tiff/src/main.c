@@ -1,13 +1,9 @@
 #include <stdio.h>
 #include "vm.h"
 #include "tiff.h"
-#include "vmaccess.h"
+#include "accessvm.h"
 #include "fileio.h"
 #include <string.h>
-
-#ifdef __linux__
-#include <ncurses.h>
-#endif
 
 int main(int argc, char *argv[]) {
     int Arg = 1;

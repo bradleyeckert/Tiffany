@@ -3,7 +3,7 @@
 #include <errno.h>
 #include "vm.h"
 #include "tiff.h"
-#include "vmaccess.h"
+#include "accessvm.h"
 #include "compile.h"
 #include "fileio.h"
 #include "colors.h"
@@ -273,7 +273,6 @@ uint32_t Htick (void) {  // ( -- )
     } else {
         uint8_t length = (uint8_t)PopNum();
         FetchString(name, PopNum(), length);
-        strcpy(ErrorString, name);
         if (length) tiffIOR = -13;
         else tiffIOR = -16;
     }
@@ -380,10 +379,10 @@ void tiffCPUon (void) {                 // enable CPU display mode
 void tiffCPUoff (void) {                // disable CPU display mode
     ShowCPU = 0;
 }
-void tiffRunBrk (void) {                 // run to breakpoint
+void tiffRunBrk (void) {                // run to breakpoint
     tiffTICK();
     breakpoint = PopNum();
-    tiffFUNC(breakpoint);
+    tiffFUNC(breakpoint);               // Execute breaks immediately
     tiffCPUon();
 }
 
@@ -721,8 +720,7 @@ void tiffINTERPRET(void) {
                 char *eptr;
                 long int x = strtol(name, &eptr, 0); // automatic base (C format)
                 if ((x == 0) && ((errno == EINVAL) || (errno == ERANGE))) {
-                    bogus: strcpy(ErrorString, name); // not a number
-                    tiffIOR = -13;
+                    bogus: tiffIOR = -13;   // not a number
                 } else {
                     if (*eptr) goto bogus;  // points at zero terminator if number
                     if (FetchCell(STATE)) {
@@ -883,7 +881,7 @@ void tiffQUIT (char *cmdline) {
         }
         if (tiffIOR == -99999) return;  // produced by BYE
         ColorError();
-        ErrorMessage(tiffIOR);
+        ErrorMessage(tiffIOR, name);
         while (filedepth) {
             ColorFilePath();
             printf("%s[%d]: ", File.FilePath, File.LineNumber);

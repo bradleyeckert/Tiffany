@@ -7,7 +7,7 @@
 #include "vm.h"
 #include "tiff.h"
 #include "fileio.h"
-#include "vmaccess.h"
+#include "accessvm.h"
 #include "compile.h"
 #include "colors.h"
 #include <string.h>
@@ -54,12 +54,19 @@ uint32_t DbgGroup (uint32_t op0, uint32_t op1,
     DbgPC = 4 * VMstep(op0<<26 | op1<<20 | op2<<14 | op3<<8 | op4<<2, 1);
     return GetDbgReg();
 }
-uint32_t PopNum (void) {                // Pop from the stack
+uint32_t PopNum (void) {                // Pop from the data stack
     return DbgGroup(opPORT, opDROP, opSKIP, opNOP, opNOP);
 }
-void PushNum (uint32_t N) {             // Push to the stack
+void PushNum (uint32_t N) {             // Push to the data stack
     SetDbgReg(N);
     DbgGroup(opDUP, opPORT, opSKIP, opNOP, opNOP);
+}
+uint32_t PopNumR (void) {               // Pop from the return stack
+    return DbgGroup(opPOP, opPORT, opDROP, opSKIP, opNOP);
+}
+void PushNumR (uint32_t N) {            // Push to the return stack
+    SetDbgReg(N);
+    DbgGroup(opDUP, opPORT, opPUSH, opSKIP, opNOP);
 }
 uint32_t FetchCell (uint32_t addr) {    // Read from RAM or ROM
     SetDbgReg(addr);
@@ -121,6 +128,7 @@ void StoreString(char *s, unsigned int address){
     }
 }
 
+// Access VM's SPI flash through USER opcode
 void SPIaddressCmd (uint32_t addr, int command, int ending) {
     SetDbgReg(command);
     VMstep((uint32_t)opDUP*0x100000 + (uint32_t)opPORT*0x4000 + opUSER*0x100 + 5, 1);
@@ -139,7 +147,7 @@ void SPIonesie (int command) {
     DbgGroup(opDROP, opSKIP, opNOP, opNOP, opNOP);
 }
 
-int EraseSPI4K (uint32_t addr) {        // erase SPI flash
+int EraseSPI4K (uint32_t addr) {        // erase VM's SPI flash
     SPIonesie(6);
     SPIaddressCmd(addr, 32, 0);
     SPIonesie(4);
@@ -406,7 +414,11 @@ uint8_t xstrlen(char *s) {  // strlen that skips escape codes
 
 // Generic counted string compile
 // Include optional flags when compiling a header name
-void CommaXstring (char *s, void(*fn)(uint32_t), int flags, int esc) {
+// The esc flag means
+void CommaXstring (char *s,             // string to compile
+                   void(*fn)(uint32_t), // Post-string padding function
+                   int flags,           // flags to OR with count byte
+                   int esc) {           // true if escape sequences are supported
     int length;
     if (esc) length = xstrlen(s);
     else     length = strlen(s);
@@ -590,7 +602,8 @@ int RedoTrace(void) {
 
 
 //---------------------------------------------------------
-/// will be removing this soon
+#ifdef VERBOSE
+// Dump trace history buffer data, for debugging tracing.
 
 void TraceHist(void) {                  // dump trace history
     uint32_t size = TraceElements();
@@ -615,6 +628,8 @@ void TraceHist(void) {                  // dump trace history
         }
     }
 }
+#endif
+
 //==============================================================================
 #endif
 
@@ -692,6 +707,78 @@ int Sdepth(void) {                      // data stack depth
     return (int)(foo - RegRead(3)) / 4;
 }
 
+uint32_t ChangeRegs[2][6];              // rows: old, new
+
+void RegChangeInit (void) {             // Initialize register changes
+    for (int i=0; i<6; i++) {
+        uint32_t x = RegRead(i);
+        ChangeRegs[0][i] = x;
+        ChangeRegs[1][i] = x;
+    }
+    ChangeRegs[1][5] -= 4;
+}
+static char RegName[6][4] = {" T", " N", "RP", "SP", "UP", "PC"};
+
+void SetCursorPosition(int X, int Y){
+    printf("\033[%d;%df", Y, X);
+}
+void RegChanges (FILE *fp, int format) {
+    if (!format) {                      // format 0 = debug dashboard
+        SetCursorPosition(0, DumpRows+8);
+    }
+    for (int i=0; i<6; i++) {           // [1] = expected, [0] = actual
+        ChangeRegs[0][i] = RegRead(i);  //                       ^^^^^^
+    }
+    ChangeRegs[1][5] += 4;              // expected PC is already bumped
+    int changes = 0;
+    for (int i=0; i<6; i++) {           // compare...
+        uint32_t actual   = ChangeRegs[0][i];
+        uint32_t expected = ChangeRegs[1][i];
+        char *reg = RegName[i];
+        if (actual != ChangeRegs[1][i]) {
+            changes++;
+            switch (format) {
+                case 2: // VHDL format:
+                fprintf(fp, "changes(%d, x\"%08X\", x\"%08X\");\n", i, expected, actual);
+                break;
+                case 1: // C format:
+                fprintf(fp, "changes(%d, 0x%08X, 0x%08X);\n", i, expected, actual);
+                break;
+                default:
+                fprintf(fp, "%s changed from %08X to %08X\n", reg, expected, actual);
+            }
+        }
+    }
+    if (!format) {                      // format 0 = debug dashboard
+        while (changes<4) {
+            changes++;
+            printf("%64s\n", " ");
+        }
+    }
+    memmove(ChangeRegs[1], ChangeRegs[0], 6*sizeof(uint32_t));
+}
+
+void MakeTestVectors(FILE *ofp, int length, int format) {
+    VMpor();
+    RegChangeInit();                    // start at PC = 0
+    for (int i=0; i<length; i++) {
+        uint32_t pc = RegRead(5);
+        uint32_t ir = FetchCell(pc);
+        switch (format) {
+        case 2:         // VHDL
+            fprintf(ofp, "newstep(x\"%08X\", %d);  -- PC = %04Xh\n", ir, i, pc*4);
+            break;
+            default:    // C
+            fprintf(ofp, "newstep(0x%08X, %d);  // PC = %04Xh\n", ir, i, pc*4);
+        }
+        Tracing=1;  VMstep(ir,0);
+        Tracing=0;
+        RegChanges(ofp, 1);             // display changes in C format
+    }
+    VMpor();
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// Debugger Display uses full screen with VT100 commands
 /// It does not work with the old Windows CMD console.
@@ -700,9 +787,6 @@ int Sdepth(void) {                      // data stack depth
 /// and VT100 Escape Sequences out of the box (although they have to be enabled).
 ////////////////////////////////////////////////////////////////////////////////
 
-void SetCursorPosition(int X, int Y){
-    printf("\033[%d;%df", Y, X);
-}
 
 void CellDump(int length, uint32_t addr) {  // DUMP
     uint32_t line[8];                       // buffer for ASCII
@@ -788,10 +872,17 @@ void ResetColor(void) {
 	printf("\033[0m");          		// reset colors
 }
 
-uint32_t DisassembleGroup(uint32_t addr) {
+uint32_t DisassembleGroup(uint32_t addr, int hilight) {
     uint32_t r;
     uint32_t ir = FetchCell(addr);
-    ResetColor();
+    if (hilight) {
+        ColorHilight();
+        if (!ColorTheme) {
+            printf("*");                // no colors, hilight with asterisk
+        }
+    } else {
+        ResetColor();
+    }
     printf("%04X %08X ", addr, ir);
     r = DisassembleIR(ir);
     char *name = GetXtName(addr);
@@ -813,7 +904,7 @@ void Disassemble(uint32_t addr, uint32_t length) {
         printf("Can't disassemble a C function");
     } else {
         if (length == 1) { // could be a defer
-            int jmp = DisassembleGroup(addr);
+            int jmp = DisassembleGroup(addr, 0);
             if (jmp) {
                 addr = jmp;
                 length = 10;
@@ -824,7 +915,7 @@ void Disassemble(uint32_t addr, uint32_t length) {
         }
         for (i=0; i<length; i++) {
             printf("\n");
-            DisassembleGroup(addr);
+            DisassembleGroup(addr, 0);
             addr += 4;
         }
     }
@@ -847,11 +938,7 @@ void DumpROM(void) {
     }
     for (i=0; i<DumpRows; i++) {
         SetCursorPosition(ROMdumpCol, row++);
-        if (PC == (addr)) {
-            printf("*");                // hilight
-        }
-        DisassembleGroup(addr);
-        printf("\033[0m");              // unhilight
+        DisassembleGroup(addr, (PC == addr));
         addr += 4;
     }
 }
@@ -890,7 +977,6 @@ void DumpRegs(void) {
 
 /// Keyboard input is raw, from tiffEKEY().
 /// Use single keystrokes to dump various parameters, calculator-style.
-/// Note: IDE may cook keyboard input, you should run from the command line.
 
 void Bell(int flag) {
     if (flag) printf("\a");
@@ -907,64 +993,79 @@ void ShowParam(void){
 }
 
 uint32_t vmTEST (void) {
-    int c;
+    uint32_t normal = 0xFFFFFFFF;       // normal execution
     printf("\033[2J");                  // CLS
+    PushNumR(0xDEADC0DC);               // extra run terminator
+    RegChangeInit();
 Re: DumpRegs();
+    RegChanges(stdout, 0);
     SetCursorPosition(0, DumpRows+4);   // help along the bottom
     printf("\n(0..F)=digit, Enter=Clear, O=pOp, P=Push, R=Refresh, X=eXecute, \\=POR, ESC=Bye\n");
     #ifdef TRACEABLE
-    printf("G=Goto, S=Step, @=Fetch, U=dUmp, W=WipeHistory, Y=Redo, Z=Undo \n");
+    printf("G=Goto, S=Step, /=Run, @=Fetch, U=dUmp, W=WipeHistory, Y=Redo, Z=Undo \n");
     #else
-    printf("G=Goto, S=Step, @=Fetch, U=dUmp\n");
+    printf("G=Goto, S=Step, /=Run, @=Fetch, U=dUmp\n");
     #endif
     int width = TermWidth();
     if (width < 95) {
         printf("*** ATTENTION: Console is %d columns. At least 95 columns are recommended. ***", width);
     }
     while (1) {
+        uint32_t pc;
         ShowParam();
-        c = UserFunction(0,0,1);
+        int c = UserFunction(0,0,1);
         if (isxdigit(c)) {
             if (c>'9') c-=('A'-10); else c-='0';
             Param = Param*16 + (c&0x0F);
         } else {
             switch (c) {
-                case 3:                                    // ^C
-                case 27: SetCursorPosition(0, DumpRows+7); // ESC = bye
+                case 3:                                     // ^C
+                case 27: SetCursorPosition(0, DumpRows+7);  // ESC = bye
+                    PopNumR();                              // discard the terminator
 #ifdef __linux__
                     CookedMode();
 #endif // __linux__
-                    return RegRead(5);
-                case 13:  Param=0;  break;                 // ENTER = clear
+                    return RegRead(5) & normal;
+                case 13:  Param=0;  break;                  // ENTER = clear
                 case 'p':
-                case 'P': PushNum(Param);   goto Re;       // P = Push
+                case 'P': PushNum(Param);   goto Re;        // P = Push
                 case 'o':
-                case 'O': Param = PopNum();  goto Re;      // O = Pop
+                case 'O': Param = PopNum();  goto Re;       // O = Pop
                 case 'r':
-                case 'R': goto Re;                         // R = Refresh
+                case 'R': goto Re;                          // R = Refresh
                 case 'u':
-                case 'U': CellDump(32, Param);   break;    // U = dump
+                case 'U': CellDump(32, Param);   break;     // U = dump
                 case 'g':
-                case 'G': SetPCreg(Param);   goto Re;      // G = goto
+                case 'G': SetPCreg(Param);   goto Re;       // G = goto
                 case ' ':
-                case 's': // execute instruction from ROM  // S = Step
+                case 's': // execute instruction from ROM   // S = Step
                 case 'S': Tracing=1;  VMstep(FetchCell(RegRead(5)),0);
                           Tracing=0;  goto Re;
                 case 'x': // execute instruction from Param (doesn't step PC)
-                case 'X': Tracing=1;  VMstep(Param,1);     // X = Execute
+                case 'X': Tracing=1;  VMstep(Param,1);      // X = Execute
                           Tracing=0;  goto Re;
-                case '@': Param = FetchCell(Param); break; // @ = Fetch
+                case '@': Param = FetchCell(Param); break;  // @ = Fetch
                 case '\\': InitializeTermTCB();
-                          ReloadFile();  goto Re;          // \ = Reset
+                          ReloadFile();  goto Re;           // \ = Reset
+                case '/': do { pc = RegRead(5);
+                              Tracing=1;  VMstep(FetchCell(pc),0);
+                              Tracing=0;
+                          } while (0xDEADC0DC != RegRead(5));
+                          PushNumR(0xDEADC0DC);
+                          SetPCreg(pc);
+                          normal = 0;                       // can't trust Execute to not hang
+                          goto Re;                          // / = Execute until return
 #ifdef TRACEABLE
                 case 'h':
-                case 'H': TraceHist();   break;            // H = history
+#ifdef VERBOSE
+                case 'H': TraceHist();   break;             // H = history
+#endif
                 case 'w':
                 case 'W': uHead=0; uTail=0; uHere=0; break; // W = wipe history
                 case 'y':
-                case 'Y': Bell(RedoTrace());   goto Re;    // Y = Redo
+                case 'Y': Bell(RedoTrace());   goto Re;     // Y = Redo
                 case 'z':
-                case 'Z': Bell(UndoTrace());   goto Re;    // Z = Undo
+                case 'Z': Bell(UndoTrace());   goto Re;     // Z = Undo
 #endif
                 default: printf("%d   ", c);
             }

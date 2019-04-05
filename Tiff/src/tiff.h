@@ -19,8 +19,7 @@
 #define termTCB(n)  ((ROMsize + StackSpace + (n))*4)    /* Terminal USER vars */
 
 // error message handling
-char ErrorString[260];   // String to include in error message
-void ErrorMessage (int error);
+void ErrorMessage (int error, char *s);
 extern int printed;
 
 // forward references for tiff.c
@@ -29,7 +28,7 @@ uint32_t tiffPARSE (void);
 void initFilelist(void);
 
 // used by main.c, defined in tiff.c
-// might move to vmaccess.c later, with memory and stack access functions.
+// might move to accessvm.c later, with memory and stack access functions.
 uint32_t vmTEST(void);
 extern char *DefaultFile;
 

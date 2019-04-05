@@ -90,5 +90,6 @@ cp @ equ s2
 .( bytes of header.) cr
 
 
-make ../templates/template.c ../demo/vm.c       \ C version
-make ../templates/template.A51 ../8051/vm.A51   \ 8051 version
+make ../templates/app.c ../demo/vm.c       \ C version
+make ../templates/app.A51 ../8051/vm.A51   \ 8051 version
+20 make ../templates/testbench.c ../testbench/test.c

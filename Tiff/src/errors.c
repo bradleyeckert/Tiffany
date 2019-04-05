@@ -1,16 +1,15 @@
 #include <stdio.h>
-// #include "vm.h"
-// #include "tiff.h"
 #include <string.h>
+#define EMlength 256
 
-char ErrorString[64];   // String to include in error message
+static char ErrorString[EMlength];   // String to include in error message
 
-void ErrorMessage (int error) {
+void ErrorMessage (int error, char *s) {
    char *msg;
    if (!error) return;
    switch (error) {
        case   -1: msg = "";                        /* ABORT */          break;
-       case   -2: msg = *&ErrorString;             /* ABORT" */         break;
+       case   -2: msg = s;                         /* ABORT" */         break;
        case   -3: msg = "Stack overflow";                               break;
        case   -4: msg = "Stack underflow";                              break;
        case   -5: msg = "Return stack overflow";                        break;
@@ -21,8 +20,8 @@ void ErrorMessage (int error) {
        case  -10: msg = "Division by zero";                             break;
        case  -11: msg = "Result out of range";                          break;
        case  -12: msg = "Argument type mismatch";                       break;
-       case  -13: memmove (ErrorString+4,ErrorString,60);   // huh?
-                  memmove (ErrorString, "??? ",4);
+       case  -13: memmove (ErrorString, "??? ",4);
+                  memmove (ErrorString+4,s,EMlength-4);   // huh?
                   msg = *&ErrorString;                                  break;
        case  -14: msg = "Interpreting a compile-only word";             break;
        case  -15: msg = "Invalid FORGET";                               break;

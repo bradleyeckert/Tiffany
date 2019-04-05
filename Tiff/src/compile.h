@@ -36,6 +36,6 @@ void CompRepeat (void);
 void CompPlusUntil (void);
 void CompType(uint32_t cp);     // compile code for TYPE
 
-extern int32_t breakpoint;
+extern uint32_t breakpoint;
 
 #endif

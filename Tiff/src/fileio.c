@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "vm.h"
-#include "vmaccess.h"
+#include "accessvm.h"
 #include <string.h>
 #include <time.h>
 
@@ -166,6 +166,12 @@ case 8:                                 // 8: VHDL syntax internal ROM dump
         fprintf(ofp, "when %d => ROMdata <= x""%08X"";\n", i, rom[i]);
     }
     fprintf(ofp, "when others => ROMdata <= x""FFFFFFFF"";\n");
+    break;
+case 10:                                // 10: C syntax stepping
+    MakeTestVectors(ofp, PopNum(), 1);
+    break;
+case 11:                                // 10: VHDL syntax stepping
+    MakeTestVectors(ofp, PopNum(), 2);
     break;
 
 default: fprintf(ofp, "/*%d*/", n);

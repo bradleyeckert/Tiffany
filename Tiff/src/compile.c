@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "vm.h"
-#include "vmaccess.h"
+#include "accessvm.h"
 #include "compile.h"
 #include "tiff.h"
 #include "colors.h"
@@ -14,7 +14,6 @@
 /// the header's xtc and xte.
 
 static void FlushLit (void);            // forward reference
-uint32_t DbgPC;                         // shared with vmaccess.c
 uint32_t OpcodeCount[64];               // static instruction count
 
 static char names[64][6] = {
@@ -428,7 +427,12 @@ void CompType(uint32_t cp) {
 // Positive means execute in the VM.
 // Negative means execute in C.
 
-int32_t breakpoint = -1;
+// VMtest allows stepping. DBG FOO starts vmTEST at address FOO.
+// ESC makes Execute pick up where it left off.
+// If the PC has reached the last EXIT, Execute will time out.
+
+uint32_t breakpoint = -1;
+uint32_t DbgPC;                         // shared with accessvm.c
 
 void Execute(uint32_t xt) {
     uint32_t i;
@@ -444,8 +448,12 @@ void Execute(uint32_t xt) {
     DbgPC = xt;
     for (i=1; i<RunLimit; i++) {
         if (DbgPC == breakpoint) {
-            DbgPC = vmTEST();
-            breakpoint = -1;
+            DbgPC = vmTEST();                       // invoke low level debugger
+            if (!DbgPC) {                           // 0 quits early
+                DbgGroup(opPOP, opDROP, opEXIT, opSKIP, opNOP); // restore PC
+                return;
+            }
+            printf("Resuming at 0x%X ", DbgPC*4);
         }
         uint32_t ir = FetchCell(DbgPC);
 #ifdef VERBOSE
