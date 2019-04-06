@@ -1,8 +1,3 @@
-Add DO LOOP, FOR NEXT, etc.
-Add SPI bootloader that waits for hex file for 1 second then attempts boot.
-Note: Underlying system should VMPOR when it sees the first byte after its own POR.
-      It should also handle XON/XOFF and serial buffering.
-Add CREATE DOES>
 
 Add a simple version of tiff.f (maybe testbench.f) that has some test code.
    Compile to ROM location 0 instructions that exercise one opcode at a time until
@@ -13,3 +8,11 @@ Add C version of testbench:
    If an error occurs, display the line number it occurred at, the offending registers,
    and the expected and actual values. Stop after the first error.
 
+Add DO LOOP, FOR NEXT, etc.
+Add SPI bootloader that waits for hex file for 1 second then attempts boot.
+Note: Underlying system should handle XON/XOFF and serial buffering.
+Add CREATE DOES>
+
+Add a QUIT loop.
+
+Change Tiff to not use !AS for writing to "SPI flash", etc. Use vmUser function 5.

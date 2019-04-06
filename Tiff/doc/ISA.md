@@ -2,14 +2,35 @@
 
 The MachineForth paradigm, discovered by the late Jeff Fox, is a method for programming Forth stack machines in the most direct way possible, by making machine opcodes a part of the high level language. The programmer is writing to an actual machine rather than a virtual one. It’s a different way of programming. With the right ISA, optimizations are minimal so this virtualization is unnecessary. An ISA for a dialect of MachineForth is presented.
 
+## The Virtual Machine
+
+The files `vm.c` and `vmUser.c` implement the virtual machine on any C platform.
+The `VMstep` function accepts a 32-bit instruction group, executes it, and returns the value of the PC.
+This model makes for easier VM development.
+Automated test vector generation creates a testbench that can be used to test versions coded in a language other than C.
+Typically this means assembly. The assembly function is called from C for inclusion in the testbench.
+The testbench can run on a small MCU, listing errors so that you can go back and see which opcode had problems.
+It can also run in a VHDL testbench to verify hardware versions of the ISA.
+
+## ISA Licensing
+
+Microprocessor companies have a depressing habit of asserting IP rights on ISAs.
+An ISA is the backend for a tool ecosystem that CPU companies had very little hand in creating.
+It's like the auto makers owning the roads.
+Closed ISAs hold back the industry. Fortunately, RISCV is helping to de-incentivize them.
+Therefore the MachineForth ISA presented here (I'll call it Mforth), is completely free and open. You get to do whatever you want with it.
+The specification is `vm.c` but is summarized below.
+
 ## The ISA
 The stack machine used by MachineForth is based on small, zero-operand opcodes operating on the tops of stacks and corresponding to Forth names. This is different from Novix-style stack machines, which use wide instructions equivalent to stack machine microcode executing in one cycle. While this tends to be efficient, it requires virtualization of the language just like any other machine. When it comes to executing an application in a modern stack machine, instruction execution time is even more meaningless than it classically has been. When your computer consists of Verilog or VHDL code, the compute-intensive parts of the application are in hardware. RTL is the new machine code. The compiler is simple enough that you can trivially add custom opcodes.
 
 MISC computers are minimal instruction set computers. They were pioneered by Chuck Moore, Jeff Fox, and GreenArrays using an asynchronous design flow. Since industry design flows are based on synchronous logic, a practical stack machine should use leverage synchronous memories. This affects the ISA. With synchronous memories, you need to start a read a cycle before it’s needed. This forces an extra pipeline stage, but also affords more sophisticated decoding.
 
-The MISC paradigm executes small instructions very fast, from an instruction group. The instruction group is fetched from memory, and then the opcodes are executed in sequence within the group. An opcode can conditionally loop or skip the sequence, removing the need to change the PC to execute a loop or a short conditional. One way that this ISA deviates from MISC it that MISC is more focused on power consumption. You can burn power by accessing either a register file or a RAM. MISC uses stacks instead, where the stacks are implemented using bidirectional shift register logic. Maybe I'm being a little naughty, but one block RAM is used for stacks and fast user variables. It follows a model from the 1970s, where stacks in RAM are accessible by the app. What are the odds that I'll need a Forth CPU in silicon that minimizes power consumption in the way MISC does?
+The MISC paradigm executes small instructions very fast, from an instruction group. The instruction group is fetched from memory, and then the opcodes are executed in sequence within the group. An opcode can conditionally loop or skip the sequence, removing the need to change the PC to execute a loop or a short conditional. It has a Shboom-like feel, although not as sophisticated.
 
-An instruction word may be any number of bits. 16, 18 and 32 are popular sizes. Optimal semantic density is in the 20 bit range due to more slots being discarded at higher widths. This affects only the size, not the speed. Since the desired hardware talks to an AXI bus, the chosen word size is 32-bit to match AXI's minimum bus width.
+One way that this ISA deviates from MISC is that MISC is more focused on power consumption. You can burn power by accessing either a register file or a RAM. MISC uses stacks instead, where the stacks are implemented using bidirectional shift register logic. Maybe I'm being a little naughty, but a single block RAM is used for stacks and fast user variables. It follows the Forth model from the 1970s, where stacks in RAM are accessible by the app. What are the odds that I'll need a Forth CPU in silicon that minimizes power consumption in the way MISC does?
+
+An instruction word may be any number of bits. 16, 18 and 32 are popular sizes. Optimal semantic density is in the 20 bit range due to more slots being discarded at higher widths. This affects only the size, not the speed. Since the intended hardware talks to an AXI bus, the chosen word size is 32-bit to match AXI's minimum bus width.
 
 The model's instruction size affects the ISA as well as the low level implementation, so to be the most useful we bet on a single horse: 32-bit. Word size affects how much memory you can address. In an embedded system, even a cheap one, there can be megabytes of data. Even phone apps weigh in at 10MB for a small one. Yes, that's ridiculous. However, supposing a CPU should be able to address that, a word size of at least 24 bits would be needed. Large SPI flash needs even more address bits, and keep in mind you need to add another address bit every two years. So, 32-bit is just about optimal for "small systems".
 
