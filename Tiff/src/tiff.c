@@ -21,6 +21,62 @@ int tiffIOR = 0;                        // Interpret error detection when not 0
 int ShowCPU = 0;                        // Enable CPU status display
 int printed = 0;                        // flag, T if text was printed on console
 
+/// GCC POSIX dependency: getline
+
+#ifndef getline
+// https://stackoverflow.com/questions/735126/are-there-alternate-implementations-of-gnu-getline-interface/735472#735472
+// if typedef doesn't exist (msvc, blah)
+typedef intptr_t ssize_t;
+
+ssize_t getline(char **lineptr, size_t *n, FILE *stream) {
+    size_t pos;
+    int c;
+
+    if (lineptr == NULL || stream == NULL || n == NULL) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    c = fgetc(stream);
+    if (c == EOF) {
+        return -1;
+    }
+
+    if (*lineptr == NULL) {
+        *lineptr = malloc(128);
+        if (*lineptr == NULL) {
+            return -1;
+        }
+        *n = 128;
+    }
+
+    pos = 0;
+    while(c != EOF) {
+        if (pos + 1 >= *n) {
+            size_t new_size = *n + (*n >> 2);
+            if (new_size < 128) {
+                new_size = 128;
+            }
+            char *new_ptr = realloc(*lineptr, new_size);
+            if (new_ptr == NULL) {
+                return -1;
+            }
+            *n = new_size;
+            *lineptr = new_ptr;
+        }
+
+        ((unsigned char *)(*lineptr))[pos ++] = c;
+        if (c == '\n') {
+            break;
+        }
+        c = fgetc(stream);
+    }
+
+    (*lineptr)[pos] = '\0';
+    return pos;
+}
+#endif // getline
+
 /// Primordial brain keyword support for host functions.
 /// These are interpreted after the word is not found in the Forth dictionary.
 /// They prevent dead heads from being put into the dictionary.
@@ -461,7 +517,8 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("theme-color", TiffColorTheme);
 
     AddKeyword("stats",   tiffSTATS);
-    AddKeyword(".static", ListOpcodeCounts);
+    AddKeyword(".opcodes", ListOpcodeCounts);
+    AddKeyword(".profile", ListProfile);
     AddKeyword("+cpu",    tiffCPUon);
     AddKeyword("-cpu",    tiffCPUoff);
     AddKeyword("cpu",     tiffCPUgo);

@@ -16,7 +16,9 @@ void NewGroup (void);                           // close out pending instruction
 void tiffMACRO (void);                  // convert current definition to a macro
 void tiffCALLONLY (void);                 // tag current definition as call-only
 void tiffANON (void);                     // tag current definition as anonymous
-void ListOpcodeCounts(void);             // list the static opcode count profile
+void ListOpcodeCounts(void);                    // list the opcode count profile
+void ListProfile(void);                              // list the ROM hit profile
+
 uint32_t DisassembleIR(uint32_t IR);         // disassemble an instruction group
 void NoExecute (void);                                 // ensure we're compiling
 void CompComma (void);               // append number on the stack to code space

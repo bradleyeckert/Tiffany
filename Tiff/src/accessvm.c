@@ -735,14 +735,14 @@ void RegChanges (FILE *fp, int format) {
         uint32_t actual   = ChangeRegs[0][i];
         uint32_t expected = ChangeRegs[1][i];
         char *reg = RegName[i];
-        if (actual != ChangeRegs[1][i]) {
+        if (actual != expected) {
             changes++;
             switch (format) {
                 case 2: // VHDL format:
-                fprintf(fp, "changes(%d, x\"%08X\", x\"%08X\");\n", i, expected, actual);
+                fprintf(fp, "    changes(%d, x\"%08X\");\n", i, actual);
                 break;
                 case 1: // C format:
-                fprintf(fp, "changes(%d, 0x%08X, 0x%08X);\n", i, expected, actual);
+                fprintf(fp, "    changes(%d, 0x%08X);\n", i, actual);
                 break;
                 default:
                 fprintf(fp, "%s changed from %08X to %08X\n", reg, expected, actual);
@@ -766,10 +766,10 @@ void MakeTestVectors(FILE *ofp, int length, int format) {
         uint32_t ir = FetchCell(pc);
         switch (format) {
         case 2:         // VHDL
-            fprintf(ofp, "newstep(x\"%08X\", %d);  -- PC = %04Xh\n", ir, i, pc*4);
+            fprintf(ofp, "    newstep(x\"%08X\", %d);  -- PC = %04Xh\n", ir, i, pc);
             break;
             default:    // C
-            fprintf(ofp, "newstep(0x%08X, %d);  // PC = %04Xh\n", ir, i, pc*4);
+            fprintf(ofp, "    newstep(0x%08X, %d);  // PC = %04Xh\n", ir, i, pc);
         }
         Tracing=1;  VMstep(ir,0);
         Tracing=0;
@@ -786,7 +786,6 @@ void MakeTestVectors(FILE *ofp, int length, int format) {
 /// Starting from Windows 10 TH2 (v1511), conhost.exe and cmd.exe support ANSI
 /// and VT100 Escape Sequences out of the box (although they have to be enabled).
 ////////////////////////////////////////////////////////////////////////////////
-
 
 void CellDump(int length, uint32_t addr) {  // DUMP
     uint32_t line[8];                       // buffer for ASCII
@@ -869,7 +868,9 @@ void DumpReturnStack(void){
 }
 
 void ResetColor(void) {
-	printf("\033[0m");          		// reset colors
+    if (ColorTheme) {
+        printf("\033[0m");              // reset colors
+    }
 }
 
 uint32_t DisassembleGroup(uint32_t addr, int hilight) {

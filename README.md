@@ -2,6 +2,15 @@
 
 An embeddable model Forth for small MCUs and FPGAs. The VM forms a sandbox in a C system, relying on C libraries for middleware and other wheels that you don't want to reinvent.
 
+## Why Forth?
+
+Programmers are shaped by their tools. Simplicity is more than antidote to complexity in the modern age. It's a Zen practice in its own right that benefits developers as thinking beings. The Forth flow is about programming in the moment. You can type in a word at the console and immediately test it. Of course, you could code up a bunch of words in a file and compile the file, but that's not the Forth flow. Files are where you collect the useful concepts that worked.
+
+The `ok>` prompt means something. You are here now.
+
+Forth is a mathematics of implicit informatics. Parameters are passed implicitly between functions,
+which seems to lead to a lower information entropy (H) in the program. No other language offers this.
+
 ## Small Instruction Stack Machines
 
 Although RISC-V and other CPUs are available for embedded system use, they have a complexity cost in terms of software and hardware.
@@ -21,8 +30,3 @@ Instruction set simulation is very simple, so it can run quickly in even an MCU.
 
 A C console application provides a minimal Forth that has a built-in VM model for executing code. This VM model simulates the instruction set of the FPGA or other versions of the CPU so that if a full Forth system is built up in that environment, a text file in C, assembly, Verilog, or VHDL can be generated to provide the same system on embedded hardware. This is simpler than traditional cross complation because the host runs target code at compile time. Code that's binary compatible with the target can be tested on the desktop.
 
-## Why Forth?
-
-Programmers are shaped by their tools. Simplicity is more than antidote to complexity in the modern age. It's a Zen practice in its own right that benefits developers as thinking beings. The Forth flow is about programming in the moment. You can type in a word at the console and immediately test it. Of course, you could code up a bunch of words in a file and compile the file, but that's not the Forth flow. Files are where you collect the useful concepts that worked.
-
-The `ok>` prompt means something. You are here now. Try to live there.

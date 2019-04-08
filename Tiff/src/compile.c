@@ -13,6 +13,8 @@
 /// so that executable code can take over later by redirecting
 /// the header's xtc and xte.
 
+// Hopefully, all of the opcode dependencies are in this file.
+
 static void FlushLit (void);            // forward reference
 uint32_t OpcodeCount[64];               // static instruction count
 
@@ -90,11 +92,37 @@ uint32_t DisassembleIR(uint32_t IR) {  // return imm if JMP
     return r;
 }
 
-void ListOpcodeCounts(void) {           // list the static profile
+void ListOpcodeCounts(void) {           // list the opcode profiles
     int i;                              // in csv format
+    printf("\n\"Static Instruction Counts\"");
     for (i=0; i<64; i++){
         printf("\n%d,\"%s\",%d", i, OpName(i), OpcodeCount[i]);
-    }   printed = 1;
+    }
+	#ifdef TRACEABLE
+    printf("\n\"Dynamic Instruction Counts\"");
+    for (i=0; i<64; i++){
+        printf("\n%d,\"%s\",%d", i, OpName(i), OpCounter[i]);
+    }
+    memset(OpCounter,0,64*sizeof(uint64_t)); // clear afterwards
+	#endif
+	printed = 1;
+}
+
+void ListProfile(void) {                // list the execution profile
+	#ifdef TRACEABLE                    // in csv format
+    printf("\n\"Addr\",\"Hits\"");
+    int last = ROMsize;
+    while (--last) {                    // end of internal ROM
+        if (ProfileCounts[last] != 0) break;
+    }
+    for (int i=0; i<last; i++){
+        printf("\n\"%04Xh\",%d", i*4, ProfileCounts[i]);
+    }
+    memset(ProfileCounts, 0, ROMsize*sizeof(uint64_t));  // clear afterwards
+    #else
+    printf("\nNot supported");
+	#endif
+	printed = 1;
 }
 
 void InitIR (void) {                    // initialize the IR

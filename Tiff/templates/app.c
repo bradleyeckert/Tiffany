@@ -6,6 +6,9 @@
 
 #define IMM    (IR & ~(-1<<slot))
 
+//`0`#define ROMsize `3`
+//`0`#define RAMsize `4`
+
 //`0`int tiffIOR; // error code
 //`0`static const uint32_t ROM[`2`] = {`5`};
 //`0`uint32_t FetchROM(uint32_t addr) {
@@ -570,4 +573,17 @@ void SetDbgReg(uint32_t n) {  // EXPORTED
 // read from the debug mailbox
 uint32_t GetDbgReg(void) {  // EXPORTED
     return DebugReg;
+}
+
+// Only use for testbench
+uint32_t vmRegRead(int ID) {
+	switch(ID) {
+		case 0: return T;
+		case 1: return N;
+		case 2: return (RP+ROMsize)*4;
+		case 3: return (SP+ROMsize)*4;
+		case 4: return (UP+ROMsize)*4;
+		case 5: return PC*4;
+		default: return 0;
+	}
 }

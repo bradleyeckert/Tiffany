@@ -6,7 +6,10 @@
 
 #define IMM    (IR & ~(-1<<slot))
 
-//`0`int tiffIOR; // error code
+int tiffIOR; // global error code
+
+// This file is usable as a template for generating a C testbench
+
 //`0`static const uint32_t ROM[`2`] = {`5`};
 //`0`uint32_t FetchROM(uint32_t addr) {
 //`0`  if (addr < `2`) {
@@ -56,8 +59,9 @@
     #define VMregs 10
 
     uint32_t VMreg[VMregs];     // registers with undo capability
-    uint32_t OpCounter[64];     // opcode counter
-    unsigned long cyclecount;
+    uint64_t OpCounter[64];     // opcode counter
+    uint64_t ProfileCounts[ROMsize];
+    uint64_t cyclecount;
 
     static int New; // New trace type, used to mark new sections of trace
     static uint32_t RAM[RAMsize];
@@ -232,12 +236,13 @@ static void StoreX (uint32_t addr, uint32_t data, int shift, int mask) {
 
 void VMpor(void) {  // EXPORTED
 #ifdef TRACEABLE
-    memset(OpCounter, 0, 64);           // clear opcode profile counters
+    memset(OpCounter,0,64*sizeof(uint64_t)); // clear opcode profile counters
+    memset(ProfileCounts, 0, ROMsize*sizeof(uint64_t));  // clear profile counts
     cyclecount = 0;                     // cycles since POR
 #endif // TRACEABLE
     PC = 0;  RP = 64;  SP = 32;  UP = 64;
     T=0;  N=0;  DebugReg = 0;
-    memset(RAM, 0, RAMsize);            // clear RAM
+    memset(RAM, 0, RAMsize*sizeof(uint64_t));  // clear RAM
 }
 
 uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
@@ -255,6 +260,9 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 
     if (!Paused) {
 #ifdef TRACEABLE
+        if (PC < ROMsize) {
+            ProfileCounts[PC]++;
+        }
         Trace(3, RidPC, PC, PC + 1);
 #endif // TRACEABLE
         PC = PC + 1;
@@ -269,7 +277,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
             opcode = (IR >> slot) & 0x3F;   // slot = 26, 20, 14, 8, 2
         }
 #ifdef TRACEABLE
-        if (OpCounter[opcode] != 0xFFFFFFFF) OpCounter[opcode]++;
+        OpCounter[opcode]++;
         New = 1;  // first state change in an opcode
         if (!Paused) cyclecount += 1;
 #endif // TRACEABLE

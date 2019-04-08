@@ -1,0 +1,1 @@
+The app.c template is the same as the vm.c file in /src

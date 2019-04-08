@@ -92,4 +92,6 @@ cp @ equ s2
 
 make ../templates/app.c ../demo/vm.c       \ C version
 make ../templates/app.A51 ../8051/vm.A51   \ 8051 version
-\ 20 make ../templates/testbench.c ../testbench/test.c
+
+make ../templates/app.c ../testbench/vm.c  \ C version for testbench
+\ 100 make ../templates/test_main.c ../testbench/test.c

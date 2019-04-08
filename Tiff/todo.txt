@@ -3,11 +3,6 @@ Add a simple version of tiff.f (maybe testbench.f) that has some test code.
    Compile to ROM location 0 instructions that exercise one opcode at a time until
    all of them have been hit at least once. 
 
-Add C version of testbench:
-   Using the 'expected' table, step the VM and look at expected values.
-   If an error occurs, display the line number it occurred at, the offending registers,
-   and the expected and actual values. Stop after the first error.
-
 Add DO LOOP, FOR NEXT, etc.
 Add SPI bootloader that waits for hex file for 1 second then attempts boot.
 Note: Underlying system should handle XON/XOFF and serial buffering.
