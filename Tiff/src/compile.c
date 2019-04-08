@@ -101,9 +101,9 @@ void ListOpcodeCounts(void) {           // list the opcode profiles
 	#ifdef TRACEABLE
     printf("\n\"Dynamic Instruction Counts\"");
     for (i=0; i<64; i++){
-        printf("\n%d,\"%s\",%d", i, OpName(i), OpCounter[i]);
+        printf("\n%d,\"%s\",%u", i, OpName(i), OpCounter[i]);
     }
-    memset(OpCounter,0,64*sizeof(uint64_t)); // clear afterwards
+    memset(OpCounter,0,64*sizeof(uint32_t)); // clear afterwards
 	#endif
 	printed = 1;
 }
@@ -116,9 +116,9 @@ void ListProfile(void) {                // list the execution profile
         if (ProfileCounts[last] != 0) break;
     }
     for (int i=0; i<last; i++){
-        printf("\n\"%04Xh\",%d", i*4, ProfileCounts[i]);
+        printf("\n\"%04Xh\",%u", i*4, ProfileCounts[i]);
     }
-    memset(ProfileCounts, 0, ROMsize*sizeof(uint64_t));  // clear afterwards
+    memset(ProfileCounts, 0, ROMsize*sizeof(uint32_t));  // clear afterwards
     #else
     printf("\nNot supported");
 	#endif

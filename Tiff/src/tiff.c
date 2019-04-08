@@ -444,8 +444,8 @@ void tiffRunBrk (void) {                // run to breakpoint
 
 void tiffSTATS (void) {
 #ifdef TRACEABLE
-    static unsigned long mark;
-    printf("\nClock cycles elapsed: %lu, since last: %lu ",
+    static uint32_t mark;
+    printf("\nClock cycles elapsed: %u, since last: %u ",
            cyclecount, cyclecount-mark);
     mark = cyclecount;
 #endif

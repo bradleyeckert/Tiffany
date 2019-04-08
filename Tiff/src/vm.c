@@ -59,9 +59,9 @@ int tiffIOR; // global error code
     #define VMregs 10
 
     uint32_t VMreg[VMregs];     // registers with undo capability
-    uint64_t OpCounter[64];     // opcode counter
-    uint64_t ProfileCounts[ROMsize];
-    uint64_t cyclecount;
+    uint32_t OpCounter[64];     // opcode counter
+    uint32_t ProfileCounts[ROMsize];
+    uint32_t cyclecount;
 
     static int New; // New trace type, used to mark new sections of trace
     static uint32_t RAM[RAMsize];
@@ -236,8 +236,8 @@ static void StoreX (uint32_t addr, uint32_t data, int shift, int mask) {
 
 void VMpor(void) {  // EXPORTED
 #ifdef TRACEABLE
-    memset(OpCounter,0,64*sizeof(uint64_t)); // clear opcode profile counters
-    memset(ProfileCounts, 0, ROMsize*sizeof(uint64_t));  // clear profile counts
+    memset(OpCounter,0,64*sizeof(uint32_t)); // clear opcode profile counters
+    memset(ProfileCounts, 0, ROMsize*sizeof(uint32_t));  // clear profile counts
     cyclecount = 0;                     // cycles since POR
 #endif // TRACEABLE
     PC = 0;  RP = 64;  SP = 32;  UP = 64;
