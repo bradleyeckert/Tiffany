@@ -44,7 +44,7 @@
 \ Since KEY is raw input (rather than the cooked input served up by the terminal)
 \ you would implement keyboard history (if any) here.
 
-: keyt  begin key dup 27 <> while . repeat drop ;
+: keyt  begin key dup 32 <> while . repeat drop ;
 
 : refill  ( -- ior )  0 ;
 

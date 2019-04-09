@@ -70,20 +70,54 @@ int tiffEKEY()
 
 #elif _WIN32
 #include <conio.h>
+
+// Arrow keys in Linux are VT220 escape sequences.
+// We are now in Windows, so need to re-map them to escape sequences.
+
+char KbBuf[256];                 // circular input buffer
+uint8_t head = 0;
+uint8_t tail = 0;
+
+static void push (uint8_t c) {               // push byte into buffer
+    KbBuf[head++] = c;
+}
+static int size (void) {
+    return 0xFF & (head-tail);
+}
+
+static int fill (void) {
+    uint8_t c;
+    while (kbhit()) {                   // got data?
+        if (size() > 252) break;        // FIFO is full
+        c = _getch();
+        switch (c) {
+            case 0:                     // re-map function keys
+                push ('\e');            // escape
+                push ('O');
+                c = _getch();
+                break;
+            case 0x0E0:                 // re-map arrow keys
+                push ('\e');            // escape
+                push ('[');
+                c = _getch();
+                break;
+            default: break;
+        }
+        push (c);
+    }
+    return size();
+}
+
 static int tiffKEYQ (void) {
-    return kbhit();
+    return fill();
 }
 
 static int tiffEKEY (void) {
-    int r = _getch();
-    switch (r) {
-        case 0:
-            return 0x180 + _getch();   // re-map function keys
-        case 0x0E0:
-            return 0x100 + _getch();   // re-map arrow keys
-        default: return r;
-    }
+    while (!fill()) {};
+    uint8_t c = KbBuf[tail++];
+    return c;
 }
+
 #else
 #error Unknown OS for console I/O
 #endif
