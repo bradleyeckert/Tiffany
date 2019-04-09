@@ -1,13 +1,17 @@
+Add DOES>, POSTPONE
 
 Add a simple version of tiff.f (maybe testbench.f) that has some test code.
    Compile to ROM location 0 instructions that exercise one opcode at a time until
    all of them have been hit at least once. 
 
-Add DO LOOP, FOR NEXT, etc.
 Add SPI bootloader that waits for hex file for 1 second then attempts boot.
 Note: Underlying system should handle XON/XOFF and serial buffering.
-Add CREATE DOES>
 
 Add a QUIT loop.
 
 Change Tiff to not use !AS for writing to "SPI flash", etc. Use vmUser function 5.
+
+------------------------------
+
+POSTPONE looks at a word and decides whether it's IMMEDIATE.
+To do this, it compares xce to xtc. If they match, it's IMMEDATE: compile it.

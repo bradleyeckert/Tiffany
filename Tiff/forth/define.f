@@ -41,11 +41,22 @@
 \ | 5   | Smudged     | '0' when header is findable (used by : etc.) |
 \ | 4:0 | Name Length | 0 to 31                                      |
 
-: equ  \ n --                           \ new equ
+: equ  \ n -- | -- n                    \ new equ
    ['] equ_ee  ['] equ_ec
    header[ ,h
    ]header
 ;
+
+(
+: create  \ -- | -- n
+   ['] equ_ee  ['] equ_ec
+   header[ -1 ,h                        \ blank does> address
+   DP @ ,h                              \ W is data space address
+   ]header
+;
+)
+
+\ create is like equ. does> patches the xte of create, whose bits are
 
 : last  current @ @ + ;       \ n -- a  \ index into last defined header
 : clrlast    last dup >r SPI@ and r> SPI! ;   \ bits offset --

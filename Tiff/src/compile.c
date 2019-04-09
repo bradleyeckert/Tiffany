@@ -194,7 +194,7 @@ static void CompCall (uint32_t addr, int notail) {
     StoreByte(1, CALLED);
 }
 
-static void Compile (uint32_t addr) {   // the normal compile
+void Compile (uint32_t addr) {          // the normal compile
     CompCall (addr, 0);
 }
 
@@ -386,6 +386,7 @@ void CompThen (void){  // ( addr slot -- )
     uint32_t slot = PopNum();
     uint32_t mark = PopNum();
     uint32_t dest = FetchCell(CP) >> 2;
+    if (!mark) return;          // skip if nothing to resolve
 //  printf("\nFwd Resolving %X = %X, slot %d ", mark, dest, slot);
     StoreROM((-1<<slot) + dest, mark);
 }
@@ -428,27 +429,78 @@ void CompUntil (void){  // ( addr -- )
     Implicit(opSKIPNZ);
     Explicit(opJUMP, dest>>2);
 }
+
+uint32_t tick_e(char *name) {
+    uint32_t ht = WordFind(name);
+    if (!ht) {
+        printf("\nInternal name not found");
+        tiffIOR = -21;
+    }
+    return FetchCell(ht-4) & 0xFFFFFF;
+}
+void compile(char *name) {
+    Compile(tick_e(name));
+}
+
+// Other structures use the control stack
+static uint32_t leaveList[2][16]; // private LEAVE list
+int leaves = 0;                   // number of LEAVEs to resolve
+
+void CompDo (void){  // ( -- 0 0 addr )
+    NoExecute();  NewGroup();
+    PushNum(0);                 // DO has no forward jump
+    PushNum(0);
+    Implicit(opSWAP);
+    Implicit(opCOM);
+    Implicit(opOnePlus);
+    Implicit(opPUSH);
+    Implicit(opPUSH);           // push -end, begin
+    CompBegin();
+    leaves = 0;
+}
+void CompQDo (void){  // ( -- a s addr )
+    NoExecute();
+    compile("(?do)");
+    CompAhead();                // skip to end of LOOP
+    CompBegin();
+    leaves = 0;
+}
+void CompLeave (void){
+    NoExecute();
+    compile("unloop");
+    CompAhead();                // skip to end of LOOP
+    leaveList[1][leaves] = PopNum();
+    leaveList[0][leaves] = PopNum();
+    leaves++;
+}
+void CompLoop (void){   // ( addr slot  addr -- )
+    NoExecute();
+    compile("(loop)");
+    CompAgain();                // resolve the DO
+    while (leaves--) {          // rake the leaves
+        PushNum(leaveList[0][leaves]);
+        PushNum(leaveList[1][leaves]);
+        CompThen();
+    }
+    CompThen();
+}
+void CompI (void){
+    NoExecute();
+    Implicit(opRfetch);
+}
+
+
 void CompDefer (void){                  // compile a forward reference
     NewGroup();
     Explicit(opJUMP, 0x3FFFFFF);
 }
-void CompComma (void){                  // append number on the stack to code space
-    uint32_t cp = FetchCell(CP);
-    StoreROM(PopNum(), cp);
-    if (cp & 3) tiffIOR = -23;          // not cell aligned
-    StoreCell(cp+4, CP);
-}
-void CompType(uint32_t cp) {
+void CompCount(uint32_t cp) {
     Literal(cp);
     Implicit(opCfetchPlus);
-    uint32_t ht = WordFind("type");
-    if (ht) {
-        uint32_t xte = FetchCell(ht-4) & 0xFFFFFF;
-        Compile(xte);
-    } else {
-        printf("\nInternal name not found");
-        tiffIOR = -21;
-    }
+}
+void CompType(uint32_t cp) {
+    CompCount(cp);
+    compile("type");
 }
 
 // Functions invoked after being found, from either xte or xtc.

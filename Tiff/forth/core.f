@@ -57,6 +57,21 @@
 : hex     16 base ! ;                   \ --
 : link>   @ 16777215 and ;              \ a1 -- a2, mask off upper 8 bits
 
+: (?do)  \ limit i -- | R: RA -- -limit i RA+4 | RA
+   over over invert + 0<
+   |-if drop exit |
+   drop  swap invert 1+                 \ i -limit
+   r> swap >r
+   swap cell+ >r
+; call-only
+: (loop)  \ R: -limit i RA -- -limit i+1 RA | RA+4
+   R> R> 1+ R>  over over +             \ RA i+1 ~limit sum
+   |-if drop >R >R >R exit |            \ keep going
+   drop drop drop cell+ >R              \ quit loop
+; call-only
+: j       12 rp @ ; call-only           \ R: ~limit j ~limit i RA
+: unloop  R> R> drop R> drop >R ; call-only
+
 : umove  \ a1 a2 n --                   \ move cells, assume cell aligned
    negate |+if 3drop exit |
    1+ swap >r swap

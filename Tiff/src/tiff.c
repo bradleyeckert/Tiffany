@@ -21,14 +21,12 @@ int tiffIOR = 0;                        // Interpret error detection when not 0
 int ShowCPU = 0;                        // Enable CPU status display
 int printed = 0;                        // flag, T if text was printed on console
 
-/// GCC POSIX dependency: getline
+// Version of getline that converts tabs to spaces upon reading
 
-#ifndef getline
 // https://stackoverflow.com/questions/735126/are-there-alternate-implementations-of-gnu-getline-interface/735472#735472
 // if typedef doesn't exist (msvc, blah)
 typedef intptr_t ssize_t;
-
-ssize_t getline(char **lineptr, size_t *n, FILE *stream) {
+ssize_t GetLine(char **lineptr, size_t *n, FILE *stream) {
     size_t pos;
     int c;
 
@@ -64,8 +62,14 @@ ssize_t getline(char **lineptr, size_t *n, FILE *stream) {
             *n = new_size;
             *lineptr = new_ptr;
         }
-
-        ((unsigned char *)(*lineptr))[pos ++] = c;
+        if (c == '\t') {
+            int padding = 4 - (pos & 3);    // tab=4
+            while (padding--) {
+                ((unsigned char *)(*lineptr))[pos ++] = ' ';
+            }
+        } else {
+            ((unsigned char *)(*lineptr))[pos ++] = c;
+        }
         if (c == '\n') {
             break;
         }
@@ -75,7 +79,15 @@ ssize_t getline(char **lineptr, size_t *n, FILE *stream) {
     (*lineptr)[pos] = '\0';
     return pos;
 }
-#endif // getline
+
+void UnCase(char *s){
+    uint8_t len = strlen(s);
+    while (len--) {
+        *s = toupper(*s);
+        s++;
+    }
+}
+
 
 /// Primordial brain keyword support for host functions.
 /// These are interpreted after the word is not found in the Forth dictionary.
@@ -112,6 +124,9 @@ void tiffCPUgo (void) {                 // Enter the single stepper
 void tiffCLS (void) {                   // clear screen
     printf("\033[2J");                  // CLS
     if (ShowCPU) printf("\033[%dH", DumpRows+2);  // cursor below CPU
+}
+
+void tiffNOOP (void) {
 }
 
 /* void tiffROMstore (void) {
@@ -170,6 +185,40 @@ void FollowingToken (char *str, int max) {  // parse the next blank delimited st
     FetchString(str, addr, (uint8_t)length);
 //    printf("\n|%s|, >IN=%d ", str, FetchCell(TOIN));
 }
+
+void tiff_ELSE (void) {
+    int level = 1;
+    while (level) {
+        FollowingToken(name, MaxTIBsize);
+        int length = strlen(name);
+        if (length) {
+            UnCase(name);
+            if (!strcmp(name, "[IF]")) {
+                level++;
+            }
+            if (!strcmp(name, "[THEN]")) {
+                level--;
+            }
+            if (!strcmp(name, "[ELSE]") && (level==1)) {
+                level--;
+            }
+        } else {                    // EOL
+            if (!Refill()) {        // unexpected EOF
+                tiffIOR = -58;
+                return;
+            }
+        }
+    }
+}
+
+void tiff_IF (void) {
+    int flag = PopNum();
+    if (!flag) {
+        tiff_ELSE();
+    }
+}
+
+
 // When a file is included, the rest of the TIB is discarded.
 // A new file is pushed onto the file stack
 
@@ -221,13 +270,72 @@ void tiffEQU (void) {
     CommaHeader(name, ~0, ~1, 0, 0);
 }
 
-void tiffBUFFER (void) {  // allot space in RAM
+void tiffALLOT (void) {
+    int n = PopNum();
+    StoreROM(-1,12);
+    StoreCell((FetchCell(DP)+n), DP);
+}
+void tiffBUFFER (void) {                // allot space in data space
     FollowingToken(name, 32);
-    uint32_t cp = FetchCell(CP);
+    uint32_t dp = FetchCell(DP);
     uint32_t bytes = PopNum();
-    StoreCell(cp + bytes, CP);
-    CommaH(cp);
+    for (int i=0; i<bytes; i++) {       // initialize to 0 (non-standard)
+        StoreByte(0, dp++);
+    }
+    StoreCell(dp + bytes, DP);
+    CommaH(dp);
     CommaHeader(name, ~0, ~1, 0, 0);
+}
+void tiffVAR (void) {
+    PushNum(4);
+    tiffBUFFER();
+}
+int Hselector = 0; // 0=RAM, 1=ROM
+uint32_t here(void) {
+    if (Hselector) {
+        return FetchCell(CP);
+    } else {
+        return FetchCell(DP);
+    }
+}
+void allot(int n) {                     // aligned allot
+    uint32_t H = here() + n;
+    if (H&(n-1)) {                      // alignment problem
+        tiffIOR = -23;
+    }
+    if (Hselector) {
+        StoreCell(H, CP);
+    } else {
+        StoreCell(H, DP);
+    }
+}
+void tiffCREATE (void) {
+    FollowingToken(name, 32);
+    CommaH(-1);
+    CommaH(here());
+    CommaHeader(name, ~0, ~1, 0, 0);
+}
+void tiffHERE (void) {
+    PushNum(here());
+}
+void tiffCOMMA (void) {
+    uint32_t h;
+    uint32_t n = PopNum();
+    if (Hselector) {
+        h = FetchCell(CP);
+        StoreROM(n, h);
+    } else {
+        h = FetchCell(DP);
+        StoreCell(n, h);
+    }
+    allot(4);
+}
+
+void tiffRAM (void) {
+    Hselector = 0;
+}
+void tiffROM (void) {
+    Hselector = 1;
 }
 
 void tiffNONAME (void) {
@@ -241,7 +349,7 @@ void tiffCOLON (void) {
     NewGroup();
     CommaHeader(name, FetchCell(CP), ~16, -1, 0xE0);
     // xtc must be multiple of 8 ----^
-    StoreByte(1, COLONDEF);
+    StoreByte(1, COLONDEF); // there's a header to resolve
     StoreCell(1, STATE);
 }
 
@@ -286,14 +394,16 @@ void GetQuotedString (char terminator) {
     FetchString(name, address, (uint8_t)length); // name is the string
 }
 
-// ( comment style expects a ).
-// TIBnotExhausted can check if EOL was reached, but in this case we don't care.
-// The file extension of ( allows multi-line comments, which we don't support.
+void SkipPast(char c); // forward reference
 void TiffParen (void) {
-    GetQuotedString(')');
+    SkipPast(')');
 }
+void TiffBrace (void) {
+    SkipPast('}');
+}
+
 void TiffDotParen (void) {
-    TiffParen();
+    GetQuotedString(')');
     printf("%s", name);
 }
 void TiffCR (void) {
@@ -311,12 +421,31 @@ void tiffCommaString (void) {
     CommaCstring(name);
 }
 
-void tiffMsgString (void) {
+void tiffMsgString (void) {     // ."
+    NoExecute();
     CompAhead();
     uint32_t cp = FetchCell(CP);
     tiffCommaString();
     CompThen();
     CompType(cp);
+}
+void tiffCString (void) {       // C"
+    if (FetchCell(STATE)) {
+        CompAhead();
+        uint32_t cp = FetchCell(CP);
+        tiffCommaString();
+        CompThen();
+        Literal(cp);
+    }
+}
+void tiffSString (void) {       // S"
+    if (FetchCell(STATE)) {
+        CompAhead();
+        uint32_t cp = FetchCell(CP);
+        tiffCommaString();
+        CompThen();
+        CompCount(cp);
+    }
 }
 
 uint32_t Htick (void) {  // ( -- )
@@ -354,7 +483,24 @@ void tiffIS (void) {                    // patch ROM defer
 }
 void tiffBracketTICK (void) {           // [']
     uint32_t ht = Htick();
-    Literal(FetchCell(ht-4) & 0xFFFFFF);
+    Literal(FetchCell(ht-4) & 0xFFFFFF);// xte
+}
+void tiffPostpone (void) {              // POSTPONE
+    NoExecute();
+    uint32_t ht = Htick();
+    uint32_t xte = FetchCell(ht-4) & 0xFFFFFF;
+    uint32_t xtc = FetchCell(ht-8) & 0xFFFFFF;
+    ht = WordFind("do-immediate");
+    if (!ht) {
+        tiffIOR = -21;
+        return;
+    }
+    if (xtc == (FetchCell(ht-4) & 0xFFFFFF)) { // is IMMEDIATE
+        Compile(xte);
+    } else {
+        PushNum(xte);  CompLiteral();   // encode xte
+        compile("compile,");
+    }
 }
 
 char *LocateFilename (int id) {         // get filename from FileID
@@ -368,7 +514,7 @@ char *LocateFilename (int id) {         // get filename from FileID
 }
 
 void tiffLOCATE (void) {                // locate source text
-    size_t bufsize = MaxTIBsize;        // for getline
+    size_t bufsize = MaxTIBsize;        // for GetLine
     char *buf;
     uint32_t ht = Htick();
     uint8_t fileid = FetchByte(ht-9);
@@ -387,11 +533,11 @@ void tiffLOCATE (void) {                // locate source text
     buf = name;                         // reuse the name buffer for text line
 
     for (i=1; i<linenum; i++) {         // skip to the definition
-        length = getline(&buf, &bufsize, fp);
+        length = GetLine(&buf, &bufsize, fp);
         if (length < 0) goto ex;        // unexpected EOF
     }
     for (i=0; i<LocateLines; i++) {
-        length = getline(&buf, &bufsize, fp);
+        length = GetLine(&buf, &bufsize, fp);
         if (length < 0) break;          // EOF
         printf("%-4d %s", linenum, buf);
         linenum++;
@@ -507,10 +653,15 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("bye",     tiffBYE);
     AddKeyword("[",       tiffSTATEoff);
     AddKeyword("]",       tiffSTATEon);
+    AddKeyword("[if]",    tiff_IF);
+    AddKeyword("[then]",  tiffNOOP);
+    AddKeyword("[else]",  tiff_ELSE);
+
     AddKeyword("\\",      tiffCOMMENT);
     AddKeyword("//",      tiffCOMMENT); // too much cog dis switching between C and Forth
     AddKeyword(".",       tiffDOT);
     AddKeyword("(",       TiffParen);
+    AddKeyword("{",       TiffBrace);
     AddKeyword(".(",      TiffDotParen);
     AddKeyword("cr",      TiffCR);
     AddKeyword("theme-mono",  TiffMonoTheme);
@@ -528,16 +679,27 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("CaseInsensitive", tiffCISon);
     AddKeyword("include", tiffINCLUDE);
     AddKeyword("equ",     tiffEQU);
+    AddKeyword("constant",tiffEQU);
+    AddKeyword("variable",tiffVAR);
+    AddKeyword("create",  tiffCREATE);
+    AddKeyword("ram",     tiffRAM);
+    AddKeyword("rom",     tiffROM);
+    AddKeyword("here",    tiffHERE);
+
+    AddKeyword("allot",   tiffALLOT);
     AddKeyword("words",   tiffWORDS);
     AddKeyword("xwords",  tiffXWORDS);
-//    AddKeyword("buffer:", tiffBUFFER);
+    AddKeyword("buffer:", tiffBUFFER);
     AddKeyword(":noname", tiffNONAME);
     AddKeyword(":",       tiffCOLON);
     AddKeyword(";",       CompSemi);
-    AddKeyword(",",       CompComma);
+    AddKeyword(",",       tiffCOMMA);
     AddKeyword("literal", CompLiteral);
     AddKeyword(",\"",     tiffCommaString);
     AddKeyword(".\"",     tiffMsgString);
+    AddKeyword("s\"",     tiffSString);
+    AddKeyword("c\"",     tiffCString);
+
     AddKeyword("[char]",  TiffLitChar);
     AddKeyword("char",    TiffChar);
     AddKeyword("exit",    CompExit);
@@ -554,10 +716,18 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("+until",  CompPlusUntil);
     AddKeyword("while",   CompWhile);
     AddKeyword("repeat",  CompRepeat);
+    AddKeyword("?do",     CompQDo);
+    AddKeyword("do",      CompDo);
+    AddKeyword("loop",    CompLoop);
+    AddKeyword("i",       CompI);
+    AddKeyword("leave",   CompLeave);
+
 //    AddKeyword("rom!",    tiffROMstore);
     AddKeyword("h'",      tiffHTICK);
     AddKeyword("'",       tiffTICK);
     AddKeyword("[']",     tiffBracketTICK);
+    AddKeyword("postpone",tiffPostpone);
+
     AddKeyword("macro",   tiffMACRO);
     AddKeyword("call-only", tiffCALLONLY);
     AddKeyword("anonymous", tiffANON);
@@ -659,15 +829,6 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddEquate ("|pad|",      PADsize);
 }
 
-// strlwr(*s) etc. is not standard C: Linux is not amused.
-void UnCase(char *s){
-    uint8_t len = strlen(s);
-    while (len--) {
-        *s = toupper(*s);
-        s++;
-    }
-}
-
 int NotKeyword (char *key) {            // do a command, return 0 if found
     int i = 0;
     char str1[16], str2[16];
@@ -714,12 +875,27 @@ void TOINbump (void) {                  // point to next TIB byte
     uint32_t toin = FetchCell(TOIN);
     StoreCell(toin+1, TOIN);
 }
+int SkipToChar (char c){                // skip to character
+    while (TIBnotExhausted()) {
+        if (TIBchar() == c) return 1;   // T if found
+        TOINbump();
+    } return 0;
+}
 void SkipWhite (void){                  // skip whitespsce (blanks)
     while (TIBnotExhausted()) {
         if (TIBchar() != ' ') break;
         TOINbump();
     }
 }
+void SkipPast(char c) {
+    do {
+        if (SkipToChar(c)) {            // found
+            TOINbump();                 // skip the terminator
+            return;
+        }
+    } while (Refill());
+}
+
 // Parse without skipping leading delimiter, return string on stack.
 // Also return length of string for C to check.
 uint32_t tiffPARSE (void) {             // ( delimiter -- addr length )
@@ -809,14 +985,47 @@ ex: PopNum();                           // keyword is an empty string
     PopNum();
 }
 
+int Refill(void) {
+    char *buf;                          // text from file
+    buf = File.Line;
+    int TIBaddr = FetchCell(TIBB);
+    size_t bufsize = MaxTIBsize;        // for GetLine
+    StoreCell(0, TOIN);
+    int length = GetLine(&buf, &bufsize, File.fp);
+    if (length < 0) {                   // EOF, un-nest
+#ifdef VERBOSE
+        printf("Closing file handle 0x%X\n", (int)File.fp);
+#endif
+        fclose (File.fp);
+        filedepth--;
+        if (filedepth == 0) {
+            StoreCell(0, SOURCEID);
+        }
+        StoreByte(File.FID, FILEID);
+        StoreHalf(File.LineNumber, LINENUMBER);
+        tiffCOMMENT();
+        return 0;
+    }
+    if (length >= MaxTIBsize) tiffIOR = -62;
+    while ((length > 0) && (File.Line[length-1] < ' ')) {
+        length--;	// trim trailing lf or crlf
+    }
+    File.Line[length] = 0;
+    File.LineNumber++;
+    StoreHalf(File.LineNumber, LINENUMBER);
+    StoreCell((uint32_t)length, TIBS);
+    StoreString(File.Line, (uint32_t)TIBaddr);
+    return 1;
+}
+
 // Keyboard input uses the default terminal cooked mode.
-// Since getline includes the trailing LF (or CR), we lop it off.
+// Since GetLine includes the trailing LF (or CR), we lop it off.
 
 char *DefaultFile = "tiff.f";           // Default file to load from
 
 void tiffQUIT (char *cmdline) {
     int loaded = 0;
-    size_t bufsize = MaxTIBsize;        // for getline
+    size_t bufsize = MaxTIBsize;        // for GetLine
     char *buf;                          // text from stdin (keyboard)
     int length, source, TIBaddr;
     int NoHi = 0;                       // suppress extra "ok"s
@@ -861,9 +1070,9 @@ void tiffQUIT (char *cmdline) {
 #ifdef __linux__
                         CookedMode();
 #endif // __linux__
-                        length = getline(&buf, &bufsize, stdin);   // get input line
+                        length = GetLine(&buf, &bufsize, stdin);   // get input line
                         if (length >= MaxTIBsize) tiffIOR = -62;
-#if (OKstyle==0)        // undo the newline that getline generated
+#if (OKstyle==0)        // undo the newline that GetLine generated
                         printf("\033[A\033[%dC", (int)strlen(File.Line));
 #endif
                         if (length > 0) length--;   // remove LF or CR
@@ -874,31 +1083,7 @@ void tiffQUIT (char *cmdline) {
                     ColorNormal();
                     break;
                 case 1:
-                    buf = File.Line;
-                    length = getline(&buf, &bufsize, File.fp);
-                    if (length < 0) {  // EOF
-#ifdef VERBOSE
-                        printf("Closing file handle 0x%X\n", (int)File.fp);
-#endif
-                        fclose (File.fp);
-                        filedepth--;
-                        if (filedepth == 0) {
-                            StoreCell(0, SOURCEID);
-                        }
-						StoreByte(File.FID, FILEID);
-						StoreHalf(File.LineNumber, LINENUMBER);
-                        tiffCOMMENT();
-                    } else {
-                        if (length >= MaxTIBsize) tiffIOR = -62;
-						while ((length > 0) && (File.Line[length-1] < ' ')) {
-							length--;	// trim trailing lf or crlf
-						}
-                        File.Line[length] = 0;
-                        File.LineNumber++;
-                        StoreHalf(File.LineNumber, LINENUMBER);
-                        StoreCell((uint32_t)length, TIBS);
-                        StoreString(File.Line, (uint32_t)TIBaddr);
-                    }
+                    Refill();
                     break;
                 default:	// unexpected
                     StoreCell(0, SOURCEID);

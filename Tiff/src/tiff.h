@@ -26,6 +26,7 @@ extern int printed;
 uint32_t tiffPARSENAME (void);                             // ( -- addr length )
 uint32_t tiffPARSE (void);
 void initFilelist(void);
+int Refill(void);
 
 // used by main.c, defined in tiff.c
 // might move to accessvm.c later, with memory and stack access functions.

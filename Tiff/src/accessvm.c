@@ -365,6 +365,9 @@ void EraseSPIimage (void) {  // Erase SPI flash image and internal ROM
 
 void StoreROM (uint32_t data, uint32_t address) {
     int ior = 0;
+    if (address&3) {
+        ior = -23;
+    }
     if (address < (ROMsize*4)){
         uint32_t rom = FetchCell(address);
         ior = WriteROM(rom & data, address);

@@ -89,9 +89,20 @@ cp @ equ s2
 .( bytes of code in flash, ) HP @ hp0 - .
 .( bytes of header.) cr
 
+: ten  20 0 do i .  i 10 = if leave then  loop ;
 
-make ../templates/app.c ../demo/vm.c       \ C version
-make ../templates/app.A51 ../8051/vm.A51   \ 8051 version
+0 [if] .( should not print )
+[else] .( Including tester) cr
+[then]
 
-make ../templates/app.c ../testbench/vm.c  \ C version for testbench
+: ENVIRONMENT? ( c-addr u -- false ) 2drop 0 ;
+ram \ , is to RAM
+
+include test/ttester.fs
+include test/coretest.fs
+
+\ make ../templates/app.c ../demo/vm.c       \ C version
+\ make ../templates/app.A51 ../8051/vm.A51   \ 8051 version
+
+\ make ../templates/app.c ../testbench/vm.c  \ C version for testbench
 \ 100 make ../templates/test_main.c ../testbench/test.c

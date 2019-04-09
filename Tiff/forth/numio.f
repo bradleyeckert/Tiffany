@@ -22,6 +22,7 @@ cp @ equ string_pg ," \e[2J"            \ ANSI "clear screen"
 \ `personality` is an execution table for I/O.
 \ The default personality is the following table in ROM:
 
+rom
 cp @ equ term_personality               \ terminal personality
 ' term_emit ,
 ' term_cr ,
