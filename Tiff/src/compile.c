@@ -335,6 +335,14 @@ static void FakeIt (int opcode) {       // execute an opcode in the VM
     DbgGroup(opcode, opSKIP, opNOP, opNOP, opNOP);
 }
 
+void CompComma (void){                  // append number on the stack to code space
+    uint32_t cp = FetchCell(CP);
+    StoreROM(PopNum(), cp);
+    if (cp & 3) tiffIOR = -23;          // not cell aligned
+    StoreCell(cp+4, CP);
+}
+
+
 // Compile branches: | 0= -bran <20-bit> |
 
 void NoExecute (void) {

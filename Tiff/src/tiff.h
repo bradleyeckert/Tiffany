@@ -81,7 +81,8 @@ void UnCase(char *s);
 #define CONTEXT     termTCB(24)  /* 8 cells of context                        */
 #define FORTHWID    termTCB(32)  /* Forth wordlist                            */
 #define HLD         termTCB(33)  /* Numeric input pointer                     */
-#define TIB         termTCB(34)  /* Terminal Input Buffer                     */
+#define BLK         termTCB(34)  /* Current block, 0 if none                  */
+#define TIB         termTCB(35)  /* Terminal Input Buffer                     */
 // support 132-column text files plus a little extra in case of zero-terminator
 #define MaxTIBsize  136          /* Maximum bytes allowed in TIB              */
 #define PADsize     64

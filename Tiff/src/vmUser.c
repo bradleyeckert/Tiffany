@@ -70,8 +70,20 @@ int tiffEKEY()
 
 #elif _WIN32
 #include <conio.h>
-static int tiffKEYQ (void) { return kbhit(); }
-static int tiffEKEY (void) { return getch(); }
+static int tiffKEYQ (void) {
+    return kbhit();
+}
+
+static int tiffEKEY (void) {
+    int r = _getch();
+    switch (r) {
+        case 0:
+            return 0x180 + _getch();   // re-map function keys
+        case 0x0E0:
+            return 0x100 + _getch();   // re-map arrow keys
+        default: return r;
+    }
+}
 #else
 #error Unknown OS for console I/O
 #endif

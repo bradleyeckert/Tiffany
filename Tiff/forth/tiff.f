@@ -13,19 +13,10 @@ include timing.f
 include numio.f                         \ numeric I/O
 include flash.f                         \ SPI flash programming
 
-: initialize                            \ ? -- | R: ? a --
-   r> base !
-   [ 0 up ] literal             up!     \ terminal task
-   [ 4 sp ] literal  dup sp0 !  sp!     \ empty data stack
-   [ 0 rp ] literal  dup rp0 !  4 - rp! \ empty return stack
-   /pause io=term
-   base @ >r  decimal                   \ init base
-;
-
 : coldboot
    initialize                           \ return stack is now empty, you can't return to caller
    ." Hello World"
-   6 user                               \ exit to OS
+   bye
 ;
 
 cp @  0 cp !  :noname coldboot ; drop   \ resolve the forward jump to coldboot
@@ -46,6 +37,7 @@ include wean.f                          \ replace C functions in existing header
 include interpret.f                     \ parse, interpret, convert to number
 include tools.f                         \ dump, .s
 include define.f                        \ defining words
+include forth.f                         \ high level Forth
 
 \ If you XWORDS at this point, you'll see that all XTEs and XTCs are now Forth words.
 
@@ -74,16 +66,6 @@ cp @ equ s2
     ," +你~好~，~世~界+"
 : str2 s2 count ;
 
-: oops
-   cr ." Error#" .
-   w_>in w@ >in !               \ back up to error
-   parse-word type space
-;
-
-\ Interpret isn't hooked in yet, Tiff's version of QUIT is running.
-\ Let's do some sanity checking.
-
-: try  ['] interpret catch ?dup if oops then ;
 
 .( bytes in internal ROM, ) CP @ hp0 0x8000 + - .
 .( bytes of code in flash, ) HP @ hp0 - .
@@ -92,17 +74,18 @@ cp @ equ s2
 : ten  20 0 do i .  i 10 = if leave then  loop ;
 
 0 [if] .( should not print )
-[else] .( Including tester) cr
+[else] .( Hi there!) cr
 [then]
 
-: ENVIRONMENT? ( c-addr u -- false ) 2drop 0 ;
-ram \ , is to RAM
+\ : ENVIRONMENT? ( c-addr u -- false ) 2drop 0 ;
+\ ram \ , is to RAM
 
-include test/ttester.fs
-include test/coretest.fs
+\ include test/ttester.fs
+\ include test/coretest.fs
 
 \ make ../templates/app.c ../demo/vm.c       \ C version
 \ make ../templates/app.A51 ../8051/vm.A51   \ 8051 version
 
 \ make ../templates/app.c ../testbench/vm.c  \ C version for testbench
 \ 100 make ../templates/test_main.c ../testbench/test.c
+theme=color

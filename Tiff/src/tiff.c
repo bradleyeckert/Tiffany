@@ -270,11 +270,6 @@ void tiffEQU (void) {
     CommaHeader(name, ~0, ~1, 0, 0);
 }
 
-void tiffALLOT (void) {
-    int n = PopNum();
-    StoreROM(-1,12);
-    StoreCell((FetchCell(DP)+n), DP);
-}
 void tiffBUFFER (void) {                // allot space in data space
     FollowingToken(name, 32);
     uint32_t dp = FetchCell(DP);
@@ -289,53 +284,6 @@ void tiffBUFFER (void) {                // allot space in data space
 void tiffVAR (void) {
     PushNum(4);
     tiffBUFFER();
-}
-int Hselector = 0; // 0=RAM, 1=ROM
-uint32_t here(void) {
-    if (Hselector) {
-        return FetchCell(CP);
-    } else {
-        return FetchCell(DP);
-    }
-}
-void allot(int n) {                     // aligned allot
-    uint32_t H = here() + n;
-    if (H&(n-1)) {                      // alignment problem
-        tiffIOR = -23;
-    }
-    if (Hselector) {
-        StoreCell(H, CP);
-    } else {
-        StoreCell(H, DP);
-    }
-}
-void tiffCREATE (void) {
-    FollowingToken(name, 32);
-    CommaH(-1);
-    CommaH(here());
-    CommaHeader(name, ~0, ~1, 0, 0);
-}
-void tiffHERE (void) {
-    PushNum(here());
-}
-void tiffCOMMA (void) {
-    uint32_t h;
-    uint32_t n = PopNum();
-    if (Hselector) {
-        h = FetchCell(CP);
-        StoreROM(n, h);
-    } else {
-        h = FetchCell(DP);
-        StoreCell(n, h);
-    }
-    allot(4);
-}
-
-void tiffRAM (void) {
-    Hselector = 0;
-}
-void tiffROM (void) {
-    Hselector = 1;
 }
 
 void tiffNONAME (void) {
@@ -484,23 +432,6 @@ void tiffIS (void) {                    // patch ROM defer
 void tiffBracketTICK (void) {           // [']
     uint32_t ht = Htick();
     Literal(FetchCell(ht-4) & 0xFFFFFF);// xte
-}
-void tiffPostpone (void) {              // POSTPONE
-    NoExecute();
-    uint32_t ht = Htick();
-    uint32_t xte = FetchCell(ht-4) & 0xFFFFFF;
-    uint32_t xtc = FetchCell(ht-8) & 0xFFFFFF;
-    ht = WordFind("do-immediate");
-    if (!ht) {
-        tiffIOR = -21;
-        return;
-    }
-    if (xtc == (FetchCell(ht-4) & 0xFFFFFF)) { // is IMMEDIATE
-        Compile(xte);
-    } else {
-        PushNum(xte);  CompLiteral();   // encode xte
-        compile("compile,");
-    }
 }
 
 char *LocateFilename (int id) {         // get filename from FileID
@@ -664,8 +595,8 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("{",       TiffBrace);
     AddKeyword(".(",      TiffDotParen);
     AddKeyword("cr",      TiffCR);
-    AddKeyword("theme-mono",  TiffMonoTheme);
-    AddKeyword("theme-color", TiffColorTheme);
+    AddKeyword("theme=mono",  TiffMonoTheme);
+    AddKeyword("theme=color", TiffColorTheme);
 
     AddKeyword("stats",   tiffSTATS);
     AddKeyword(".opcodes", ListOpcodeCounts);
@@ -679,21 +610,22 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("CaseInsensitive", tiffCISon);
     AddKeyword("include", tiffINCLUDE);
     AddKeyword("equ",     tiffEQU);
-    AddKeyword("constant",tiffEQU);
-    AddKeyword("variable",tiffVAR);
-    AddKeyword("create",  tiffCREATE);
+    AddKeyword("constant",tiffEQU);     // non-tickable constant
+    AddKeyword("variable",tiffVAR);     // non-tickable variable
+
+/*    AddKeyword("create",  tiffCREATE);
     AddKeyword("ram",     tiffRAM);
     AddKeyword("rom",     tiffROM);
     AddKeyword("here",    tiffHERE);
+    AddKeyword("allot",   tiffALLOT); */
 
-    AddKeyword("allot",   tiffALLOT);
     AddKeyword("words",   tiffWORDS);
     AddKeyword("xwords",  tiffXWORDS);
     AddKeyword("buffer:", tiffBUFFER);
     AddKeyword(":noname", tiffNONAME);
     AddKeyword(":",       tiffCOLON);
     AddKeyword(";",       CompSemi);
-    AddKeyword(",",       tiffCOMMA);
+    AddKeyword(",",       CompComma);
     AddKeyword("literal", CompLiteral);
     AddKeyword(",\"",     tiffCommaString);
     AddKeyword(".\"",     tiffMsgString);
@@ -726,7 +658,6 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("h'",      tiffHTICK);
     AddKeyword("'",       tiffTICK);
     AddKeyword("[']",     tiffBracketTICK);
-    AddKeyword("postpone",tiffPostpone);
 
     AddKeyword("macro",   tiffMACRO);
     AddKeyword("call-only", tiffCALLONLY);
@@ -808,7 +739,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddEquate ("tibs",       TIBS);
     AddEquate ("tibb",       TIBB);
     AddEquate (">in",        TOIN);
-    AddEquate ("w_>in",      TEMPTOIN);
+//    AddEquate ("w_>in",      TEMPTOIN);
     AddEquate ("w_linenum",  LINENUMBER);
     AddEquate ("c_fileid",   FILEID);
     AddEquate ("c_wids",     WIDS);
@@ -825,6 +756,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddEquate ("tib",        TIB);
     AddEquate ("head",       HEAD);
     AddEquate ("hld",        HLD);
+    AddEquate ("blk",        BLK);
     AddEquate ("pad",        PAD);
     AddEquate ("|pad|",      PADsize);
 }
@@ -931,8 +863,8 @@ void tiffINTERPRET(void) {
         PushNum(tempAddr);
         PushNum(tempLen);
 #endif
-        uint32_t ht = tiffFIND();     // search for keyword in the dictionary
-        if (ht) {  // ( 0 ht )
+        uint32_t ht = tiffFIND();       // search for keyword in the Forth dictionary
+        if (ht) {  // ( 0 ht )          // it's a Forth (in ROM) word
             PopNum();
             PopNum();
             uint32_t xt;
@@ -942,14 +874,12 @@ void tiffINTERPRET(void) {
                 xt = 0xFFFFFF & FetchCell(ht - 4);
             }
             tiffFUNC(xt);
-        } else {
-            // dictionary search using ROM head space not implemented yet.
-            // Assume it falls through with ( c-addr len ) on the stack.
+        } else {                        // okay, maybe an internal keyword
             uint32_t length = PopNum();
             if (length>31) length=32;   // sanity check
             uint32_t address = PopNum();
             FetchString(name, address, (uint8_t)length);
-            if (NotKeyword(name)) {    // try to convert to number
+            if (NotKeyword(name)) {     // try to convert to number
                 char *eptr;
                 long int x = strtol(name, &eptr, 0); // automatic base (C format)
                 if ((x == 0) && ((errno == EINVAL) || (errno == ERANGE))) {
@@ -970,7 +900,7 @@ void tiffINTERPRET(void) {
                 }
             }
 #ifdef VERBOSE
-            else printf(" <<< Local Keyword\n");
+            printf(" <<< Local Keyword\n");
 #endif
         }
         if (Sdepth()<0) {
@@ -1030,6 +960,7 @@ void tiffQUIT (char *cmdline) {
     int length, source, TIBaddr;
     int NoHi = 0;                       // suppress extra "ok"s
     LoadKeywords();
+    StoreCell(STATUS, FOLLOWER);  	    // only terminal task
     while (1){
         tiffIOR = 0;
         InitializeTIB();

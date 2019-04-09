@@ -99,3 +99,6 @@
 ' get-macro     -21 replace-xt
 ' get-compile   -17 replace-xt
 
+\ If you XWORDS at this point, you will see that all words use Forth code.
+\ Their xte and xtc fields are addresses in ROM.
+

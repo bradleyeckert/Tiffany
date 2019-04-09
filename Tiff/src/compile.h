@@ -12,8 +12,7 @@ void Literal (uint32_t n);                                  // compile a literal
 void tiffFUNC (int32_t n);                                 // execute a function
 void CompSemi (void);                                          // end definition
 void CompExit (void);                                            // compile exit
-void Compile (uint32_t addr);                                  // compile a word
-void compile (char *name);                                // compile at run time
+void CompComma (void);                                    // compile cell to ROM
 void NewGroup (void);                           // close out pending instruction
 void tiffMACRO (void);                  // convert current definition to a macro
 void tiffCALLONLY (void);                 // tag current definition as call-only

@@ -647,7 +647,7 @@ void InitializeTIB (void) {
     DbgGroup(opDUP, opPORT, opSetSP, opDUP, opXOR);
     StoreCell(TiffRP0, RP0);            // USER vars in terminal task
     StoreCell(TiffSP0, SP0);
-    StoreCell(STATUS, FOLLOWER);  	    // only one task
+//    StoreCell(STATUS, FOLLOWER);  	    // only one task
     StoreCell(TIB, TIBB);               // point to TIB
     StoreCell(0, STATE);
     StoreCell(0, COLONDEF);             // clear this byte and the other three

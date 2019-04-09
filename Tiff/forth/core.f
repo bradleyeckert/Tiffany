@@ -179,6 +179,7 @@
 ;
 : */mod  >r m* r> m/mod ;
 : */     */mod swap drop ;
+: bye    6 user ;                       \ exit to OS if there is one
 
 \ This version expects two registers for the top of the data stack
 

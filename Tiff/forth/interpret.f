@@ -151,8 +151,10 @@
    tonumber  r> if negate then
 ;
 
+\ These expect a Forth QUIT loop for THROW to work.
+
 : interpret
-   begin  >in @ w_>in w!                \ save position in case of error
+   begin  \ >in @ w_>in w!                \ save position in case of error
       parse-word  dup                   \ next blank-delimited string
    while
       hfind                             \ addr len | 0 ht
@@ -171,5 +173,3 @@
       depth 0< -4 and throw             \ stack underflow
    repeat  2drop
 ;
-
-
