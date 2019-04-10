@@ -5,6 +5,33 @@
 : ,   cp dup >r  @ SPI!  4 r> +! ;      \ n --
 : ,h  hp dup >r  @ SPI!  4 r> +! ;
 
+\ Equates for terminal variables puts copies in header space. See tiff.c/tiff.h.
+\ Some are omitted to save header space.
+
+handler      equ handler
+base         equ base
+hp           equ hp
+cp           equ cp
+dp           equ dp
+state        equ state
+current      equ current
+source-id    equ source-id
+personality  equ personality
+tibs         equ tibs
+tibb         equ tibb
+>in          equ >in
+c_wids       equ c_wids
+c_caseins    equ c_caseins
+\ head         equ head
+context      equ context
+forthwid     equ forthwid
+hld          equ hld
+blk          equ blk
+tib          equ tib
+\ maxtibsize   equ maxtibsize
+|pad|        equ |pad|
+pad          equ pad
+
 \ Define a compiler
 \ char params:  c_colondef c_litpend c_slot c_called
 

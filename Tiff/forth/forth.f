@@ -140,7 +140,7 @@ void CompUntil (void){  // ( addr -- )
 \ Interpret isn't hooked in yet, Tiff's version of QUIT is running.
 \ Let's do some sanity checking.
 
-: try  ['] interpret catch ?dup if .quit then ;
+: try  ['] interpret catch  ?dup if .quit postpone \ then ;
 
 \ here's the rub: refill.
 \ The VM only has access to KEY, KEY?, and EMIT. No files.
