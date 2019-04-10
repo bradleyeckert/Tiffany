@@ -74,36 +74,64 @@ int tiffEKEY()
 // Arrow keys in Linux are VT220 escape sequences.
 // We are now in Windows, so need to re-map them to escape sequences.
 
-char KbBuf[256];                 // circular input buffer
+char KbBuf[256];                        // circular input buffer
 uint8_t head = 0;
 uint8_t tail = 0;
 
-static void push (uint8_t c) {               // push byte into buffer
+static void push (uint8_t c) {          // push byte into buffer
     KbBuf[head++] = c;
 }
 static int size (void) {
     return 0xFF & (head-tail);
 }
 
+static void translate (const char table[][8], int len, char c) {
+    for (int i=0; i<len; i++) {
+        const char *s = table[i];
+        char n;
+        if (c == *s++) {                // translate byte to
+            push ('\e');                // escape sequence:
+            while((n = *s++)) {push(n);}
+            return;
+        }
+    }
+    push(c);                            // no translation
+}
+
+static const char cursor_table[10][8] = {
+    "K[D", "H[A",  "P[B",  "M[C",       // left up down right
+    "G[H", "I[5~", "Q[6~", "O[F",       // home PgUp PgDn end
+    "s[1;5D", "t[1;5C"                  //^left ^right
+};
+
+static const char function_table[30][8] = {
+    ";[P",    "<[Q",    "=[R",    ">[S",    // F1 F2 F3 F4
+    "?[15",   "@[16",   "A[17",   "B[18",   // F5 F6 F7 F8
+    "C[19",   "D[1:",                       // ctrl:
+    "^[P",    "_[Q",    "`[R",    "a[S",    // F1 F2 F3 F4
+    "b[1;5P", "c[1;5Q", "d[1;5R", "e[1;5S", // F5 F6 F7 F8
+    "e[1;5T", "e[1;5U",                     // shift:
+    "T[1;2P", "U[1;2Q", "V[1;2R", "W[1;2S", // F1 F2 F3 F4
+    "X[15;2~","Y[16;2~","Z[17;2~","[[18;2~",// F5 F6 F7 F8
+    "\[20;2~","][21;2~"                     // F9 F10
+};
+
 static int fill (void) {
     uint8_t c;
     while (kbhit()) {                   // got data?
-        if (size() > 252) break;        // FIFO is full
+        if (size() > 248) break;        // FIFO is full
         c = _getch();
         switch (c) {
             case 0:                     // re-map function keys
-                push ('\e');            // escape
-                push ('O');
-                c = _getch();
+                translate(function_table, 30, _getch());
                 break;
             case 0x0E0:                 // re-map arrow keys
-                push ('\e');            // escape
-                push ('[');
-                c = _getch();
+                translate(cursor_table, 10, _getch());
                 break;
-            default: break;
+            default:
+                push (c);
+                break;
         }
-        push (c);
     }
     return size();
 }

@@ -2,7 +2,6 @@
 
 \ Code and headers are both in flash. Write using SPI!.
 
-: aligned  3 + -4 and ;                 \ a -- a'
 : ,   cp dup >r  @ SPI!  4 r> +! ;      \ n --
 : ,h  hp dup >r  @ SPI!  4 r> +! ;
 
@@ -96,4 +95,3 @@ defer NewGroup
       0 calladdr ! exit
    then op_exit Implicit
 ;
-

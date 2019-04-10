@@ -26,6 +26,112 @@
    literal,  ['] compile, compile,      \ postpone it
 ; immediate
 
+: (of)  \ x1 x2 R: RA -- x1 x2 R: RA | R: RA+4
+   over over xor 0= if                  \ if match
+      drop drop  r> cell+ >r exit       \ then skip branch
+   then
+; call-only
+
+\ ------------------------------------------------------------------------------
+\ Control structures
+\ see compiler.f
+
+: NoExecute   \ --                      Must be compiling
+   exit \ for testing
+   state @ 0<> -14 and throw
+;
+: NeedSlot  \ slot -- addr
+   NoExecute
+   cp @ swap 0xF000 > if cell+ 2+ then  \ large address, leave room for >16-bit address
+   c_slot c@ > if NewGroup then
+   cp @
+;
+: _jump   \ -- slot
+   c_slot c@  -1 over lshift invert     \ create a blank address field
+   op_jmp Explicit
+;
+: ahead   \ -- addr slot
+   14 NeedSlot  _jump
+; immediate
+: ifnc   \ -- addr slot
+   20 NeedSlot
+   op_ifc: Implicit  _jump
+; immediate
+: _if   \ -- addr slot
+   20 NeedSlot
+   op_ifz: Implicit  _jump
+; immediate
+: if+   \ -- addr slot
+   20 NeedSlot
+   op_-if: Implicit  _jump
+; immediate
+
+: _then \ addr slot --
+   NoExecute  NewGroup
+   over 0= if                           \ ignore dummy
+      2drop exit
+   then
+   -1 swap lshift  cp @ u2/ u2/ +       \ addr field
+   swap SPI!
+; immediate
+: _else  \ fa fs -- fa' fs'
+   postpone ahead  2swap
+   postpone _then
+; immediate
+
+0 [if]
+void CompBegin (void){  // ( -- addr )
+    NewGroup();  NoExecute();
+    PushNum(FetchCell(CP));
+}
+void CompAgain (void){  // ( addr -- )
+    NoExecute();
+    uint32_t dest = PopNum();
+    Explicit(opJUMP, dest>>2);
+}
+void CompWhile (void){  // ( addr -- addr' slot addr )
+    uint32_t beg = PopNum();
+    CompIf();
+    PushNum(beg);
+}
+void CompRepeat (void){  // ( addr2 slot2 addr1 )
+    CompAgain();
+    CompThen();
+}
+void CompPlusUntil (void){  // ( addr -- )
+    NeedSlot(20);
+    uint32_t dest = PopNum();
+    Implicit(opSKIPGE);
+    Explicit(opJUMP, dest>>2);
+}
+void CompUntil (void){  // ( addr -- )
+    NeedSlot(20);
+    uint32_t dest = PopNum();
+    Implicit(opSKIPNZ);
+    Explicit(opJUMP, dest>>2);
+}
+[then]
+
+0 [if]
+: OF ( -- ofsys )
+   POSTPONE (OF) (BEGIN) POSTPONE 2DROP ;  IMMEDIATE
+
+: ENDOF ( casesys ofsys -- casesys )
+   POSTPONE (ELSE)  >RESOLVE  HERE 4 - !  (BEGIN) ; IMMEDIATE
+
+: ENDCASE ( casesys -- )
+   POSTPONE DROP
+   BEGIN
+      ?DUP WHILE
+      -?>RESOLVE
+   REPEAT -BAL ;  IMMEDIATE
+
+: CASE ( -- casesys )
+   +BAL 0 ; IMMEDIATE
+[then]
+
+
+
 : .quit  \ error# --
    cr ." Error#" .
    cr tib tibs @ type cr
@@ -43,15 +149,6 @@
 
 \ Since KEY is raw input (rather than the cooked input served up by the terminal)
 \ you would implement keyboard history (if any) here.
-
-: keyt
-   begin  key
-      dup 32 = if drop exit then
-      dup 27 = if
-         drop key emit key emit
-      else .
-      then
-   again ;
 
 : refill  ( -- ior )  0 ;
 
