@@ -2,8 +2,26 @@
 
 \ Code and headers are both in flash. Write using SPI!.
 
-: ,   cp dup >r  @ SPI!  4 r> +! ;      \ n --
-: ,h  hp dup >r  @ SPI!  4 r> +! ;
+: ram  0 c_scope c! ;                   \ use RAM scope
+: rom  1 c_scope c! ;                   \ use flash ROM scope
+: h   c_scope c@ if CP exit then DP ;   \ scoped pointers
+: ,x  dup >r @ SPI!  4 r> +! ;          \ n addr --
+: ,c  cp ,x ;                           \ n --
+: ,h  hp ,x ;                           \ n --
+: ,d  dup >r @ !  4 r> +! ;             \ n --
+: ,   c_scope c@ if ,c exit then ,d ;   \ n --
+
+: c,x                                   \ c addr --
+   >r  hld swap over c!                 \ hld is temporary byte
+   r@ @  1 SPImove  1 r> +!             \ program one byte
+;
+: c,c  cp c,x ;                         \ c --
+: c,h  hp c,x ;                         \ c --
+: c,d  dp dup >r @ c!  1 r> +! ;        \ c --
+: c,   c_scope c@ if c,c exit then c,d ;
+
+: ram  0 c_scope c! ;                   \ use RAM scope
+: rom  1 c_scope c! ;                   \ use flash ROM scope
 
 \ Equates for terminal variables puts copies in header space. See tiff.c/tiff.h.
 \ Some are omitted to save header space.
@@ -93,14 +111,14 @@ defer NewGroup
 ; is FlushLit
 
 :noname \ NewGroup  \ --                \ finish the group and start a new one
-    FlushLit                            \ if a literal is pending, compile it
-    c_slot c@
-    dup 21 - +if: 2drop exit |          \ already at first slot
-    drop if
-       op_no: Implicit                  \ skip unused slots
-    then
-    iracc @ ,
-    ClearIR
+   FlushLit                             \ if a literal is pending, compile it
+   c_slot c@
+   dup 21 - +if: 2drop exit |           \ already at first slot
+   drop if
+      op_no: Implicit                   \ skip unused slots
+   then
+   iracc @ ,c
+   ClearIR
 ; is NewGroup
 
 : literal,  \ n --                      \ compile a literal

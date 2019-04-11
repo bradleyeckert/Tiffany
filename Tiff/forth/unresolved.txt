@@ -1,0 +1,13 @@
+﻿Internal words that are not (yet) defined in the Forth image:
+
+[ ] [if] [then] [else] // ( { 
+theme=mono theme=color stats .opcodes .profile +cpu -cpu cpu dbg cls include 
+words xwords s" c"
+?do do loop i leave
+dasm locate see
+ 
+gild replace-xt xte-is make iwords anonymous
+op_exit op_no: op_jmp op_litx op_call op_-if: op_ifc: op_ifz: op_lit op_up op_com 
+sp00 rp00 hp0 w_linenum c_fileid c_wids c_called c_slot c_litpend c_colondef c_caseins 
+calladdr nextlit iracc
+

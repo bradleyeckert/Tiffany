@@ -3,6 +3,7 @@
 \ CP, HP, and DP point to the first free bytes in code, header, and data space.
 \ System variables are already defined in Tiff because it uses them internally.
 \ See `config.h`.
+
 .( Tiff.f: )
 
 4 equ DumpColumns                       \ Output chars ~ Columns * 13 + 5
@@ -13,16 +14,15 @@ include timing.f
 include numio.f                         \ numeric I/O
 include flash.f                         \ SPI flash programming
 
-: coldboot
-   initialize                           \ return stack is now empty, you can't return to caller
+: main
    ." Hello World"
-   bye
+   cr 10 0 do i . loop
 ;
 
-cp @  0 cp !  :noname coldboot ; drop   \ resolve the forward jump to coldboot
-cp !
+include end.f                           \ finish the app
 
-\ The demo doesn't use anything after this...
+\ ------------------------------------------------------------------------------
+\ TEST STUFF: The demo doesn't use anything after this...
 
 \ Here's where we reposition CP to run code out of SPI flash.
 \ Put the less time-critical parts of your application here.
@@ -31,6 +31,7 @@ cp !
 
 cp ?                                    \ display bytes of internal ROM used
 hp0 0x8000 + cp !                       \ leave 32K for headers
+cp @ equ codespace                      \ put code here in aux flash
 
 include compile.f                       \ compile opcodes, macros, calls, etc.
 include wean.f                          \ replace C functions in existing headers
@@ -57,14 +58,33 @@ include forth.f                         \ high level Forth
    平方 swap 平方 +
 ;
 
+ : zz ." hello" ;
 
 cp @ equ s1
    ," 123456"
-   : str1 s1 count ;
+
+: str1 s1 count ;
 
 cp @ equ s2
     ," +你~好~，~世~界+"
 : str2 s2 count ;
+
+: spell  \ n --
+   case
+   0 of ." zero"  endof
+   1 of ." one"   endof
+   2 of ." two"   endof
+   3 of ." three" endof
+   dup .
+   endcase
+;
+
+: mynum  ( n "name" -- )
+   rom  create ,
+   ram  does> @
+;
+ 111 mynum z1
+\ 222 mynum z2
 
 
 .( bytes in internal ROM, ) CP @ hp0 0x8000 + - .
@@ -78,12 +98,11 @@ cp @ equ s2
 [then]
 
 \ : ENVIRONMENT? ( c-addr u -- false ) 2drop 0 ;
-\ ram \ , is to RAM
 
 \ include test/ttester.fs
 \ include test/coretest.fs
 
-\ make ../templates/app.c ../demo/vm.c       \ C version
+make ../templates/app.c ../demo/vm.c       \ C version
 \ make ../templates/app.A51 ../8051/vm.A51   \ 8051 version
 
 \ make ../templates/app.c ../testbench/vm.c  \ C version for testbench

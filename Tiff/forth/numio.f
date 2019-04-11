@@ -99,14 +99,3 @@ cp @ equ term_personality               \ terminal personality
 : ?       @ . ;                         \ a --
 : <#>     <# negate begin >r # r> 1+ +until drop #s #> ;  \ ud digits-1
 : h.x     base @ >r hex  0 swap <#> r> base !  type space ;
-
-\ Should add code to load RAM from table in ROM pointed to by ROM[4].
-
-: initialize                            \ ? -- | R: ? a --
-   r> base !                            \ save return address
-   [ 0 up ] literal             up!     \ terminal task
-   [ 4 sp ] literal  dup sp0 !  sp!     \ empty data stack
-   [ 0 rp ] literal  dup rp0 !  4 - rp! \ empty return stack
-   /pause io=term
-   base @ >r  decimal                   \ init base
-; call-only

@@ -5,6 +5,7 @@
 
 \ |Cell| \[31:24\]                        | \[23:0\]                           |
 \ |----|:---------------------------------| ----------------------------------:|
+\ | -4 | optional W                                                            |
 \ | -3 | Source File ID                   | List of words that reference this  |
 \ | -2 | Source Line, Low byte            | xtc, Execution token for compile   |
 \ | -1 | Source Line, High byte           | xte, Execution token for execute   |
@@ -13,7 +14,7 @@
 \ | 1+ | counted name string ...
 
 : header[  \ <name> xte xtc --          \ populate PAD with header data
-   pad |pad| -1 fill                    \ default fields are blank
+   pad |pad| -1 fill                    \ default fields (starting with FID) are blank
    [ pad 4 + ] literal !+ !+
    current @ @ swap !+                  \ add xtc, xte, link
    >r parse-word dup r> c!+             \ store length
@@ -33,6 +34,8 @@
 : flags!  \ c --                        \ change flags (from 0)
    [ pad 16 + ] literal c+!
 ;
+: alignc    cp @ aligned cp ! ;         \ --
+: align     h @ aligned h ! ;           \ --
 
 \ | Bit | Usage       | Description                                  |
 \ |:---:|:------------|:---------------------------------------------|
@@ -43,29 +46,33 @@
 
 : equ  \ n -- | -- n                    \ new equ
    ['] equ_ee  ['] equ_ec
-   header[ ,h
+   header[  ,h
    ]header
 ;
 
-(
+\ CREATE is in ROM.
 : create  \ -- | -- n
    ['] equ_ee  ['] equ_ec
    header[ -1 ,h                        \ blank does> address
-   DP @ ,h                              \ W is data space address
+   h @ ,h                               \ W is code space address
    ]header
 ;
-)
-
-\ create is like equ. does> patches the xte of create, whose bits are
 
 : last  current @ @ + ;       \ n -- a  \ index into last defined header
 : clrlast    last dup >r SPI@ and r> SPI! ;   \ bits offset --
 \ : clrlast    last dup SPI! ;   \ bits offset --
 : clr-xtcbits  invert -8 clrlast ;      \ n --   flip bits in the current xtc
+: clr-xtebits  invert -4 clrlast ;      \ n --   flip bits in the current xte
 : clr-flagbits  invert 4 clrlast ;      \ n --   flip bits in the flags
 : macro      4 clr-xtcbits ;  \ --      \ flip xtc from compile to macro
 : immediate  8 clr-xtcbits ;  \ --      \ flip xtc from compile to immediate
 : call-only  128 clr-flagbits ;  \ --   \ clear the jumpable bit
+
+: does>  \ patches created fields, pointed to by CURRENT
+   8 clr-xtcbits                        \ see wean.f
+   8 clr-xtebits                        \ change xte and xtc to does> actions
+   cp @  last 20 -  SPI!                \ resolve the does> field
+; immediate
 
 : ]  1 state ! ;              \ --      \ resume compilation
 : [  0 state ! ; immediate    \ --      \ interpret
@@ -85,11 +92,15 @@
 ; immediate
 
 : :  \ <name> --                        \ new :
+   alignc
    cp @  ['] get-compile  header[
    255 [ pad 15 + ] literal c!          \ blank count byte = 255
    224 flags!                           \ flags: jumpable, anon, smudged
    ]header
    1 c_colondef c!  ]
+;
+: :noname  \ -- xt
+   alignc  NewGroup  cp @  ]
 ;
 
 \ Now that Tiff's : and ; are hidden, only Forth XTs will be used.
@@ -102,3 +113,10 @@
 \ If you XWORDS at this point, you will see that all words use Forth code.
 \ Their xte and xtc fields are addresses in ROM.
 
+: here      h @ ;                      \ -- a
+: allot     h +! ;                     \ n --
+: erase     0 fill ;                   \ --
+: /allot    h @ swap dup allot erase ; \ n --
+: buffer:   h @ equ  allot ;           \ length "name" --
+: constant  equ ;
+: variable  align h @ equ  4 /allot ;

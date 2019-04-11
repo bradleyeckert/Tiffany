@@ -242,7 +242,7 @@ void VMpor(void) {  // EXPORTED
 #endif // TRACEABLE
     PC = 0;  RP = 64;  SP = 32;  UP = 64;
     T=0;  N=0;  DebugReg = 0;
-    memset(RAM, 0, RAMsize*sizeof(uint64_t));  // clear RAM
+    memset(RAM, 0, RAMsize*sizeof(uint32_t));  // clear RAM
 }
 
 uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED

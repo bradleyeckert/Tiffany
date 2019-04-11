@@ -72,6 +72,13 @@
 : j       12 rp @ ; call-only           \ R: ~limit j ~limit i RA
 : unloop  R> R> drop R> drop >R ; call-only
 
+        \ match?         no         yes
+: (of)  \ x1 x2 R: RA -- x1 R: RA | R: RA+4
+   over over xor 0= |ifz drop exit |
+   drop drop  r> cell+ >r               \ eat x and skip branch
+; call-only
+
+
 : umove  \ a1 a2 n --                   \ move cells, assume cell aligned
    negate |+if 3drop exit |
    1+ swap >r swap

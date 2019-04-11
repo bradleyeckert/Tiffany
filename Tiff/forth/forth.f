@@ -3,9 +3,12 @@
 \ Words that use INTERPRET, IMMEDIATE, etc.
 
 : \    tibs @ >in ! ; immediate         \ comment to EOL
+: literal  literal, ; immediate         \ compile a literal
+: [char]  char literal, ; immediate     \ compile a char
+: exit    ,exit ; immediate             \ compile exit
 
-\ Header space:     W xtc xte link name
-\ offset from ht: -12  -8  -4    0 4
+\ Header space:     W len xtc xte link name
+\ offset from ht: -16 -12  -8  -4    0 4
 
 : h'  \ "name" -- ht
    parse-word  hfind  swap 0<>          \ len -1 | ht 0
@@ -14,6 +17,9 @@
 : '   \ "name" -- xte
    h' invert cell+ invert link>
 ;
+: [']   \ "name" --
+   ' literal,
+; immediate
 
 \ Note (from Standard): [compile] is obsolescent and is included as a
 \ concession to existing implementations.
@@ -26,19 +32,12 @@
    literal,  ['] compile, compile,      \ postpone it
 ; immediate
 
-: (of)  \ x1 x2 R: RA -- x1 x2 R: RA | R: RA+4
-   over over xor 0= if                  \ if match
-      drop drop  r> cell+ >r exit       \ then skip branch
-   then
-; call-only
-
 \ ------------------------------------------------------------------------------
 \ Control structures
 \ see compiler.f
 
 : NoExecute   \ --                      Must be compiling
-   exit \ for testing
-   state @ 0<> -14 and throw
+   state @ 0= -14 and throw
 ;
 : NeedSlot  \ slot -- addr
    NoExecute
@@ -46,27 +45,36 @@
    c_slot c@ > if NewGroup then
    cp @
 ;
-: _jump   \ -- slot
+: _jump     \ -- slot
    c_slot c@  -1 over lshift invert     \ create a blank address field
    op_jmp Explicit
 ;
-: ahead   \ -- addr slot
+: defer  \ <name> --
+   cp @  ['] get-compile  header[
+   1 [ pad 15 + ] literal c!            \ count byte = 1
+   192 flags!                           \ flags: jumpable, anon
+   ]header   NewGroup
+   0x3FFFFFF op_jmp Explicit
+;
+: is  \ xt --
+   2/ 2/  67108864 -  '  SPI!           \ resolve forward jump
+;
+: ahead     \ C: -- addr slot
    14 NeedSlot  _jump
 ; immediate
-: ifnc   \ -- addr slot
+: ifnc      \ C: -- addr slot
    20 NeedSlot
    op_ifc: Implicit  _jump
 ; immediate
-: _if   \ -- addr slot
+: if        \ C: -- addr slot | E: flag --
    20 NeedSlot
    op_ifz: Implicit  _jump
 ; immediate
-: if+   \ -- addr slot
+: if+       \ C: -- addr slot | E: n -- n
    20 NeedSlot
    op_-if: Implicit  _jump
 ; immediate
-
-: _then \ addr slot --
+: then      \ C: addr slot --
    NoExecute  NewGroup
    over 0= if                           \ ignore dummy
       2drop exit
@@ -74,63 +82,92 @@
    -1 swap lshift  cp @ u2/ u2/ +       \ addr field
    swap SPI!
 ; immediate
-: _else  \ fa fs -- fa' fs'
+: else      \ C: fa fs -- fa' fs'
    postpone ahead  2swap
-   postpone _then
+   postpone then
+; immediate
+: begin     \ C: -- addr
+   NoExecute cp @
+; immediate
+: again     \ C: addr --
+   NoExecute  2/ 2/ op_jmp Explicit
+; immediate
+: while     \ C: addr1 -- addr2 slot2 addr1 | E: flag --
+   >r postpone if r>
+; immediate
+: repeat    \ C: addr2 slot2 addr1 --
+   postpone again
+   postpone then
+; immediate
+: +until    \ C: addr -- | E: n -- n
+   20 NeedSlot
+   op_-if: Implicit  _jump
+; immediate
+: until    \ C: addr -- | E: flag --
+   20 NeedSlot
+   op_ifz: Implicit  _jump
 ; immediate
 
-0 [if]
-void CompBegin (void){  // ( -- addr )
-    NewGroup();  NoExecute();
-    PushNum(FetchCell(CP));
-}
-void CompAgain (void){  // ( addr -- )
-    NoExecute();
-    uint32_t dest = PopNum();
-    Explicit(opJUMP, dest>>2);
-}
-void CompWhile (void){  // ( addr -- addr' slot addr )
-    uint32_t beg = PopNum();
-    CompIf();
-    PushNum(beg);
-}
-void CompRepeat (void){  // ( addr2 slot2 addr1 )
-    CompAgain();
-    CompThen();
-}
-void CompPlusUntil (void){  // ( addr -- )
-    NeedSlot(20);
-    uint32_t dest = PopNum();
-    Implicit(opSKIPGE);
-    Explicit(opJUMP, dest>>2);
-}
-void CompUntil (void){  // ( addr -- )
-    NeedSlot(20);
-    uint32_t dest = PopNum();
-    Implicit(opSKIPNZ);
-    Explicit(opJUMP, dest>>2);
-}
-[then]
+\ Eaker CASE statement
+\ Note: Number of cases is limited by the stack headspace.
+\ For a depth of 64 cells, that's 32 items.
 
-0 [if]
-: OF ( -- ofsys )
-   POSTPONE (OF) (BEGIN) POSTPONE 2DROP ;  IMMEDIATE
+: case      \ C: -- 0
+   0
+; immediate
+: of        \ C: -- addr slot | E: x1 x2 -- | --
+   postpone (of)  postpone ahead
+; immediate
+: endof     \ C: -- addr1 slot1 -- addr2 slot2
+   postpone else
+; immediate
+: endcase   \ C: 0 a1 s1 a2 s2 a3 s3 ... | E: x --
+   postpone drop
+   begin ?dup while
+      postpone then
+   repeat
+; immediate
 
-: ENDOF ( casesys ofsys -- casesys )
-   POSTPONE (ELSE)  >RESOLVE  HERE 4 - !  (BEGIN) ; IMMEDIATE
+\ Embedded strings
 
-: ENDCASE ( casesys -- )
-   POSTPONE DROP
-   BEGIN
-      ?DUP WHILE
-      -?>RESOLVE
-   REPEAT -BAL ;  IMMEDIATE
+: ,"   \ string" --
+    [char] " parse  ( addr len )
+    dup >r c,c                          \ store count
+    cp @ r@ SPImove                     \ and string
+    r> cp +!
+;
+: ."   \ string" --
+    cp @  8 +  literal,                 \ point to embedded string
+    postpone ahead  ," alignc
+    postpone then
+    op_c@+ Implicit
+    postpone type
+; immediate
 
-: CASE ( -- casesys )
-   +BAL 0 ; IMMEDIATE
-[then]
+: does>  \ patches created fields, pointed to by CURRENT
+   8 clr-xtcbits                        \ see wean.f
+   8 clr-xtebits
+   0 c_colondef c!                      \ no header to tweak
+   r>  -20 last  SPI!                   \ resolve does> address
+; call-only                             \ and terminate CREATE clause
 
-
+: unused    \ -- n
+   c_scope c@
+   case
+   0 of  [ RAMsize ROMsize + ] literal  here -  endof    \ Data
+   1 of  SPIflashSize  here -  endof
+         codespace hp @ -  swap
+   endcase
+;
+cp @ ," DataCodeHead" 1+
+: .unused  \ --
+   literal                              \ sure is nice to pull in external literal
+   3 0 do                               \ even it's not ANS
+      i c_scope c!
+      cr dup i cells + 4 type
+      ." : " unused .
+   loop  drop  ram
+;
 
 : .quit  \ error# --
    cr ." Error#" .

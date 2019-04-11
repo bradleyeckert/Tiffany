@@ -46,7 +46,12 @@
 : parse-word  \ "<spaces>name" -- c-addr u
    /source over >r  bl skip drop r> - >in +!  bl parse
 ;
-: .(  [char] ) parse type ;             \ parse to output
+: .(   \ "string)" --
+    [char] ) parse type                 \ parse to output
+;
+: char  \ "char" -- n
+   parse-word utf8@  nip nip            \ handle utf8 chars
+;
 
 \ A version of FIND that accepts a counted string and returns a header token.
 \ `toupper` converts a character to lowercase
@@ -92,6 +97,8 @@
       r> dup
    again
 ;
+: CaseInsensitive  1 c_caseins c! ;
+: CaseSensitive    0 c_caseins c! ;
 
 \ Recognize a string as a number if possible.
 

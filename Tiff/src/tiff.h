@@ -77,7 +77,7 @@ void UnCase(char *s);
 #define HEAD        termTCB(22)  /* Points to header of last found word       */
 #define LINENUMBER  termTCB(23)  /* 16-bit line number, if used.              */
 #define FILEID      termTCB(23)+2  /* 8-bit file ID, if used.                 */
-// you have 8 bits of spare RAM at termTCB(23)+3
+#define SCOPE       termTCB(23)+3  /* 8-bit SCOPE flag {dp, cp, hp}           */
 #define CONTEXT     termTCB(24)  /* 8 cells of context                        */
 #define FORTHWID    termTCB(32)  /* Forth wordlist                            */
 #define HLD         termTCB(33)  /* Numeric input pointer                     */

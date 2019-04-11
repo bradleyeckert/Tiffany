@@ -21,8 +21,8 @@ int tiffIOR = 0;                        // Interpret error detection when not 0
 int ShowCPU = 0;                        // Enable CPU status display
 int printed = 0;                        // flag, T if text was printed on console
 
-// Version of getline that converts tabs to spaces upon reading
-
+// Version of getline that converts tabs to spaces upon reading is defined here
+// getline is POSIX anyway, not necessarily in your C. Acknowledgment:
 // https://stackoverflow.com/questions/735126/are-there-alternate-implementations-of-gnu-getline-interface/735472#735472
 // if typedef doesn't exist (msvc, blah)
 typedef intptr_t ssize_t;
@@ -309,21 +309,63 @@ void tiffDEFER (void) {
     CompDefer();
 }
 
-void tiffWORDS (void) {
+void tiffWORDS (void) {                 // list words
     FollowingToken(name, 32);
     tiffWords (name, 0);
 }
 
-void tiffXWORDS (void) {
+void tiffXWORDS (void) {                // detailed word list
     FollowingToken(name, 32);
     tiffWords (name, 1);
 }
 void tiffMAKE (void) {
-    FollowingToken(name, 80);   // template filename
-    FollowingToken(name2, 80);  // generated file
-    MakeFromTemplate(name, name2);
+    FollowingToken(name, 80);           // template filename
+    FollowingToken(name2, 80);          // generated file
+    MakeFromTemplate(name, name2);      // fileio.c
 }
 
+static void CommaROM (uint32_t x) {
+    PushNum(x);
+    CompComma();
+}
+void tiffIDATA (void) {                 // compile RAM initialization table
+    StoreCell(0, TIBS);
+    tiffCOMMENT();                      // discard TIB input
+    for (int i=0; i<MaxTIBsize; i+=4) {
+        StoreCell(0, i+TIB);            // clear TIB
+    }
+    for (int i=0; i<PADsize; i+=4) {
+        StoreCell(0, i+PAD);            // clear PAD
+    }
+    uint32_t first = STATUS / 4;        // cell indices
+    uint32_t last = FetchCell(DP) / 4;
+    uint32_t length = last - first;
+
+    uint32_t *mem = (uint32_t*)malloc(RAMsize*sizeof(uint32_t));
+    for (int i=0; i<length; i++) {      // read RAM into temporary buffer
+        mem[i] = FetchCell((i+first)*4);
+    }
+    uint32_t p = 0;                     // format: {length address [data]} ... 0
+    uint32_t mark = 0;
+    while (p < length) {
+        while ((p < length) && (!mem[p])) {
+            p++;                        // skip zeros
+        }
+        mark = p;                       // index of first non-zero value
+        while ((p<length)&&(mem[p++])); // find runs of nonzero
+        CommaROM(p-mark);               // length of run
+        if (p != mark) {
+            CommaROM((first+mark)*4);   // start address
+        }
+        for (int i=mark; i<p; i++) {
+            CommaROM(mem[i]);           // data...
+        }
+    }
+    if (mark != p) {
+        CommaROM(0);                    // terminate table
+    }
+    free(mem);
+}
 void TiffLitChar (void) {
     FollowingToken(name, 32);
     Literal(name[0]);
@@ -669,9 +711,14 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("replace-xt", ReplaceXTs);   // Replace XTs  ( NewXT OldXT -- )
     AddKeyword("xte-is",  xte_is);          // Replace a word's xte  ( NewXT -- )
     AddKeyword("make",    tiffMAKE);
+    AddKeyword("idata-make", tiffIDATA);
     AddKeyword("iwords",  ListKeywords);    // internal words, after the dictionary
     // CPU opcode names
- //   AddEquate ("op_dup",   opDUP);
+    AddEquate ("RAMsize", RAMsize*4);
+    AddEquate ("ROMsize", ROMsize*4);
+    AddEquate ("SPIflashSize", SPIflashSize*4);
+
+//   AddEquate ("op_dup",   opDUP);
     AddEquate ("op_exit",  opEXIT);
  //   AddEquate ("op_+",     opADD);
  //   AddEquate ("op_user",  opUSER);
@@ -682,7 +729,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
  //   AddEquate ("op_swap",  opSWAP);
  //   AddEquate ("op_-",     opSUB);
  //   AddEquate ("op_c!+",   opCstorePlus);
- //   AddEquate ("op_c@+",   opCfetchPlus);
+    AddEquate ("op_c@+",   opCfetchPlus);
  //   AddEquate ("op_u2/",   opUtwoDiv);
     AddEquate ("op_no:",   opSKIP);
  //   AddEquate ("op_2+",    opTwoPlus);
@@ -742,6 +789,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
 //    AddEquate ("w_>in",      TEMPTOIN);
     AddEquate ("w_linenum",  LINENUMBER);
     AddEquate ("c_fileid",   FILEID);
+    AddEquate ("c_scope",    SCOPE);
     AddEquate ("c_wids",     WIDS);
     AddEquate ("c_called",   CALLED);
     AddEquate ("c_slot",     SLOT);
