@@ -9,3 +9,11 @@ Note: Underlying system should handle XON/XOFF and serial buffering.
 Add a QUIT loop.
 
 Change Tiff to not use !AS for writing to "SPI flash", etc. Use vmUser function 5.
+
+
+>BODY requires that CREATEd words are tickable. 
+Make CREATE compile machine code for a literal.
+DOES> patches the code after literal.
+The code can be CALL (CREATE) which has two following words:
+1st = Value
+2nd = DOES> action, -1 if none.

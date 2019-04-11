@@ -69,6 +69,14 @@
    |-if drop >R >R >R exit |            \ keep going
    drop drop drop cell+ >R              \ quit loop
 ; call-only
+: (+loop)  \ x -- | R: -limit i RA -- -limit i+x RA / RA+4
+   r> swap r> over +                    \ RA x i' | -limit
+   r@ over +  swap >r                   \ RA x sign | -limit i'
+   swap 0< xor                          \ RA sign | -limit i'
+   |-if  drop >r  exit |                \ keep going
+   drop  r> drop  r> drop  cell+ >r     \ quit loop
+; call-only
+
 : j       12 rp @ ; call-only           \ R: ~limit j ~limit i RA
 : unloop  R> R> drop R> drop >R ; call-only
 
@@ -141,6 +149,17 @@
    +until
    drop drop swap 2*c
 ;
+
+: sm/rem  \ d n -- rem quot
+   2dup xor >r  over >r  abs >r dabs r> um/mod
+   swap r> 0< if  negate  then
+   swap r> 0< if  negate  then ;
+
+: fm/mod  \ d n -- rem quot
+   dup >r  2dup xor >r  dup >r  abs >r dabs r> um/mod
+   swap r> 0< if  negate  then
+   swap r> 0< if  negate  over if  r@ rot -  swap 1-  then then
+   r> drop ;
 
 \ eForth model
 : m/mod

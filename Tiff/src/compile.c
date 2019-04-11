@@ -358,54 +358,54 @@ void NeedSlot(int s) {
     if (cp > 0xEFFF) s += 6;    // large address, leave room for >16-bit address
     if (FetchByte(SLOT)<s)  NewGroup();
 }
-void CompAhead (void){  // ( -- addr slot )
+void CompAhead (void){  // ( -- token )
     NeedSlot(14);
-    PushNum(FetchCell(CP));
+    uint32_t addr = FetchCell(CP);
     int slot = FetchByte(SLOT);
-    PushNum(slot);
+    PushNum((slot<<24) + addr);
     Explicit(opJUMP, ~(-1<<slot));
 }
 void CompIfNC (void){  // ( -- addr slot )
     NeedSlot(20);
-    PushNum(FetchCell(CP));
+    uint32_t addr = FetchCell(CP);
     Implicit(opSKIPNC);
     int slot = FetchByte(SLOT);
-    PushNum(slot);
+    PushNum((slot<<24) + addr);
     Explicit(opJUMP, ~(-1<<slot));
 }
 void CompIf (void){  // ( -- addr slot )
     NeedSlot(20);
-    PushNum(FetchCell(CP));
+    uint32_t addr = FetchCell(CP);
     Implicit(opSKIPNZ);
     int slot = FetchByte(SLOT);
-    PushNum(slot);
+    PushNum((slot<<24) + addr);
     Explicit(opJUMP, ~(-1<<slot));
 }
 void CompPlusIf (void){  // ( -- addr slot )
     NeedSlot(20);
-    PushNum(FetchCell(CP));
+    uint32_t addr = FetchCell(CP);
     Implicit(opSKIPGE);
     int slot = FetchByte(SLOT);
-    PushNum(slot);
+    PushNum((slot<<24) + addr);
     Explicit(opJUMP, ~(-1<<slot));
 }
 void CompThen (void){  // ( addr slot -- )
     NewGroup();  NoExecute();
-    uint32_t slot = PopNum();
-    uint32_t mark = PopNum();
+    uint32_t token = PopNum();
+    uint32_t mark = token & 0xFFFFFF;
+    int slot = token>>24;
     uint32_t dest = FetchCell(CP) >> 2;
     if (!mark) return;          // skip if nothing to resolve
 //  printf("\nFwd Resolving %X = %X, slot %d ", mark, dest, slot);
     StoreROM((-1<<slot) + dest, mark);
 }
-void CompElse (void){  // ( addr slot -- addr' slot' )
+void CompElse (void){  // ( addr -- addr' )
     NewGroup();  NoExecute();
     uint32_t cp =   FetchCell(CP);
     uint32_t slot = FetchByte(SLOT);
     Explicit(opJUMP, 0x3FFFFFF);
     CompThen();
-    PushNum(cp);
-    PushNum(slot);
+    PushNum((slot<<24) + cp);
 }
 void CompBegin (void){  // ( -- addr )
     NewGroup();  NoExecute();
@@ -416,12 +416,12 @@ void CompAgain (void){  // ( addr -- )
     uint32_t dest = PopNum();
     Explicit(opJUMP, dest>>2);
 }
-void CompWhile (void){  // ( addr -- addr' slot addr )
+void CompWhile (void){  // ( addr -- addr' )
     uint32_t beg = PopNum();
     CompIf();
     PushNum(beg);
 }
-void CompRepeat (void){  // ( addr2 slot2 addr1 )
+void CompRepeat (void){  // ( addr2 -- addr1 )
     CompAgain();
     CompThen();
 }
@@ -451,13 +451,12 @@ void compile(char *name) {
 }
 
 // Other structures use the control stack
-static uint32_t leaveList[2][16]; // private LEAVE list
+static uint32_t leaveList[16]; // private LEAVE list
 int leaves = 0;                   // number of LEAVEs to resolve
 
-void CompDo (void){  // ( -- 0 0 addr )
+void CompDo (void){  // ( -- 0 addr )
     NoExecute();  NewGroup();
     PushNum(0);                 // DO has no forward jump
-    PushNum(0);
     Implicit(opSWAP);
     Implicit(opCOM);
     Implicit(opOnePlus);
@@ -477,8 +476,7 @@ void CompLeave (void){
     NoExecute();
     compile("unloop");
     CompAhead();                // skip to end of LOOP
-    leaveList[1][leaves] = PopNum();
-    leaveList[0][leaves] = PopNum();
+    leaveList[leaves] = PopNum();
     leaves++;
 }
 void CompLoop (void){   // ( addr slot  addr -- )
@@ -486,8 +484,7 @@ void CompLoop (void){   // ( addr slot  addr -- )
     compile("(loop)");
     CompAgain();                // resolve the DO
     while (leaves--) {          // rake the leaves
-        PushNum(leaveList[0][leaves]);
-        PushNum(leaveList[1][leaves]);
+        PushNum(leaveList[leaves]);
         CompThen();
     }
     CompThen();

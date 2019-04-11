@@ -46,7 +46,7 @@
 : parse-word  \ "<spaces>name" -- c-addr u
    /source over >r  bl skip drop r> - >in +!  bl parse
 ;
-: .(   \ "string)" --
+: .(    \ "string)" --
     [char] ) parse type                 \ parse to output
 ;
 : char  \ "char" -- n

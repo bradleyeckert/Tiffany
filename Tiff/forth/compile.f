@@ -8,7 +8,7 @@
 : ,x  dup >r @ SPI!  4 r> +! ;          \ n addr --
 : ,c  cp ,x ;                           \ n --
 : ,h  hp ,x ;                           \ n --
-: ,d  dup >r @ !  4 r> +! ;             \ n --
+: ,d  dp dup >r @ !  4 r> +! ;          \ n --
 : ,   c_scope c@ if ,c exit then ,d ;   \ n --
 
 : c,x                                   \ c addr --

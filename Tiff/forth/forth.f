@@ -6,6 +6,7 @@
 : literal  literal, ; immediate         \ compile a literal
 : [char]  char literal, ; immediate     \ compile a char
 : exit    ,exit ; immediate             \ compile exit
+: chars   ; immediate
 
 \ Header space:     W len xtc xte link name
 \ offset from ht: -16 -12  -8  -4    0 4
@@ -25,11 +26,17 @@
 \ concession to existing implementations.
 \ : [compile] ( "name" -- )   ' compile, ;  immediate
 
-: postpone ( "name" -- )
-   h'  8 - dup  cell+ link>  swap link> \ xte xtc
+: xtextc  \ head -- xte xtc
+   8 - dup  cell+ link>  swap link>
+;
+: postpone \ "name" --
+   h'  xtextc                           \ xte xtc
    ['] do-immediate =                   \ immediate?
    if   compile, exit   then            \ compile it
    literal,  ['] compile, compile,      \ postpone it
+; immediate
+: recurse  \ --
+   -4 last link> compile,
 ; immediate
 
 \ ------------------------------------------------------------------------------
@@ -41,71 +48,80 @@
 ;
 : NeedSlot  \ slot -- addr
    NoExecute
-   cp @ swap 0xF000 > if cell+ 2+ then  \ large address, leave room for >16-bit address
+   cp @ swap 64000 > if cell+ 2+ then   \ large address, leave room for >16-bit address
    c_slot c@ > if NewGroup then
    cp @
 ;
-: _jump     \ -- slot
-   c_slot c@  -1 over lshift invert     \ create a blank address field
-   op_jmp Explicit
+: addrslot  \ token -- addr slot
+\   NoExecute
+   dup 16777215 and
+   swap 24 rshift
 ;
+: _branch   \ dest --
+   op_jmp Explicit                      \ addr slot
+;
+: _jump     \ addr -- token
+   c_slot c@  -1 over lshift invert     \ create a blank address field
+   _branch  24 lshift +                 \ pack the slot and address
+;
+hex
 : defer  \ <name> --
    cp @  ['] get-compile  header[
-   1 [ pad 15 + ] literal c!            \ count byte = 1
-   192 flags!                           \ flags: jumpable, anon
+   1 [ pad 0F + ] literal c!            \ count byte = 1
+   0C0 flags!                           \ flags: jumpable, anon
    ]header   NewGroup
-   0x3FFFFFF op_jmp Explicit
+   3FFFFFF op_jmp Explicit
 ;
 : is  \ xt --
-   2/ 2/  67108864 -  '  SPI!           \ resolve forward jump
+   2/ 2/  4000000 -  '  SPI!            \ resolve forward jump
 ;
-: ahead     \ C: -- addr slot
+decimal
+: ahead     \ C: -- token
    14 NeedSlot  _jump
 ; immediate
-: ifnc      \ C: -- addr slot
+: ifnc      \ C: -- token
    20 NeedSlot
    op_ifc: Implicit  _jump
 ; immediate
-: if        \ C: -- addr slot | E: flag --
+: if        \ C: -- token | E: flag --
    20 NeedSlot
    op_ifz: Implicit  _jump
 ; immediate
-: if+       \ C: -- addr slot | E: n -- n
+: if+       \ C: -- token | E: n -- n
    20 NeedSlot
    op_-if: Implicit  _jump
 ; immediate
-: then      \ C: addr slot --
-   NoExecute  NewGroup
-   over 0= if                           \ ignore dummy
-      2drop exit
-   then
+: then      \ C: token --
+   NewGroup  addrslot
    -1 swap lshift  cp @ u2/ u2/ +       \ addr field
    swap SPI!
 ; immediate
-: else      \ C: fa fs -- fa' fs'
-   postpone ahead  2swap
+: else      \ C: token1 -- token2
+   postpone ahead  swap
    postpone then
 ; immediate
 : begin     \ C: -- addr
-   NoExecute cp @
+   NoExecute  NewGroup  cp @
 ; immediate
 : again     \ C: addr --
-   NoExecute  2/ 2/ op_jmp Explicit
+   NoExecute  2/ 2/ _branch
 ; immediate
-: while     \ C: addr1 -- addr2 slot2 addr1 | E: flag --
-   >r postpone if r>
+: while     \ C: addr1 -- addr2 token | E: flag --
+   NoExecute  >r  postpone if  r>
 ; immediate
-: repeat    \ C: addr2 slot2 addr1 --
+: repeat    \ C: addr token --
    postpone again
    postpone then
 ; immediate
 : +until    \ C: addr -- | E: n -- n
-   20 NeedSlot
-   op_-if: Implicit  _jump
+   20 NeedSlot drop
+   op_-if: Implicit
+   2/ 2/ _branch
 ; immediate
 : until    \ C: addr -- | E: flag --
-   20 NeedSlot
-   op_ifz: Implicit  _jump
+   20 NeedSlot drop
+   op_ifz: Implicit
+   2/ 2/ _branch
 ; immediate
 
 \ Eaker CASE statement
@@ -128,6 +144,46 @@
    repeat
 ; immediate
 
+\ PAD is LEAVE stack
+
+: do  \ -- addr
+   NoExecute  NewGroup
+   op_swap Implicit   op_com  Implicit
+   op_1+   Implicit   op_>r   Implicit   op_>r   Implicit
+   postpone begin  0 pad !
+; immediate
+: ?do  \ -- addr
+   NoExecute
+   postpone (?do)  postpone ahead  4 pad 2!
+   postpone begin
+; immediate
+
+: pushLV  pad dup >r @+  dup cell+ r> ! + ! ;   \ n --
+: popLV   pad dup dup @ + @ >r -4 swap +! r> ;  \ -- n
+
+: leave  \ pad: <then> <then> <again> -- <then> <again>
+   NoExecute  postpone unloop  postpone ahead  pushLV
+; immediate
+
+: _leaves  \ pad: <thens>...
+   begin  pad @  while
+      popLV  postpone then
+   repeat
+;
+
+: loop
+   NoExecute  postpone (loop)  postpone again  _leaves
+; immediate
+: +loop
+   NoExecute  postpone (+loop)  postpone again  _leaves
+; immediate
+
+: i
+   NoExecute  op_r@ Implicit
+; immediate
+
+
+
 \ Embedded strings
 
 : ,"   \ string" --
@@ -136,6 +192,7 @@
     cp @ r@ SPImove                     \ and string
     r> cp +!
 ;
+
 : ."   \ string" --
     cp @  8 +  literal,                 \ point to embedded string
     postpone ahead  ," alignc
@@ -143,6 +200,14 @@
     op_c@+ Implicit
     postpone type
 ; immediate
+
+: find  \ c-addr -- c-addr 0 | xt flag
+   dup count hfind  over if             \ c-addr addr len
+      drop dup xor exit                 \ not found
+   then
+   >r drop drop r>  xtextc              \ xte xtc
+   ['] do-immediate xor 0<> 2* 1+
+;
 
 : does>  \ patches created fields, pointed to by CURRENT
    8 clr-xtcbits                        \ see wean.f

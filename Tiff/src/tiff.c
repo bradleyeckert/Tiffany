@@ -718,56 +718,56 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddEquate ("ROMsize", ROMsize*4);
     AddEquate ("SPIflashSize", SPIflashSize*4);
 
-//   AddEquate ("op_dup",   opDUP);
+    AddEquate ("op_dup",   opDUP);
     AddEquate ("op_exit",  opEXIT);
- //   AddEquate ("op_+",     opADD);
- //   AddEquate ("op_user",  opUSER);
- //   AddEquate ("op_drop",  opDROP);
- //   AddEquate ("op_r>",    opPOP);
- //   AddEquate ("op_2/",    opTwoDiv);
- //   AddEquate ("op_1+",    opOnePlus);
- //   AddEquate ("op_swap",  opSWAP);
- //   AddEquate ("op_-",     opSUB);
- //   AddEquate ("op_c!+",   opCstorePlus);
+    AddEquate ("op_+",     opADD);
+    AddEquate ("op_user",  opUSER);
+    AddEquate ("op_drop",  opDROP);
+    AddEquate ("op_r>",    opPOP);
+    AddEquate ("op_2/",    opTwoDiv);
+    AddEquate ("op_1+",    opOnePlus);
+    AddEquate ("op_swap",  opSWAP);
+    AddEquate ("op_-",     opSUB);
+    AddEquate ("op_c!+",   opCstorePlus);
     AddEquate ("op_c@+",   opCfetchPlus);
- //   AddEquate ("op_u2/",   opUtwoDiv);
+    AddEquate ("op_u2/",   opUtwoDiv);
     AddEquate ("op_no:",   opSKIP);
- //   AddEquate ("op_2+",    opTwoPlus);
+    AddEquate ("op_2+",    opTwoPlus);
     AddEquate ("op_jmp",   opJUMP);
- //   AddEquate ("op_w!+",   opWstorePlus);
- //   AddEquate ("op_w@+",   opWfetchPlus);
- //   AddEquate ("op_and",   opAND);
+    AddEquate ("op_w!+",   opWstorePlus);
+    AddEquate ("op_w@+",   opWfetchPlus);
+    AddEquate ("op_and",   opAND);
     AddEquate ("op_litx",  opLitX);
- //   AddEquate ("op_>r",    opPUSH);
+    AddEquate ("op_>r",    opPUSH);
     AddEquate ("op_call",  opCALL);
- //   AddEquate ("op_0=",    opZeroEquals);
- //   AddEquate ("op_0<",    opZeroLess);
- //   AddEquate ("op_w@",    opWfetch);
- //   AddEquate ("op_xor",   opXOR);
- //   AddEquate ("op_rept",  opREPT);
- //   AddEquate ("op_4+",    opFourPlus);
- //   AddEquate ("op_over",  opOVER);
- //   AddEquate ("op_+",     opADDC);
- //   AddEquate ("op_!+",    opStorePlus);
- //   AddEquate ("op_@+",    opFetchPlus);
- //   AddEquate ("op_2*",    opTwoStar);
- //   AddEquate ("op_-rept", opMiREPT);
- //   AddEquate ("op_rp",    opRP);
- //   AddEquate ("op_rp!",   opSetRP);
- //   AddEquate ("op_@",     opFetch);
+    AddEquate ("op_0=",    opZeroEquals);
+    AddEquate ("op_0<",    opZeroLess);
+    AddEquate ("op_w@",    opWfetch);
+    AddEquate ("op_xor",   opXOR);
+    AddEquate ("op_rept",  opREPT);
+    AddEquate ("op_4+",    opFourPlus);
+    AddEquate ("op_over",  opOVER);
+    AddEquate ("op_+",     opADDC);
+    AddEquate ("op_!+",    opStorePlus);
+    AddEquate ("op_@+",    opFetchPlus);
+    AddEquate ("op_2*",    opTwoStar);
+    AddEquate ("op_-rept", opMiREPT);
+    AddEquate ("op_rp",    opRP);
+    AddEquate ("op_rp!",   opSetRP);
+    AddEquate ("op_@",     opFetch);
     AddEquate ("op_-if:",  opSKIPGE);
- //   AddEquate ("op_sp",    opSP);
- //   AddEquate ("op_@as",   opFetchAS);
- //   AddEquate ("op_sp!",   opSetSP);
- //   AddEquate ("op_c@",    opCfetch);
- //   AddEquate ("op_port",  opPORT);
+    AddEquate ("op_sp",    opSP);
+    AddEquate ("op_@as",   opFetchAS);
+    AddEquate ("op_sp!",   opSetSP);
+    AddEquate ("op_c@",    opCfetch);
+    AddEquate ("op_port",  opPORT);
     AddEquate ("op_ifc:",  opSKIPNC);
     AddEquate ("op_ifz:",  opSKIPNZ);
     AddEquate ("op_lit",   opLIT);
     AddEquate ("op_up",    opUP);
- //   AddEquate ("op_!as",   opStoreAS);
- //   AddEquate ("op_up!",   opSetUP);
- //   AddEquate ("op_r@",    opRfetch);
+    AddEquate ("op_!as",   opStoreAS);
+    AddEquate ("op_up!",   opSetUP);
+    AddEquate ("op_r@",    opRfetch);
     AddEquate ("op_com",   opCOM);
     // Initial Value names
     AddEquate ("sp00", TiffSP0);           // empty stacks for terminal
@@ -929,7 +929,7 @@ void tiffINTERPRET(void) {
             FetchString(name, address, (uint8_t)length);
             if (NotKeyword(name)) {     // try to convert to number
                 char *eptr;
-                long int x = strtol(name, &eptr, 0); // automatic base (C format)
+                long int x = strtol(name, &eptr, FetchCell(BASE));
                 if ((x == 0) && ((errno == EINVAL) || (errno == ERANGE))) {
                     bogus: tiffIOR = -13;   // not a number
                 } else {

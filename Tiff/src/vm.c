@@ -320,10 +320,10 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 			    T = M;      				            break;	// r>
 			case opTwoDiv:
 #ifdef TRACEABLE
-                Trace(New, RidT, T, (signed)T / 2);  New=0;
                 Trace(0, RidCY, CARRY, T&1);
+                Trace(New, RidT, T, (signed)T >> 1);  New=0;
 #endif // TRACEABLE
-			    T = (signed)T / 2;  CARRY = T&1;        break;	// 2/
+			    CARRY = T&1;  T = (signed)T >> 1;       break;	// 2/
 			case opSKIPNC: if (!CARRY) goto ex;	        break;	// ifc:
 			case opOnePlus:
 #ifdef TRACEABLE

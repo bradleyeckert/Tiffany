@@ -13,12 +13,16 @@ include core.f
 include timing.f
 include numio.f                         \ numeric I/O
 include flash.f                         \ SPI flash programming
+include compile.f                       \ compile opcodes, macros, calls, etc.
+include interpret.f                     \ parse, interpret, convert to number
+include tools.f                         \ dump, .s
 
 : main
    ." Hello World"
    cr 10 0 do i . loop
 ;
 
+include weanexec.f                      \ replace C execution fns in existing headers
 include end.f                           \ finish the app
 
 \ ------------------------------------------------------------------------------
@@ -30,13 +34,10 @@ include end.f                           \ finish the app
 \ This is also necessary because the Forth can't modify internal ROM at run time.
 
 cp ?                                    \ display bytes of internal ROM used
-hp0 0x8000 + cp !                       \ leave 32K for headers
+hp0 32768 + cp !                       \ leave 32K for headers
 cp @ equ codespace                      \ put code here in aux flash
 
-include compile.f                       \ compile opcodes, macros, calls, etc.
-include wean.f                          \ replace C functions in existing headers
-include interpret.f                     \ parse, interpret, convert to number
-include tools.f                         \ dump, .s
+include weancomp.f                      \ replace C compilation fns in existing headers
 include define.f                        \ defining words
 include forth.f                         \ high level Forth
 
@@ -81,23 +82,23 @@ cp @ equ s2
 
 : mynum  ( n "name" -- )
    rom  create ,
-   ram  does> @
+   ram  does> @ 2*
 ;
  111 mynum z1
-\ 222 mynum z2
+ 222 mynum z2
 
 
-.( bytes in internal ROM, ) CP @ hp0 0x8000 + - .
+.( bytes in internal ROM, ) CP @ hp0 32768 + - .
 .( bytes of code in flash, ) HP @ hp0 - .
 .( bytes of header.) cr
 
-: ten  20 0 do i .  i 10 = if leave then  loop ;
+: ten  20 0 do i .  i 10 = if leave then loop ;
 
 0 [if] .( should not print )
 [else] .( Hi there!) cr
 [then]
 
-\ : ENVIRONMENT? ( c-addr u -- false ) 2drop 0 ;
+: ENVIRONMENT? ( c-addr u -- false ) 2drop 0 ;
 
 \ include test/ttester.fs
 \ include test/coretest.fs

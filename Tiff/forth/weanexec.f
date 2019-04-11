@@ -16,71 +16,21 @@ defer do-immediate                      \ 1st cell -> immediate
 defer get-macro                         \ 2nd cell -> macro (address bit2=0)
 defer get-compile                       \ 3rd cell -> compile (address bit2=1)
 defer do-does-e                         \ 0th cell -> does> execute
-defer do-does-c                         \ 1at cell -> does> compile
+defer do-does-c                         \ 1st cell -> does> compile
 defer equ_ee                            \ 2nd cell -> equ execute
-: equ_ec   equ_ee literal, ;            \ 3rd cell -> equ compile
+defer equ_ec                            \ 3rd cell -> equ compile
+
 \ EQU pushes or compiles W parameter
 :noname head @ 16 - @ ; is equ_ee       \ -- n
-:noname get-xte compile, ; is get-compile
+:noname get-xte execute ; is do-immediate \ replaces xtc
 
 :noname  \ does>                        \ replaces equ_ee
    head @ 20 - 2@ execute               \ 'data
 ; is do-does-e
-:noname  \ does>                        \ replaces equ_ec
-   head @ 20 - @+ literal, @ compile,
-; is do-does-c
 
-
-:noname equ_ee Implicit ; -4 replace-xt \ compilation part of implicit opcode
-:noname -14 throw ;       -5 replace-xt \ "Interpreting a compile-only word"
-' equ_ee  -1 replace-xt                 \ execution part of EQU
-' equ_ec  -2 replace-xt                 \ compilation part of EQU
-
-:noname                                 \ immediate opcode
-   c_litpend dup c@ if
-      0 swap c!
-      equ_ee  nextlit @  Explicit
-      exit
-   then  -59 throw
-; -6 replace-xt
-
-:noname                                 \ place "skip" instruction
-   FlushLit
-   c_slot 8 < if NewGroup then
-   equ_ee Implicit
-; -7 replace-xt
-
-:noname                                 \ place "skip" instruction in a new group
-   NewGroup  equ_ee Implicit
-; -8 replace-xt
-
-:noname                                 \ skip to new group
-   FlushLit NewGroup
-; -9 replace-xt
-
+:noname -14 throw ;   -5 replace-xt     \ "Interpreting a compile-only word"
 :noname  equ_ee up ; -10 replace-xt     \ execute user variable
-:noname                                 \ compile user variable
-   equ_ee literal,  op_up Implicit
-; -11 replace-xt
-
-:noname  \ get-macro                    \ replaces xtc
-   get-xte  @+  26                      \ addr IR slot
-   begin
-      dup 0< if
-         drop 3 and >r  @+ 26 r>
-      else
-         2dup rshift 63 and
-         >r 6 - r>
-      then                              \ addr IR slot opcode
-      dup op_exit = if
-         2drop 2drop exit
-      then  Implicit
-   again
-; is get-macro
-
-:noname  \ do-immediate                 \ replaces xtc
-   get-xte execute
-; is do-immediate
+' equ_ee  -1 replace-xt                 \ execution part of EQU
 
 \ Executing an implicit opcode is not possible without the host VM.
 \ Instead, the xte is replaced with a noname definition.
@@ -130,3 +80,28 @@ defer equ_ee                            \ 2nd cell -> equ execute
 :noname 0=     ; xte-is 0=
 :noname 0<     ; xte-is 0<
 :noname        ; xte-is nop
+
+:noname  \ get-macro                    \ replaces xtc
+   get-xte  @+  26                      \ addr IR slot
+   begin
+      dup 0< if
+         drop 3 and >r  @+ 26 r>
+      else
+         2dup rshift 63 and
+         >r 6 - r>
+      then                              \ addr IR slot opcode
+      dup op_exit = if
+         2drop 2drop exit
+      then  Implicit
+   again
+; is get-macro
+
+:noname  get-xte compile,
+; is get-compile
+
+:noname  equ_ee literal,
+; is equ_ec
+
+:noname  head @ 20 - @+ literal, @ compile,
+; is do-does-c
+
