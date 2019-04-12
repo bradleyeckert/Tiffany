@@ -32,11 +32,10 @@
 // Number of lines in `locate`
 #define LocateLines  10
 
-// Words are reserved for forward jumps to cold boot and safe mode.
+// Two words are reserved for forward jumps to cold boot and safe mode.
 // These are byte addresses.
 #define CodePointerOrigin  8                  /* Kernel definitions start here */
-#define HeadPointerMin    ((ROMsize+RAMsize)*4)     /* Lowest SPI code address */
-#define HeadPointerOrigin  0x10000      /* Headers are in AXI space above code */
+#define HeadPointerOrigin  ((ROMsize+RAMsize)*4)    /* Lowest SPI code address */
 
 //===============================================================================
 // Sanity checks

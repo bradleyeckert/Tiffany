@@ -323,20 +323,17 @@ void tiffMAKE (void) {
     FollowingToken(name2, 80);          // generated file
     MakeFromTemplate(name, name2);      // fileio.c
 }
+void tiffSaveImg (void) {
+    FollowingToken(name, 80);           // binary image filename
+    SaveImage(name);                    // fileio.c
+}
 
 static void CommaROM (uint32_t x) {
     PushNum(x);
     CompComma();
 }
 void tiffIDATA (void) {                 // compile RAM initialization table
-    StoreCell(0, TIBS);
-    tiffCOMMENT();                      // discard TIB input
-    for (int i=0; i<MaxTIBsize; i+=4) {
-        StoreCell(0, i+TIB);            // clear TIB
-    }
-    for (int i=0; i<PADsize; i+=4) {
-        StoreCell(0, i+PAD);            // clear PAD
-    }
+    WipeTIB();
     uint32_t first = STATUS / 4;        // cell indices
     uint32_t last = FetchCell(DP) / 4;
     uint32_t length = last - first;
@@ -711,7 +708,9 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("replace-xt", ReplaceXTs);   // Replace XTs  ( NewXT OldXT -- )
     AddKeyword("xte-is",  xte_is);          // Replace a word's xte  ( NewXT -- )
     AddKeyword("make",    tiffMAKE);
-    AddKeyword("idata-make", tiffIDATA);
+    AddKeyword("save-image", tiffSaveImg);  // save binary image
+
+    AddKeyword("idata-make", tiffIDATA);    // compile RAM initialization data structure
     AddKeyword("iwords",  ListKeywords);    // internal words, after the dictionary
     // CPU opcode names
     AddEquate ("RAMsize", RAMsize*4);

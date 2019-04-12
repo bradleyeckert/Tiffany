@@ -100,6 +100,16 @@ void SetPCreg (uint32_t PC) {           // Set new PC
     SetDbgReg(PC);
     DbgGroup(opDUP, opPORT, opPUSH, opEXIT, opNOP);
 }
+void WipeTIB (void) {
+    StoreCell(0, TIBS);
+    StoreCell(0, TOIN);
+    for (int i=0; i<MaxTIBsize; i+=4) {
+        StoreCell(0, i+TIB);            // clear TIB
+    }
+    for (int i=0; i<PADsize; i+=4) {
+        StoreCell(0, i+PAD);            // clear PAD
+    }
+}
 
 // Write to AXI through SetDbgReg and DbgGroup.
 // accessing this way allows target hardware to write
@@ -688,8 +698,8 @@ void AddWordlistHead (uint32_t wid, char *name) {
 // Initialize ALL variables in the terminal task
 void InitializeTermTCB (void) {
     VMpor();                            // clear VM and RAM
-    initFilelist();
-    EraseSPIimage();                    // clear SPI flash image
+    initFilelist();                     // clear list of filenames used by LOCATE
+    EraseSPIimage();                    // clear SPI flash image and ROM image
     StoreCell(HeadPointerOrigin+20, HP); // leave 5 cells for filelist, widlist, hp, cp, and dp
     StoreCell(CodePointerOrigin, CP);
     StoreCell(DataPointerOrigin, DP);

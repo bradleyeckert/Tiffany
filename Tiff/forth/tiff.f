@@ -34,7 +34,7 @@ include end.f                           \ finish the app
 \ This is also necessary because the Forth can't modify internal ROM at run time.
 
 cp ?                                    \ display bytes of internal ROM used
-hp0 32768 + cp !                       \ leave 32K for headers
+hp0 16384 + cp !                        \ leave 16K for headers
 cp @ equ codespace                      \ put code here in aux flash
 
 include weancomp.f                      \ replace C compilation fns in existing headers
@@ -50,7 +50,7 @@ include forth.f                         \ high level Forth
 
 \ If using ConEmu, set it up to handle UTF8 output. UTF8 input can't paste onto
 \ console input, so you can't directly test 平方.
-\ However, Linux GNOME terminal has proper UTF8 handling. Command buffering kind of sucks.
+\ However, Linux GNOME has proper UTF8 handling. But not good cooked mode.
 : chin
    ." 你好，世界"                         \ Chinese Hello World in UTF8 format
 ;
@@ -89,7 +89,7 @@ cp @ equ s2
  222 mynum z2
 
 
-.( bytes in internal ROM, ) CP @ hp0 32768 + - .
+.( bytes in internal ROM, ) CP @ hp0 16384 + - .
 .( bytes of code in flash, ) HP @ hp0 - .
 .( bytes of header.) cr
 

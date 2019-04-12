@@ -15,29 +15,31 @@ int main(int argc, char *argv[]) {
 #ifdef TRACEABLE
     CreateTrace();                      // reset the trace buffer
 #endif
-    InitializeTermTCB();
+    InitializeTermTCB();                // by default, ROM and SPI flash are blank (all '1's)
     while (argc>Arg) {                  // spin through the 2-character arguments
         if (strlen(argv[Arg]) == 2) {
             if (argv[Arg][0] == '-'){   // starts with a "-?" command
                 char c = argv[Arg][1];  // get the command
                 Arg++;
                 switch (c) {
-                    case 't':
-                        if (argc>Arg) { // attempt binary load
+                    case 't':           // low level debugger with default blank memory
+                        if (argc>Arg) { // attempt binary load into ROM
                             BinaryLoad(argv[Arg]);
                         }
                         vmTEST();  goto bye;
-                    case 'b':
+                    case 'b':           // load ROM and (optionally) SPI flash image from file
                         if (argc>Arg) {
                             if (BinaryLoad(argv[Arg++])) {
                                 printf("Invalid or missing filename");
+                            } else {    // successful binary load clears the load filename
+                                DefaultFile = NULL;
                             }
                             break;
                         } else {
                             printf("Use \"-b filename\"");
                             goto bye;
-                        }
-                    case 'f':
+                        } break;
+                    case 'f':           // change the load filename from the default `tiff.f`
                         if (argc>Arg) {
                             DefaultFile = argv[Arg++];
                             break;
@@ -53,9 +55,9 @@ int main(int argc, char *argv[]) {
     }
 go:
     if (argc>Arg) {
-        tiffQUIT(argv[Arg]);
+        tiffQUIT(argv[Arg]);            // command line is next argument
     } else {
-        tiffQUIT(NULL);
+        tiffQUIT(NULL);                 // empty command line
     }
 bye:
 #ifdef TRACEABLE

@@ -48,6 +48,8 @@ void InitializeTIB(void);             // Initialize just the terminal task input
 void DumpRegs(void);            // clear screen and dump register and stack data
 void Disassemble(uint32_t addr, uint32_t length);
 void MakeTestVectors(FILE *ofp, int length, int format);
+void WipeTIB (void);                                         // clear TIB memory
+
 
 #define DataStackCol     1
 #define ReturnStackCol  13
