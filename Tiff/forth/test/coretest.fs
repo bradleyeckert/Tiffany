@@ -745,6 +745,8 @@ T{ NOP NOP1 NOP NOP2 -> }T
 T{ NOP1 -> }T
 T{ NOP2 -> }T
 
+\ Sorry, in a ROM Forth you don't get to patch CREATE twice
+\ have to skip that test.
 T{ : DOES1 DOES> @ 1 + ; -> }T
 T{ : DOES2 DOES> @ 2 + ; -> }T
 T{ CREATE CR1 -> }T
@@ -754,14 +756,17 @@ T{ 1 , -> }T
 T{ CR1 @ -> 1 }T
 T{ DOES1 -> }T
 T{ CR1 -> 2 }T
-T{ DOES2 -> }T
+\ T{ DOES2 -> }T
 T{ CR1 -> 3 }T
 
+\ Can't do weird either
+0 [if]
 T{ : WEIRD: CREATE DOES> 1 + DOES> 2 + ; -> }T
 T{ WEIRD: W1 -> }T
 T{ ' W1 >BODY -> HERE }T
 T{ W1 -> HERE 1 + }T
 T{ W1 -> HERE 2 + }T
+[then]
 
 \ ------------------------------------------------------------------------
 TESTING EVALUATE

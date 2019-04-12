@@ -65,16 +65,42 @@
    _branch  24 lshift +                 \ pack the slot and address
 ;
 hex
-: defer  \ <name> --
+: _create  \ "name" --
    cp @  ['] get-compile  header[
    1 [ pad 0F + ] literal c!            \ count byte = 1
    0C0 flags!                           \ flags: jumpable, anon
    ]header   NewGroup
+;
+: defer  \ <name> --
+   _create
    3FFFFFF op_jmp Explicit
 ;
 : is  \ xt --
    2/ 2/  4000000 -  '  SPI!            \ resolve forward jump
 ;
+
+: (create)  \ -- xt | R: UA RA -- UA
+   r> @+ swap @                         \ xt does>
+   |-if drop exit |                     \ missing does>
+   >r                                   \ do does>
+;
+: create  \ -- | -- n
+   _create
+   postpone (create)
+   here  c_scope c@ 1 = 8 and +  ,c     \ skip forward if in ROM
+   -1 ,c
+;
+: >body  \ xt -- body
+   cell+ @
+;
+: (does)  \ RA
+   r@  -4 last link> cell+ cell+  SPI!       \ resolve the does> field
+;
+: does>  \ patches created fields, pointed to by CURRENT
+   postpone (does)
+; immediate
+
+
 decimal
 : ahead     \ C: -- token
    14 NeedSlot  _jump
@@ -208,13 +234,6 @@ decimal
    >r drop drop r>  xtextc              \ xte xtc
    ['] do-immediate xor 0<> 2* 1+
 ;
-
-: does>  \ patches created fields, pointed to by CURRENT
-   8 clr-xtcbits                        \ see wean.f
-   8 clr-xtebits
-   0 c_colondef c!                      \ no header to tweak
-   r>  -20 last  SPI!                   \ resolve does> address
-; call-only                             \ and terminate CREATE clause
 
 : unused    \ -- n
    c_scope c@

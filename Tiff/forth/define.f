@@ -50,14 +50,6 @@
    ]header
 ;
 
-\ CREATE is in ROM.
-: create  \ -- | -- n
-   ['] equ_ee  ['] equ_ec
-   header[ -1 ,h                        \ blank does> address
-   h @ ,h                               \ W is code space address
-   ]header
-;
-
 : last  current @ @ + ;       \ n -- a  \ index into last defined header
 : clrlast    last dup >r SPI@ and r> SPI! ;   \ bits offset --
 \ : clrlast    last dup SPI! ;   \ bits offset --
@@ -67,12 +59,6 @@
 : macro      4 clr-xtcbits ;  \ --      \ flip xtc from compile to macro
 : immediate  8 clr-xtcbits ;  \ --      \ flip xtc from compile to immediate
 : call-only  128 clr-flagbits ;  \ --   \ clear the jumpable bit
-
-: does>  \ patches created fields, pointed to by CURRENT
-   8 clr-xtcbits                        \ see wean.f
-   8 clr-xtebits                        \ change xte and xtc to does> actions
-   cp @  last 20 -  SPI!                \ resolve the does> field
-; immediate
 
 : ]  1 state ! ;              \ --      \ resume compilation
 : [  0 state ! ; immediate    \ --      \ interpret

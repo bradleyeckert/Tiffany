@@ -80,6 +80,7 @@ cp @ equ s2
    endcase
 ;
 
+
 : mynum  ( n "name" -- )
    rom  create ,
    ram  does> @ 2*
