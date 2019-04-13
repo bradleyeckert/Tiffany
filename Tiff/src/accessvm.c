@@ -45,8 +45,6 @@ int TermWidth(void) {
 /// Bytes are read and written using cell operations so that the VM needn't
 /// implement byte memory operations.
 
-int CaseInsensitive = 1;
-
 uint32_t DbgPC; // last PC returned by VMstep
 
 uint32_t DbgGroup (uint32_t op0, uint32_t op1,
@@ -180,7 +178,7 @@ uint32_t SearchWordlist(char *name, uint32_t WID) {
             while (len--) {
                 char c1 = name[i++];
                 char c2 = FetchByte(k++);
-                if (CaseInsensitive) {
+                if (!FetchByte(CASESENS)) {
                     c1 = tolower(c1);
                     c2 = tolower(c2);
                 }
@@ -258,7 +256,7 @@ void PrintWordlist(uint32_t WID, char *substring, int verbosity) {
             if (strlen(substring) > 31) goto done;  // no words this long
             strcpy(key, substring);
             strcpy(name, wordname);
-            if (CaseInsensitive) {
+            if (!FetchByte(CASESENS)) {
                 UnCase(key);
                 UnCase(name);
             }

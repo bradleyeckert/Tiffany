@@ -100,8 +100,8 @@ hex
    postpone (does)
 ; immediate
 
-
 decimal
+
 : ahead     \ C: -- token
    14 NeedSlot  _jump
 ; immediate
@@ -148,6 +148,14 @@ decimal
    20 NeedSlot drop
    op_ifz: Implicit
    2/ 2/ _branch
+; immediate
+: for     \ C: -- again then | E: cnt -- R: -- cnt
+   op_>r Implicit
+   postpone begin   postpone (for)
+   postpone ahead
+; immediate
+: next    \ C: -- again then | E: R: -- cnt
+   swap  postpone again  postpone then
 ; immediate
 
 \ Eaker CASE statement
@@ -196,36 +204,116 @@ decimal
       popLV  postpone then
    repeat
 ;
-
 : loop
    NoExecute  postpone (loop)  postpone again  _leaves
 ; immediate
 : +loop
    NoExecute  postpone (+loop)  postpone again  _leaves
 ; immediate
-
 : i
    NoExecute  op_r@ Implicit
 ; immediate
+
+
+\ ------------------------------------------------------------------------
+\ EVALUATE: Given a string and length on the stack, evaluate it in the
+\ current system context.
+
+: source  \ -- c-addr len
+   tibs 2@
+;
+: save-input  \ -- xn ... x1 n
+   source-id  5
+   dup >r  for  @+ swap
+   next  drop r>
+;
+: restore-input  \ xn ... x1 n -- flag
+   5 over <> -63 and throw              \ bogus save-input
+   source-id  over cells +              \ ... x1 n address
+   swap for                             \ ... x1 address
+      4 - swap over !
+   next  dup xor                        \ drop 0
+;
+: evaluate  \ i*x c-addr u -- j*x
+   save-input n>r  ( c-addr u )
+   tibs 2!  0 >in !  -1 source-id !
+   ['] interpret   catch
+   dup if
+      cr source type cr  postpone [
+   then
+   nr> restore-input drop  throw
+;
+: word  \ char "<chars>ccc<char>" -- c-addr
+   _parse pad  dup >r c! r@ c@+ cmove r>  \ use pad as temporary
+;
+: cmove>  \ a1 a2 n --                   \ move bytes
+   |-if 3drop exit |
+   dup >r +  swap r@ +  swap  r>         \ a1' a2' n
+   for
+      1- swap 1- swap
+      over c@ over c!
+   next  2drop
+;
+: move  \ from to count --
+   >r  2dup u< if  r> cmove>  else  r> cmove  then
+;
+
+\ : COMPARE ( c-addr1 u1 c-addr2 u2 -- n)
+\    ROT 2>R  1- SWAP 1-  2R@ MIN  0 ?DO  SWAP 1+  SWAP 1+
+\    OVER C@  OVER C@  <> IF  LEAVE  THEN LOOP  C@ SWAP C@ -
+\    DUP 0=  2R> SWAP - AND OR  -1 MAX  1 MIN ;
+
+\ probably ?do broken - must test
+\ also test 2>r etc
+
+\ a more native compare
+
+: comp  \ c-addr1 len1 c-addr2 len2 -- n
+   rot swap  2dup max
+   for                                  \ a1 a2 n1 n2
+      >r >r over c@ over c@ -           \ difference
+      dup if                            \ mismatch
+      then
+
+   next  2drop xor                      \ 0
+;
 
 
 
 \ Embedded strings
 
 : ,"   \ string" --
-    [char] " parse  ( addr len )
-    dup >r c,c                          \ store count
-    cp @ r@ SPImove                     \ and string
-    r> cp +!
+   [char] " parse  ( addr len )
+   dup >r c,c                           \ store count
+   cp @ r@ SPImove                      \ and string in code space
+   r> cp +!
+;
+: _x"  \ string" --
+   NewGroup
+   cp @  8 +  literal,                  \ point to embedded string
+   postpone ahead  ," alignc            \ jump over string
+   postpone then
+;
+: ."   \ string" --
+   _x"  op_c@+ Implicit
+   postpone type
+; immediate
+
+\ Execution semantics of S" and C" need a temporary buffer.
+\ As few as one buffers are allowed, but it can't be the TIB.
+\ Let's just put it ahead in data space and assume there's room.
+
+: transient"  \ string" -- a-addr
+   [char] " parse
+   dp @ 128 +  dup >r  over swap c!+    \ as u ad | ad
+   swap cmove  r>
 ;
 
-: ."   \ string" --
-    cp @  8 +  literal,                 \ point to embedded string
-    postpone ahead  ," alignc
-    postpone then
-    op_c@+ Implicit
-    postpone type
-; immediate
+:noname _x" op_c@+ Implicit ;           \ compilation action of S"
++: S"   transient" c@+ ;                \ -- a u
+
+:noname _x" ;                           \ compilation action of C"
++: C"   transient" ;                    \ -- a
 
 : find  \ c-addr -- c-addr 0 | xt flag
    dup count hfind  over if             \ c-addr addr len

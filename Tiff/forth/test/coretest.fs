@@ -96,10 +96,10 @@ T{ MSB 1 RSHIFT 2* -> MSB }T
 
 \ ------------------------------------------------------------------------
 TESTING COMPARISONS: 0= = 0< < > U< MIN MAX
-0 INVERT			CONSTANT MAX-UINT
-0 INVERT 1 RSHIFT		CONSTANT MAX-INT
-0 INVERT 1 RSHIFT INVERT	CONSTANT MIN-INT
-0 INVERT 1 RSHIFT		CONSTANT MID-UINT
+0 INVERT			        CONSTANT MAX-UINT
+0 INVERT 1 RSHIFT		    CONSTANT MAX-INT
+0 INVERT 1 RSHIFT INVERT    CONSTANT MIN-INT
+0 INVERT 1 RSHIFT		    CONSTANT MID-UINT
 0 INVERT 1 RSHIFT INVERT	CONSTANT MID-UINT+1
 
 0S CONSTANT <FALSE>
@@ -757,7 +757,7 @@ T{ CR1 @ -> 1 }T
 T{ DOES1 -> }T
 T{ CR1 -> 2 }T
 \ T{ DOES2 -> }T
-T{ CR1 -> 3 }T
+\ T{ CR1 -> 3 }T
 
 \ Can't do weird either
 0 [if]
@@ -979,16 +979,17 @@ TESTING OUTPUT: . ." CR EMIT SPACE SPACES TYPE U.
 
 T{ OUTPUT-TEST -> }T
 
-\ the lower case stuff is not restricted to core words - anton
-T{ min-int s>d tuck dabs <# #s rot sign #>
-  S" -8000000000000000" drop 2 cells 1+ compare -> 0 }T
-T{ max-int s>d tuck dabs <# #s rot sign #>
-  S" 7FFFFFFFFFFFFFFF" drop 2 cells compare -> 0 }T
-T{ max-uint 0 <# #s #>
-  S" FFFFFFFFFFFFFFFF" drop 2 cells compare -> 0 }T
+T{ MIN-INT S>D TUCK DABS <# #S ROT SIGN #>
+  S" -8000000000000000" DROP 2 CELLS 1+
+  .( 986 )
+  COMPARE -> 0 }T
+  .( 988 )
+T{ MAX-INT S>D TUCK DABS <# #S ROT SIGN #>
+  S" 7FFFFFFFFFFFFFFF" DROP 2 CELLS COMPARE -> 0 }T
+T{ MAX-UINT 0 <# #S #>
+  S" FFFFFFFFFFFFFFFF" DROP 2 CELLS COMPARE -> 0 }T
 
 \ ------------------------------------------------------------------------
-\ commented out to allow batch testing -anton
 \ TESTING INPUT: ACCEPT
 
 CREATE ABUF 80 CHARS ALLOT

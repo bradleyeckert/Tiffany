@@ -57,31 +57,32 @@ void UnCase(char *s);
 #define DP          termTCB(9)   /* data space pointer                        */
 #define STATE       termTCB(10)  /* compiler state                            */
 #define CURRENT     termTCB(11)  /* the wid which is compiled into            */
-#define SOURCEID    termTCB(12)  /* input source, 0(keybd) +(file) -(blk)     */
-#define PERSONALITY termTCB(13)  /* address of personality array              */
+#define PERSONALITY termTCB(12)  /* address of personality array              */
+// The following are assumed to be a block for SAVE-INPUT
+#define SOURCEID    termTCB(13)  /* input source, 0(keybd) +(file) -(blk)     */
 #define TIBS        termTCB(14)  /* number of chars in TIB                    */
 #define TIBB        termTCB(15)  /* pointer to tib (paired with TIBS)         */
 #define TOIN        termTCB(16)  /* offset into TIB                           */
+#define BLK         termTCB(17)  /* Current block, 0 if none                  */
 // 8-bit variables are used here to save RAM
-#define WIDS        termTCB(17)+0  /* number of WID entries in context stack  */
-#define CALLED      termTCB(17)+1  /* set if last explicit opcode was a call  */
-#define SLOT        termTCB(17)+2  /* current slot position, these are a pair */
-#define LITPEND     termTCB(17)+3  /* literal-pending flag                    */
-#define COLONDEF    termTCB(18)+0  /* colon definition is in progress         */
-#define CASEINSENS  termTCB(18)+1  /* case-insensitive flag                   */
-#define TEMPTOIN    termTCB(18)+2  /* save 16-bit >IN in case of error        */
+#define WIDS        termTCB(18)+0  /* number of WID entries in context stack  */
+#define CALLED      termTCB(18)+1  /* set if last explicit opcode was a call  */
+#define SLOT        termTCB(18)+2  /* current slot position, these are a pair */
+#define LITPEND     termTCB(18)+3  /* literal-pending flag                    */
+#define COLONDEF    termTCB(19)+0  /* colon definition is in progress         */
+#define CASESENS    termTCB(19)+1  /* case-sensitive flag                     */
+#define TEMPTOIN    termTCB(19)+2  /* save 16-bit >IN in case of error        */
 // Compiler internal state
-#define CALLADDR    termTCB(19)  /* address+slot of last compiled CALL        */
-#define NEXTLIT     termTCB(20)  /* Next literal to be compiled               */
-#define IRACC       termTCB(21)  /* IR accumulator                            */
-#define HEAD        termTCB(22)  /* Points to header of last found word       */
-#define LINENUMBER  termTCB(23)  /* 16-bit line number, if used.              */
-#define FILEID      termTCB(23)+2  /* 8-bit file ID, if used.                 */
-#define SCOPE       termTCB(23)+3  /* 8-bit SCOPE flag {dp, cp, hp}           */
-#define CONTEXT     termTCB(24)  /* 8 cells of context                        */
-#define FORTHWID    termTCB(32)  /* Forth wordlist                            */
-#define HLD         termTCB(33)  /* Numeric input pointer                     */
-#define BLK         termTCB(34)  /* Current block, 0 if none                  */
+#define CALLADDR    termTCB(20)  /* address+slot of last compiled CALL        */
+#define NEXTLIT     termTCB(21)  /* Next literal to be compiled               */
+#define IRACC       termTCB(22)  /* IR accumulator                            */
+#define HEAD        termTCB(23)  /* Points to header of last found word       */
+#define LINENUMBER  termTCB(24)  /* 16-bit line number, if used.              */
+#define FILEID      termTCB(24)+2  /* 8-bit file ID, if used.                 */
+#define SCOPE       termTCB(24)+3  /* 8-bit SCOPE flag {dp, cp, hp}           */
+#define CONTEXT     termTCB(25)  /* 8 cells of context                        */
+#define FORTHWID    termTCB(33)  /* Forth wordlist                            */
+#define HLD         termTCB(34)  /* Numeric input pointer                     */
 #define TIB         termTCB(35)  /* Terminal Input Buffer                     */
 // support 132-column text files plus a little extra in case of zero-terminator
 #define MaxTIBsize  136          /* Maximum bytes allowed in TIB              */

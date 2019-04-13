@@ -110,11 +110,11 @@ void tiffDOT (void) {                   // pop and print
     uint32_t n = PopNum();
     printf("%d (%X) ", n, n);  printed = 1;
 }
-void tiffCISon (void) {                 // enable CPU display mode
-    CaseInsensitive = 1;
+void tiffCaseIns (void) {                 // case insensitive
+    StoreByte(0, CASESENS);
 }
-void tiffCISoff (void) {                // disable CPU display mode
-    CaseInsensitive = 0;
+void tiffCaseSensitive (void) {                // case sensitive
+    StoreByte(1, CASESENS);
 }
 
 void tiffCPUgo (void) {                 // Enter the single stepper
@@ -645,8 +645,8 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("cpu",     tiffCPUgo);
     AddKeyword("dbg",     tiffRunBrk);  // set and run to breakpoint(s)
     AddKeyword("cls",     tiffCLS);
-    AddKeyword("CaseSensitive",   tiffCISoff);
-    AddKeyword("CaseInsensitive", tiffCISon);
+    AddKeyword("CaseSensitive",   tiffCaseSensitive);
+    AddKeyword("CaseInsensitive", tiffCaseIns);
     AddKeyword("include", tiffINCLUDE);
     AddKeyword("equ",     tiffEQU);
     AddKeyword("constant",tiffEQU);     // non-tickable constant
@@ -794,7 +794,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddEquate ("c_slot",     SLOT);
     AddEquate ("c_litpend",  LITPEND);
     AddEquate ("c_colondef", COLONDEF);
-    AddEquate ("c_caseins",  CASEINSENS);
+    AddEquate ("c_casesens", CASESENS);
     AddEquate ("calladdr",   CALLADDR);
     AddEquate ("nextlit",    NEXTLIT);
     AddEquate ("iracc",      IRACC);
@@ -815,7 +815,7 @@ int NotKeyword (char *key) {            // do a command, return 0 if found
         for (i = 0; i < keywords; i++) { // scan the list for the word name
             strcpy(str1, key);
             strcpy(str2, HostWord[i].name);
-            if (CaseInsensitive) {
+            if (!FetchByte(CASESENS)) {
                 UnCase(str1);
                 UnCase(str2);
             }

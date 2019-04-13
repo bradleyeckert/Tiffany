@@ -3,7 +3,6 @@
 #include "config.h"
 
 extern uint32_t DbgPC;                             // last PC returned by VMstep
-extern int CaseInsensitive;                               // 0 if case sensitive
 
 uint32_t DbgGroup (uint32_t op0, uint32_t op1,   // Execute an instruction group
                    uint32_t op2, uint32_t op3, uint32_t op4);

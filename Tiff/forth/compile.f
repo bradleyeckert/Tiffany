@@ -39,7 +39,7 @@ tibs         equ tibs
 tibb         equ tibb
 >in          equ >in
 c_wids       equ c_wids
-c_caseins    equ c_caseins
+c_casesens   equ c_casesens
 \ head         equ head
 context      equ context
 forthwid     equ forthwid

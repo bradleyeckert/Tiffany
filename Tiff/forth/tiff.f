@@ -104,7 +104,8 @@ cp @ equ s2
 \ include test/ttester.fs
 \ include test/coretest.fs
 
-make ../templates/app.c ../demo/vm.c       \ C version
+\ make ../templates/app.c ../demo/vm.c       \ C version
+make ../src/vm.c ../demo/vm.c       \ C version, vm.c is usable as a template
 \ make ../templates/app.A51 ../8051/vm.A51   \ 8051 version
 
 \ make ../templates/app.c ../testbench/vm.c  \ C version for testbench

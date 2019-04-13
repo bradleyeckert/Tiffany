@@ -85,6 +85,12 @@
    over over xor 0= |ifz drop exit |
    drop drop  r> cell+ >r               \ eat x and skip branch
 ; call-only
+         \ done?        no           yes
+: (for)  \ R: cnt RA -- cnt-1 RA+4 | RA
+   r> r> 1-                             \ faster than DO LOOP because all of the
+   |-if drop >r exit |                  \ indexing is done here. NEXT just jumps.
+   >r cell+ >r                          \ FOR NEXT does something 0 or more times.
+; call-only                             \ It also skips if negative count.
 
 
 : umove  \ a1 a2 n --                   \ move cells, assume cell aligned
@@ -130,26 +136,24 @@
    +until
    drop >r >r drop r> r> swap
 ;
-: um/mod_ov  \ ud u -- -1 -1
-   drop drop drop -1 dup
-;
 : um/mod \ ud u -- ur uq
    2dup - drop
-   |ifc um/mod_ov exit |                \ check for overflow
+   ifnc
+      drop drop drop  -1 dup  exit      \ overflow
+   then
    -32  u2/ 2*                          \ clear carry
    begin                                \ L H divisor count
-      >r >r   >r 2*c r> 2*c             \ dividend' | count divisor
-      ifnc
+      >r >r  >r 2*c r> 2*c              \ dividend64 | count divisor32
+      ifnc  \ either way, subtract
          dup r@  - drop                 \ test subtraction
-         |ifc r@ - |                    \ keep it
-      else
+         ifnc r@ - then                 \ keep it
+      else                              \ carry out of dividend, so subtract
          r@ -  0 2* drop                \ clear carry
       then
       r> r> 1+                          \ L' H' divisor count
    +until
-   drop drop swap 2*c
+   drop drop swap 2*c invert            \ finish quotient
 ;
-
 : sm/rem  \ d n -- rem quot
    2dup xor >r  over >r  abs >r dabs r> um/mod
    swap r> 0< if  negate  then

@@ -1,9 +1,11 @@
 \ Interpreter words
 
+: throw  ?dup if cr . ." throw: " tibs 2@ type cr then ;  \ for testing, remove later
+
 \ convert char to uppercase, also used by `hfind`
 : toupper  \ c -- c'
    dup [char] a [char] { within \ }
-   32 and +
+   32 and -
 ;
 \ convert char to digit, return `ok` flag
 : digit?  \ c base -- n ok?
@@ -43,8 +45,13 @@
    /source  over >r  rot scan  r>  rot over -  rot 0<>
    1 and over + >in +!
 ;
+\ Version of parse that skips leading delimiters
+: _parse  \ char "<chars>ccc<char>" -- c-addr u
+   >r  /source over  r@ swap >r         \ a u char | char a
+   skip drop r> - >in +!  r> parse      \ a u
+;
 : parse-word  \ "<spaces>name" -- c-addr u
-   /source over >r  bl skip drop r> - >in +!  bl parse
+   bl _parse
 ;
 : .(    \ "string)" --
     [char] ) parse type                 \ parse to output
@@ -55,7 +62,7 @@
 
 \ A version of FIND that accepts a counted string and returns a header token.
 \ `toupper` converts a character to lowercase
-\ `c_caseins` is the case-insensitive flag
+\ `c_casesens` is the case-sensitive flag
 \ `match` checks two strings for mismatch and keeps the first string
 \ `_hfind` searches one wordlist for the string
 
@@ -65,8 +72,8 @@
    drop over >r third >r  swap negate   \ a1 a2 -n | n1 a1
    begin >r
       c@+ >r swap c@+ r>                \ a2' a1' c1 c2 | n1 a1 -n
-      c_caseins c@ if
-         toupper swap toupper
+      c_casesens c@ 0= if
+         toupper swap toupper           \ not case sensitive
       then
       xor if                            \ mismatch
          r> 3drop r> r>
@@ -97,8 +104,8 @@
       r> dup
    again
 ;
-: CaseInsensitive  1 c_caseins c! ;
-: CaseSensitive    0 c_caseins c! ;
+: CaseInsensitive  0 c_casesens c! ;
+: CaseSensitive    1 c_casesens c! ;
 
 \ Recognize a string as a number if possible.
 

@@ -72,6 +72,7 @@ void ErrorMessage (int error, char *s) {
        case  -60: msg = "Attempt to write to non-blank flash memory";   break;
        case  -61: msg = "Macro expansion failure";                      break;
        case  -62: msg = "Input buffer overflow, line too long";         break;
+       case  -63: msg = "Bad arguments to RESTORE-INPUT";               break;
        case  -80: msg = "Dictionary full";                              break;
        case  -99: msg = "Nesting overflow during include";              break;
        case -100: msg = "ALLOCATE failed";                              break;

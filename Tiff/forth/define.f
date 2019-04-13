@@ -77,13 +77,15 @@
    0 state !
 ; immediate
 
-: :  \ <name> --                        \ new :
-   alignc
-   cp @  ['] get-compile  header[
+: +:  \ xtc <name> --                   \ new : with custom xtc
+   >r alignc  cp @ r> header[
    255 [ pad 15 + ] literal c!          \ blank count byte = 255
    224 flags!                           \ flags: jumpable, anon, smudged
    ]header
    1 c_colondef c!  ]
+;
+: :  \ <name> --                        \ new :
+   ['] get-compile  +:
 ;
 : :noname  \ -- xt
    alignc  NewGroup  cp @  ]
