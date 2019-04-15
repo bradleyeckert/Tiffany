@@ -13,6 +13,13 @@ uint32_t VMstep(uint32_t IR, int Paused);   // Execute an instruction group
 void VMpor(void);                           // Reset the VM
 void SetDbgReg(uint32_t n);                 // write to the debug mailbox
 uint32_t GetDbgReg(void);                   // read from the debug mailbox
+uint32_t vmRegRead(int ID);                 // quick read of VM register
+uint32_t FetchCell(uint32_t addr);
+uint16_t FetchHalf(uint32_t addr);
+uint8_t FetchByte(uint32_t addr);
+void StoreCell (uint32_t x, uint32_t addr);
+void StoreHalf (uint16_t x, uint32_t addr);
+void StoreByte (uint8_t x, uint32_t addr);
 
 // Defined in vm.c, used for development only. Not on the target system.
 int WriteROM(uint32_t data, uint32_t address);
@@ -20,6 +27,8 @@ void Trace(unsigned int Type, int32_t ID, uint32_t Old, uint32_t New);
 void UnTrace(int32_t ID, uint32_t old);
 extern int tiffIOR;                         // error detection, error when not 0
 extern uint32_t cyclecount;
+extern uint32_t maxReturnPeriod;
+extern uint32_t maxReturnPC;
 extern uint32_t ProfileCounts[ROMsize];     // profiler data
 extern uint32_t OpCounter[64];              // dynamic instruction count
 extern uint32_t AXI[SPIflashSize+AXIRAMsize];

@@ -6,7 +6,9 @@
 
 #define IMM    (IR & ~(-1<<slot))
 
-int tiffIOR; // global error code
+int tiffIOR; // global errorcode
+
+static int error = 0;  // local errorcode
 
 // This file is usable as a template for generating a C testbench
 
@@ -62,6 +64,9 @@ int tiffIOR; // global error code
     uint32_t OpCounter[64];     // opcode counter
     uint32_t ProfileCounts[ROMsize];
     uint32_t cyclecount;
+    uint32_t retperiod;
+    uint32_t maxReturnPeriod;   // max cycles between RETs
+    uint32_t maxReturnPC = 0;   // PC where it occurred
 
     static int New; // New trace type, used to mark new sections of trace
     static uint32_t RAM[RAMsize];
@@ -119,6 +124,71 @@ int tiffIOR; // global error code
 
 #endif // TRACEABLE
 
+// Generic fetch from ROM or RAM: ROM is at the bottom, RAM is in middle, AXI is at top
+static uint32_t FetchX (uint32_t addr, int shift, int mask) {
+    if (addr >= (SPIflashSize+AXIRAMsize)) {
+        return 0;
+    }
+    if (addr < ROMsize) {
+        return (ROM[addr] >> shift) & mask;
+    } else {
+        if (addr < (ROMsize + RAMsize)) {
+            return (RAM[addr-ROMsize] >> shift) & mask;
+        } else {
+            return (AXI[addr] >> shift) & mask;
+        }
+    }
+}
+
+// Generic store to RAM only.
+static void StoreX (uint32_t addr, uint32_t data, int shift, int mask) {
+    if ((addr<ROMsize) || (addr>=(ROMsize+RAMsize))) {
+        error = -9;  return;
+    }
+    addr -= ROMsize;
+    uint32_t temp = RAM[addr] & (~(mask << shift));
+#ifdef TRACEABLE
+    temp = ((data & mask) << shift) | temp;
+    Trace(New, addr, RAM[addr], temp);  New=0;
+    RAM[addr] = temp;
+#else
+    RAM[addr] = ((data & mask) << shift) | temp;
+#endif // TRACEABLE
+}
+
+uint32_t FetchCell(uint32_t addr) {
+    if (addr & 3) {
+        error = -23;
+    }
+    return FetchX(addr>>2, 0, 0xFFFFFFFF);
+}
+uint16_t FetchHalf(uint32_t addr) {
+    if (addr & 1) {
+        error = -23;
+    }
+    return FetchX(addr>>2, (addr&2)*8, 0xFFFF);
+}
+uint8_t FetchByte(uint32_t addr) {
+    return FetchX(addr>>2, (addr&3)*8, 0xFF);
+}
+void StoreCell (uint32_t x, uint32_t addr) {
+    if (addr & 3) {
+        error = -23;
+    }
+    StoreX(addr>>2, x, 0, 0xFFFFFFFF);
+}
+void StoreHalf (uint16_t x, uint32_t addr) {
+    if (addr & 1) {
+        error = -23;
+    }
+    StoreX(addr>>2, x, (addr&2)*8, 0xFFFF);
+}
+void StoreByte (uint8_t x, uint32_t addr) {
+    StoreX(addr>>2, x, (addr&3)*8, 0xFF);
+}
+
+
+
 //`0`#ifdef __NEVER_INCLUDE__
 /// Tiff's ROM write functions for populating internal ROM.
 /// A copy may be stored to SPI flash for targets that boot from SPI.
@@ -152,64 +222,32 @@ int WriteROM(uint32_t data, uint32_t address) { // EXPORTED
 // An external function could be added in the future for other stuff.
 // dest is a cell address, length is 0 to 255 meaning 1 to 256 words.
 // *** Modify to only support the AXIRAMsize region after SPI flash.
-static void SendAXI(int src, unsigned int dest, uint8_t length) {
-    uint32_t old, data;     int i;
-    src -= ROMsize;
-    if (src < 0) goto bogus;            // below RAM address
-    if (src >= (RAMsize-length)) goto bogus;
-    if (dest >= (SPIflashSize-length)) goto bogus;
-    for (i=0; i<=length; i++) {
-        old = AXI[dest];		        // existing flash data
-        data = RAM[src++];
-        if (~(old|data)) {
-            tiffIOR = -60;              // not erased
-            return;
-        }
-        AXI[dest++] = old & data;
+static void SendAXI(uint32_t src, uint32_t dest, uint8_t length) {
+    for (int i=0; i<=length; i++) {
+        uint32_t old = FetchCell(dest);
+        uint32_t data = FetchCell(src);
+//        printf("[%X]=[%X]:%X ", dest, src, data);
+        WriteROM(old & data, dest);
+        src += 4;
+        dest += 4;
     } return;
-bogus: tiffIOR = -9;                    // out of range
 }
 
 // Receive a stream of RAM words from the AXI bus.
 // The only thing on the AXI bus here is SPI flash.
 // An external function could be added in the future for other stuff.
 // src is a cell address, length is 0 to 255 meaning 1 to 256 words.
-static void ReceiveAXI(unsigned int src, int dest, uint8_t length) {
+static void ReceiveAXI(uint32_t src, uint32_t dest, uint8_t length) {
     dest -= ROMsize;
     if (dest < 0) goto bogus;            // below RAM address
     if (dest >= (RAMsize-length)) goto bogus;  // won't fit
     if (src >= (SPIflashSize+AXIRAMsize-length)) goto bogus;
     memmove(&AXI[dest], &RAM[src], length+1);  // can read all of AXI space
     return;
-bogus: tiffIOR = -9;                    // out of range
+bogus: error = -9;                    // out of range
 }
 
-// Generic fetch from ROM or RAM: ROM is at the bottom, RAM is in middle, AXI is at top
-static int32_t FetchX (int32_t addr, int shift, int mask) {
-    if (addr < ROMsize) {
-        return (ROM[addr] >> shift) & mask;
-    } else {
-        if (addr < (ROMsize + RAMsize)) {
-            return (RAM[addr-ROMsize] >> shift) & mask;
-        } else if (addr < (SPIflashSize+AXIRAMsize)) {
-            return (AXI[addr] >> shift) & mask;
-        } else return 0;
-    }
-}
 
-// Generic store to RAM: ROM is at the bottom, RAM wraps.
-static void StoreX (uint32_t addr, uint32_t data, int shift, int mask) {
-    uint32_t temp;
-    addr = addr & (RAMsize-1);
-    temp = RAM[addr] & (~(mask << shift));
-#ifdef TRACEABLE
-    temp = ((data & mask) << shift) | temp;
-    Trace(New, addr, RAM[addr], temp);  New=0;
-    RAM[addr] = temp;
-#else
-    RAM[addr] = ((data & mask) << shift) | temp;
-#endif // TRACEABLE
-}
 
 #ifdef TRACEABLE
     // Untrace undoes a state change by restoring old data
@@ -239,6 +277,8 @@ void VMpor(void) {  // EXPORTED
     memset(OpCounter,0,64*sizeof(uint32_t)); // clear opcode profile counters
     memset(ProfileCounts, 0, ROMsize*sizeof(uint32_t));  // clear profile counts
     cyclecount = 0;                     // cycles since POR
+    retperiod = 0;
+    maxReturnPeriod = 0;
 #endif // TRACEABLE
     PC = 0;  RP = 64;  SP = 32;  UP = 64;
     T=0;  N=0;  DebugReg = 0;
@@ -279,7 +319,10 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 #ifdef TRACEABLE
         OpCounter[opcode]++;
         New = 1;  // first state change in an opcode
-        if (!Paused) cyclecount += 1;
+        if (!Paused) {
+            cyclecount += 1;
+            retperiod += 1;
+        }
 #endif // TRACEABLE
         switch (opcode) {
 			case opNOP:									break;	// nop
@@ -288,7 +331,14 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
                 M = RDROP() >> 2;
 #ifdef TRACEABLE
                 Trace(New, RidPC, PC, M);  New=0;
-                if (!Paused) cyclecount += 3;  // PC change flushes pipeline
+                if (!Paused) {
+                    cyclecount += 3;    // PC change flushes pipeline
+                    if (retperiod > maxReturnPeriod) {
+                        maxReturnPeriod = retperiod ;
+                        maxReturnPC = PC * 4;
+                    }
+                    retperiod = 0;  // track the longest time between EXITs
+                }
 #endif // TRACEABLE
                 // PC is a cell address. The return stack works in bytes.
                 PC = M;  goto ex;                   	        // exit
@@ -341,7 +391,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
                 CARRY = (uint32_t)(DX>>32);
                 SNIP();	                                break;	// -
 			case opCstorePlus:    /* ( n a -- a' ) */
-                StoreX(T>>2, N, (T&3)*8, 0xFF);
+			    StoreByte(N, T);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, T+1);
 #endif // TRACEABLE
@@ -373,19 +423,24 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 			case opJUMP:
 #ifdef TRACEABLE
                 Trace(New, RidPC, PC, IMM);  New=0;
-                if (!Paused) cyclecount += 3;
+                if (!Paused) {
+                    cyclecount += 3;
+                    retperiod += 3;
+                }
 				// PC change flushes pipeline in HW version
 #endif // TRACEABLE
                 // Jumps and calls use cell addressing
 			    PC = IMM;  goto ex;                             // jmp
 			case opWstorePlus:    /* ( n a -- a' ) */
-                StoreX(T>>2, N, (T&2)*8, 0xFFFF);
+			    StoreHalf(N, T);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, T+2);
 #endif // TRACEABLE
                 T += 2;   SNIP();                       break;  // w!+
 			case opWfetchPlus:  SDUP();  /* ( a -- a' c ) */
-                M = FetchX(N>>2, (N&2) * 8, 0xFFFF);
+                M = FetchHalf(N);
+
+ //               M = FetchX(N>>2, (N&2) * 8, 0xFFFF);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
                 Trace(0, RidN, N, N+2);
@@ -414,7 +469,10 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 			case opCALL:  RDUP(PC<<2);                        	// call
 #ifdef TRACEABLE
                 Trace(0, RidPC, PC, IMM);  PC = IMM;
-                if (!Paused) cyclecount += 3;
+                if (!Paused) {
+                    cyclecount += 3;
+                    retperiod += 3;
+                }
                 goto ex;
 #else
                 PC = IMM;  goto ex;
@@ -426,7 +484,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 #endif // TRACEABLE
                 T = M;                                  break;  // 0=
 			case opWfetch:  /* ( a -- w ) */
-                M = FetchX(T>>2, (T&2) * 8, 0xFFFF);
+                M = FetchHalf(T);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
 #endif // TRACEABLE
@@ -456,13 +514,13 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
                 CARRY = (uint32_t)(DX>>32);
                 SNIP();	                                break;	// c+
 			case opStorePlus:    /* ( n a -- a' ) */
-                StoreX(T>>2, N, 0, 0xFFFFFFFF);
+			    StoreCell(N, T);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, T+4);
 #endif // TRACEABLE
                 T += 4;   SNIP();                       break;  // !+
 			case opFetchPlus:  SDUP();  /* ( a -- a' c ) */
-                M = FetchX(N>>2, 0, 0xFFFFFFFF);
+                M = FetchCell(T);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
                 Trace(0, RidN, N, N+4);
@@ -492,7 +550,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 #endif // TRACEABLE
 			    RP = M;  SDROP();                       break;	// rp!
 			case opFetch:  /* ( a -- n ) */
-                M = FetchX(T>>2, 0, 0xFFFFFFFF);
+                M = FetchCell(T);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
 #endif // TRACEABLE
@@ -535,7 +593,7 @@ GetPointer:     M = T + (M + ROMsize)*4;
 #endif // TRACEABLE
                 T=DebugReg;
                 DebugReg=M;
-                break;	// port
+                break;	                                        // port
 			case opSKIPLT: if ((signed)T >= 0) break;           // +if:
                 goto ex;
 			case opLIT: SDUP();
@@ -546,7 +604,7 @@ GetPointer:     M = T + (M + ROMsize)*4;
 			case opUP: M = UP;  	                            // up
                 goto GetPointer;
 			case opStoreAS:  // ( src dest -- src dest ) imm length
-                SendAXI(N/4, T/4, IMM);  goto ex;               // !as
+                SendAXI(N, T, IMM);  goto ex;                   // !as
 			case opSetUP:
                 M = (T>>2) & (RAMsize-1);
 #ifdef TRACEABLE
@@ -567,7 +625,14 @@ GetPointer:     M = T + (M + ROMsize)*4;
 			default:                           		    break;	//
 		}
 	} while (slot>=0);
-ex: return PC;
+ex: if (error) {
+        tiffIOR = error;                // tell Tiff there was an error
+        RDUP(PC<<2);
+        PC = 2;                         // call an error_interrupt
+        DebugReg = error;
+        error = 0;
+    }
+    return PC;
 }
 
 // write to the debug mailbox
@@ -579,3 +644,18 @@ void SetDbgReg(uint32_t n) {  // EXPORTED
 uint32_t GetDbgReg(void) {  // EXPORTED
     return DebugReg;
 }
+
+// Instrumentation
+
+uint32_t vmRegRead(int ID) {
+	switch(ID) {
+		case 0: return T;
+		case 1: return N;
+		case 2: return (RP+ROMsize)*4;
+		case 3: return (SP+ROMsize)*4;
+		case 4: return (UP+ROMsize)*4;
+		case 5: return PC*4;
+		default: return 0;
+	}
+}
+

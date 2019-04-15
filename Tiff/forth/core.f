@@ -49,6 +49,7 @@
    drop
 ;
 : dabs    |-if dnegate exit | ;         \ n -- u
+: count   c@+ ; macro					\ a -- a+1 c
 : third   4 sp @ ;
 : fourth  8 sp @ ;
 : depth   sp0 @ 8 sp - 2/ 2/ ;
@@ -57,12 +58,12 @@
 : hex     16 base ! ;                   \ --
 : link>   @ 16777215 and ;              \ a1 -- a2, mask off upper 8 bits
 
-: (?do)  \ limit i -- | R: RA -- -limit i RA+4 | RA
-   over over invert + 0<
-   |-if drop exit |
-   drop  swap invert 1+                 \ i -limit
-   r> swap >r
-   swap cell+ >r
+         \ do is  "swap negate >r >r"  macro
+         \ run loop?             no    yes
+: (?do)  \ limit i -- | R: RA -- RA | -limit i RA+4
+   over over invert +   |-if 3drop exit |
+   drop   swap negate                   \ i -limit
+   r> cell+  swap >r swap >r  >r
 ; call-only
 : (loop)  \ R: -limit i RA -- -limit i+1 RA | RA+4
    R> R> 1+ R>  over over +             \ RA i+1 ~limit sum
@@ -79,7 +80,6 @@
 
 : j       12 rp @ ; call-only           \ R: ~limit j ~limit i RA
 : unloop  R> R> drop R> drop >R ; call-only
-
         \ match?         no         yes
 : (of)  \ x1 x2 R: RA -- x1 R: RA | R: RA+4
    over over xor 0= |ifz drop exit |
@@ -91,6 +91,12 @@
    |-if drop >r exit |                  \ indexing is done here. NEXT just jumps.
    >r cell+ >r                          \ FOR NEXT does something 0 or more times.
 ; call-only                             \ It also skips if negative count.
+
+: (string)  \ -- c-addr | R: RA -- RA'	\ skip over counted string
+   r> dup c@+ + 						\ ra ra'
+   3  dup >r  + 						\ aligned
+   r> invert and >r
+; call-only
 
 
 : umove  \ a1 a2 n --                   \ move cells, assume cell aligned
@@ -127,14 +133,34 @@
    1+ swap
    | u2/ -rept swap drop ;
 ;
+
+\ Multiply and divide loops must include exits to allow for a VM that implements
+\ interrupts by changing flow only at EXIT.
+
+: _um*  \ u1 ud
+      2* >r 2*c                         \ u1 u2' | count x'
+   |ifc over r> + >r |                  \ add u1 to x
+   |ifc 1+ |                            \ carry into u2
+   r> 2* >r 2*c                         \ u1 u2' | count x'
+   |ifc over r> + >r |                  \ add u1 to x
+   |ifc 1+ |                            \ carry into u2
+   r>
+;
 : um*  \ u1 u2 -- ud                    \ 450-550 beats
-   0 -32  begin                         \ u1 u2 0 count
-      >r 2* >r 2*c                      \ u1 u2' | count x'
-      |ifc over r> + >r |               \ add u1 to x
-      |ifc 1+ |                         \ carry into u2
-      r> r> 1+                          \ u1 u2' x' count'
-   +until
-   drop >r >r drop r> r> swap
+   dup dup xor \ 0
+   _um* _um* _um* _um* _um* _um* _um* _um*
+   _um* _um* _um* _um* _um* _um* _um* _um*
+   >r >r drop r> r> swap
+;
+: _um/mod
+      >r >r  >r 2*c r> 2*c              \ dividend64 | count divisor32
+      ifnc
+         dup r@  - drop                 \ test subtraction
+         ifnc r@ - then                 \ keep it
+      else                              \ carry out of dividend, so subtract
+         r@ -  0 2* drop                \ clear carry
+      then
+      r> r> 1+                          \ L' H' divisor count
 ;
 : um/mod \ ud u -- ur uq
    2dup - drop
@@ -142,16 +168,7 @@
       drop drop drop  -1 dup  exit      \ overflow
    then
    -32  u2/ 2*                          \ clear carry
-   begin                                \ L H divisor count
-      >r >r  >r 2*c r> 2*c              \ dividend64 | count divisor32
-      ifnc  \ either way, subtract
-         dup r@  - drop                 \ test subtraction
-         ifnc r@ - then                 \ keep it
-      else                              \ carry out of dividend, so subtract
-         r@ -  0 2* drop                \ clear carry
-      then
-      r> r> 1+                          \ L' H' divisor count
-   +until
+   begin  _um/mod  +until               \ L H divisor count
    drop drop swap 2*c invert            \ finish quotient
 ;
 : sm/rem  \ d n -- rem quot
@@ -224,6 +241,7 @@
     r> dup xor       \ 0                \ discard saved stack ptr
 ; call-only
 
+{
 : throw  \ ??? exception# -- ??? exception#
     dup ifz: drop exit |                \ Don't throw 0
     handler @ rp!   \ exc#              \ restore prev return stack
@@ -232,3 +250,4 @@
     sp! drop nip
     r> r> swap      \ exc#              \ Change stack pointer
 ;
+}

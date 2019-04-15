@@ -171,7 +171,7 @@ void CommaHeader (char *name, uint32_t xte, uint32_t xtc, int Size, int flags){
 	uint32_t link = FetchCell(wid);
 	StoreCell (FetchCell(HP), wid);
 	CommaH (((Size&0xFF)<<24) | link);                 // [0]: Upper size | link
-	CommaXstring(name, CommaH, flags, 0);              // [1]: Name
+	CommaXstring(name, CommaH, flags, 0);              // [1]: Name, not escaped
 }
 
 void FollowingToken (char *str, int max) {  // parse the next blank delimited string
@@ -252,7 +252,7 @@ void tiffINCLUDED (char *name) {
         StoreROM(hp, FilenameListHead);
         FilenameListHead = hp;
         CommaH(0xFFFFFFFF);             // forward link
-        CommaHstring(File.FilePath);
+        CompString(File.FilePath, 3, HP);
         FileID++;
         if (FileID == 255) tiffIOR = -99;
         SwallowBOM(File.fp);
@@ -403,16 +403,20 @@ void TiffColorTheme (void) {
     ColorTheme = 1;
 }
 
-void tiffCommaString (void) {
+void tiffCommaString (void) {   // ,"
     GetQuotedString('"');
-    CommaCstring(name);
+    CompString(name, 1, CP);
+}
+static void CommaQString (void) {
+    GetQuotedString('"');
+    CompString(name, 3, CP);       // aligned string
 }
 
 void tiffMsgString (void) {     // ."
     NoExecute();
     CompAhead();
     uint32_t cp = FetchCell(CP);
-    tiffCommaString();
+    CommaQString();
     CompThen();
     CompType(cp);
 }
@@ -420,7 +424,7 @@ void tiffCString (void) {       // C"
     if (FetchCell(STATE)) {
         CompAhead();
         uint32_t cp = FetchCell(CP);
-        tiffCommaString();
+        CommaQString();
         CompThen();
         Literal(cp);
     }
@@ -429,7 +433,7 @@ void tiffSString (void) {       // S"
     if (FetchCell(STATE)) {
         CompAhead();
         uint32_t cp = FetchCell(CP);
-        tiffCommaString();
+        CommaQString();
         CompThen();
         CompCount(cp);
     }
@@ -564,12 +568,15 @@ void tiffSTATS (void) {
     printf("\nClock cycles elapsed: %u, since last: %u ",
            cyclecount, cyclecount-mark);
     mark = cyclecount;
+    printf("\nMaximum cycles between EXITs: %u at PC=%Xh ", maxReturnPeriod, maxReturnPC);
+    maxReturnPeriod = 0;
 #endif
+    uint32_t cp = FetchCell(CP);
+    uint32_t dp = FetchCell(DP);
     uint32_t hp = FetchCell(HP);
-    printf("\nROM usage: %d bytes of %d",
-           FetchCell(CP), ROMsize*4);  printed = 1;
-    printf("\nFlash usage: HP = %d of %d, header space is %d bytes of %d",
-           hp, SPIflashSize*4, hp-HeadPointerOrigin, SPIflashSize*4-HeadPointerOrigin);
+    printf("\nMem Sizes: ROM=%X, RAM=%X, SPI=%X", ROMsize*4, RAMsize*4, SPIflashSize*4);
+    printf("\nCP=%X, DP=%X/%X, HP=%X/%X", cp, dp, ROMsize*4, hp, (ROMsize+RAMsize)*4);
+    printed = 1;
 }
 
 
@@ -665,6 +672,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword(":",       tiffCOLON);
     AddKeyword(";",       CompSemi);
     AddKeyword(",",       CompComma);
+    AddKeyword("c,",      CompCommaC);
     AddKeyword("literal", CompLiteral);
     AddKeyword(",\"",     tiffCommaString);
     AddKeyword(".\"",     tiffMsgString);
@@ -785,9 +793,9 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddEquate ("tibs",       TIBS);
     AddEquate ("tibb",       TIBB);
     AddEquate (">in",        TOIN);
-//    AddEquate ("w_>in",      TEMPTOIN);
     AddEquate ("w_linenum",  LINENUMBER);
     AddEquate ("c_fileid",   FILEID);
+    AddEquate ("c_noecho",   NOECHO);
     AddEquate ("c_scope",    SCOPE);
     AddEquate ("c_wids",     WIDS);
     AddEquate ("c_called",   CALLED);

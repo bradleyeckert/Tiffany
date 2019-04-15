@@ -6,8 +6,8 @@
 
 // Sizes of internal memories in 32-bit cells
 #define StackSpace 128                 /* combined stack space at bottom of RAM */
-#define RAMsize    0x200                         /* must be an exact power of 2 */
-#define ROMsize    0x800                         /* must be an exact power of 2 */
+#define RAMsize    0x200                       /* should be an exact power of 2 */
+#define ROMsize    0x2000                      /* should be an exact power of 2 */
 
 #define SPIflashCapacity   18    /* Log2 of flash size in bytes, minimum is 12 */
 #define SPIflashSize (1<<(SPIflashCapacity-2))  /* Must be a multiple of 0x400 */
@@ -15,8 +15,6 @@
 // The idea was to have RAM in the AXI space, after SPI flash.
 #define AXIRAMsize 0                                     /* RAM on the AXI bus */
 
-// Copy internal ROM writes to SPI flash, Defined if SPI gets a copy of the ROM image.
-#define BootFromSPI
 
 // Instruments the VM to allow Undo and Redo
  #define TRACEABLE
@@ -32,10 +30,7 @@
 // Number of lines in `locate`
 #define LocateLines  10
 
-// Two words are reserved for forward jumps to cold boot and safe mode.
-// These are byte addresses.
-#define CodePointerOrigin  8                  /* Kernel definitions start here */
-#define HeadPointerOrigin  ((ROMsize+RAMsize)*4)    /* Lowest SPI code address */
+#define HeadPointerOrigin  ((ROMsize-4096)*4)    /* Lowest SPI code address */
 
 //===============================================================================
 // Sanity checks

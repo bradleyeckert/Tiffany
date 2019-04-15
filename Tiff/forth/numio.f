@@ -14,6 +14,7 @@ defer type
 : $type      count type ;               \ addr --
 cp @ equ string_cr ," \r\l"             \ CRLF
 cp @ equ string_pg ," \e[2J"            \ ANSI "clear screen"
+cp @ aligned cp !
 : term_cr    string_cr $type ;          \ --
 : term_page  string_pg $type ;          \ --
 : term_key?  dup 0 user ;               \ -- flag

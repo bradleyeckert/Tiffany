@@ -27,7 +27,7 @@
 : ]header  \ --                         \ write PAD to flash
    pad  dup
    16 + c@ 31 and  1+ aligned  16 + >r
-   hp @  r@  SPImove                    \ write to flash
+   hp @  r@  ROMmove                    \ write to flash
    hp @ 12 + current @ !                \ add to current definitions
    r> hp +!
 ;
@@ -51,7 +51,7 @@
 ;
 
 : last  current @ @ + ;       \ n -- a  \ index into last defined header
-: clrlast    last dup >r SPI@ and r> SPI! ;   \ bits offset --
+: clrlast    last dup >r @ and r> ROM! ;   \ bits offset --
 \ : clrlast    last dup SPI! ;   \ bits offset --
 : clr-xtcbits  invert -8 clrlast ;      \ n --   flip bits in the current xtc
 : clr-xtebits  invert -4 clrlast ;      \ n --   flip bits in the current xte

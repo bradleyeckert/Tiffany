@@ -8,21 +8,48 @@
 
 4 equ DumpColumns                       \ Output chars ~ Columns * 13 + 5
 
+defer coldboot
+defer safemode
+defer errorISR
+
 include core.f
 : pause ; : /pause ; \ include tasker.f \ no multitasker
 include timing.f
 include numio.f                         \ numeric I/O
-include flash.f                         \ SPI flash programming
+
+: throw  \ n --  						\ for testing, remove later
+   ?dup if  port drop  					\ save n in dbg register, like error interrupt
+      8 >r								\ fake an error interrupt
+   then
+; call-only
+
+\ The error ISR has the last known good PC on the return stack and the ior in port.
+\ Usually, you would just throw an error.
+\ Since the Tiff interpreter is being used, use a test THROW.
+
+:noname
+   cr ." Error " dup port . ." at PC=" r> .
+   ." Line# " w_linenum w@ .
+   cr
+   -1 @  								\ produce an error to quit
+; is errorISR
+
 include compile.f                       \ compile opcodes, macros, calls, etc.
 include interpret.f                     \ parse, interpret, convert to number
 include tools.f                         \ dump, .s
+include see.f
+include weanexec.f                      \ replace C execution fns in existing headers
+include weancomp.f                      \ replace C compilation fns in existing headers
+include define.f                        \ defining words
+include structure.f						\ control structures
+\ include flash.f                         \ SPI flash programming
+include forth.f                         \ high level Forth
 
 : main
    ." Hello World"
    cr 10 0 do i . loop
 ;
 
-include weanexec.f                      \ replace C execution fns in existing headers
 include end.f                           \ finish the app
 
 \ ------------------------------------------------------------------------------
@@ -33,13 +60,6 @@ include end.f                           \ finish the app
 \ Omitting the SPI flash should break the interpreter but nothing else.
 \ This is also necessary because the Forth can't modify internal ROM at run time.
 
-cp ?                                    \ display bytes of internal ROM used
-hp0 16384 + cp !                        \ leave 16K for headers
-cp @ equ codespace                      \ put code here in aux flash
-
-include weancomp.f                      \ replace C compilation fns in existing headers
-include define.f                        \ defining words
-include forth.f                         \ high level Forth
 
 \ If you XWORDS at this point, you'll see that all XTEs and XTCs are now Forth words.
 
@@ -80,7 +100,6 @@ cp @ equ s2
    endcase
 ;
 
-
 : mynum  ( n "name" -- )
    rom  create ,
    ram  does> @ 2*
@@ -88,21 +107,17 @@ cp @ equ s2
  111 mynum z1
  222 mynum z2
 
+HP @ . .( bytes in ROM, of which ) CP @ . .( is code and ) HP @ hp0 - . .( is head. )
+.( RAM = ) DP @ ROMsize - . .( of ) RAMsize .  cr
 
-.( bytes in internal ROM, ) CP @ hp0 16384 + - .
-.( bytes of code in flash, ) HP @ hp0 - .
-.( bytes of header.) cr
-
-: ten  20 0 do i .  i 10 = if leave then loop ;
-
-0 [if] .( should not print )
-[else] .( Hi there!) cr
-[then]
-
+0 [if]
 : ENVIRONMENT? ( c-addr u -- false ) 2drop 0 ;
 
-\ include test/ttester.fs
-\ include test/coretest.fs
+cr .( Test suite: ) cr
+include test/ttester.fs
+include test/coretest.fs
+include test/dbltest.fs
+[then]
 
 \ make ../templates/app.c ../demo/vm.c       \ C version
 make ../src/vm.c ../demo/vm.c       \ C version, vm.c is usable as a template

@@ -1,7 +1,5 @@
 \ Interpreter words
 
-: throw  ?dup if cr . ." throw: " tibs 2@ type cr then ;  \ for testing, remove later
-
 \ convert char to uppercase, also used by `hfind`
 : toupper  \ c -- c'
    dup [char] a [char] { within \ }
@@ -107,6 +105,18 @@
 : CaseInsensitive  0 c_casesens c! ;
 : CaseSensitive    1 c_casesens c! ;
 
+\ Header space:     W len xtc xte link name
+\ offset from ht: -16 -12  -8  -4    0 4
+
+: h'  \ "name" -- ht
+   parse-word  hfind  swap 0<>          \ len -1 | ht 0
+   -13 and throw                        \ header not found
+;
+: '   \ "name" -- xte
+   h' invert cell+ invert link>
+;
+
+
 \ Recognize a string as a number if possible.
 
 \ Formats:
@@ -186,4 +196,24 @@
       then
       depth 0< -4 and throw             \ stack underflow
    repeat  2drop
+;
+
+: getkey  \ -- char       char=0 if invalid char, -1 if terminator
+   begin pause key? until  key
+   dup 13 = if
+      drop -1 exit						\ terminator
+   then
+   dup bl < if
+      drop 0 exit						\ other control character
+   then
+   c_noecho c@ 0= if
+      dup emit 							\ echo if enabled
+   then
+;
+: accept  \ c-addr +n1 -- +n2
+   swap over  begin	 dup  while
+   >r getkey  							\ n a char | n'
+	  |-if 2drop r> - exit |			\ terminator found
+	  ?dup if  swap c!+  then			\ append
+   r> 1- repeat  2drop					\ filled
 ;

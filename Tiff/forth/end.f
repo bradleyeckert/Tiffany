@@ -15,18 +15,14 @@ cp @  idata-make                        \ compile idata table to ROM
    hld @ >r
 ; call-only
 
-: coldboot                              \ launch user application
+:noname                                 \ launch user application
    initialize                           \ return stack is now empty, you can't return to caller
    main
    bye
-;
-: safemode                              \ enter bootloader/terminal without app
+; is coldboot
+
+:noname                                 \ enter bootloader/terminal without app
    initialize
    main         \ not implemented yet
    bye
-;
-
-cp @  0 cp !
-    :noname coldboot ; drop             \ resolve the forward jump to coldboot
-    :noname safemode ; drop             \ resolve the forward jump to safemode
-cp !
+; is safemode

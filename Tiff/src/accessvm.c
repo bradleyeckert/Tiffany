@@ -66,16 +66,14 @@ void PushNumR (uint32_t N) {            // Push to the return stack
     SetDbgReg(N);
     DbgGroup(opDUP, opPORT, opPUSH, opSKIP, opNOP);
 }
-uint32_t FetchCell (uint32_t addr) {    // Read from RAM or ROM
-    SetDbgReg(addr);
-    return DbgGroup(opDUP, opPORT, opFetch, opPORT, opDROP);
-}
+/*
 uint8_t FetchByte (uint32_t addr) {     // Read from RAM or ROM
-    return (uint8_t) 0xFF & (FetchCell(addr) >> (8*(addr&3)));
+    return (uint8_t) 0xFF & (FetchCell(addr&(~3)) >> (8*(addr&3)));
 }
 uint16_t FetchHalf (uint32_t addr) {    // Read from RAM or ROM
-    return (uint16_t) 0xFFFF & (FetchCell(addr) >> (8*(addr&2)));
+    return (uint16_t) 0xFFFF & (FetchCell(addr&(~2)) >> (8*(addr&2)));
 }
+
 void StoreCell (uint32_t N, uint32_t addr) {  // Write to RAM
     SetDbgReg(N);
     DbgGroup(opDUP, opPORT, opDUP, opSKIP, opNOP);
@@ -94,6 +92,7 @@ void StoreByte (uint8_t N, uint32_t addr) {  // Write byte with cell rd/wr
     SetDbgReg(addr);
     DbgGroup(opPORT, opCstorePlus, opDROP, opSKIP, opNOP);
 }
+*/
 void SetPCreg (uint32_t PC) {           // Set new PC
     SetDbgReg(PC);
     DbgGroup(opDUP, opPORT, opPUSH, opEXIT, opNOP);
@@ -379,33 +378,30 @@ void StoreROM (uint32_t data, uint32_t address) {
     if (address < (ROMsize*4)){
         uint32_t rom = FetchCell(address);
         ior = WriteROM(rom & data, address);
-        if (~(rom|data)) ior = -60; // non-blank
+        if (~(rom|data)) ior = -60; // non-blank bits
     }
-#ifdef BootFromSPI
-    WriteAXI(data, address);
-#else
-    if (address >= (ROMsize*4)){
+    if (address >= ((ROMsize+RAMsize)*4)){
         WriteAXI(data, address);
     }
-#endif // BootFromSPI
     if (!tiffIOR) tiffIOR = ior;
 }
 
-void CommaC (uint32_t X) {  // append a word to code space
+void CommaC (uint32_t x) {  // append a word to code space
     uint32_t cp = FetchCell(CP);
-    StoreROM(X, cp);
+    StoreROM(x, cp);
     StoreCell(cp + 4, CP);
 }
 
-void CommaD (uint32_t X) {  // append a word to data space
+
+void CommaD (uint32_t x) {  // append a word to data space
     uint32_t dp = FetchCell(DP);
-    StoreCell(X, dp);
+    StoreCell(x, dp);
     StoreCell(dp + 4, DP);
 }
 
-void CommaH (uint32_t X) {  // append a word to header space
+void CommaH (uint32_t x) {  // append a word to header space
     uint32_t hp = FetchCell(HP);
-    StoreROM(X, hp);
+    StoreROM(x, hp);
     StoreCell(hp + 4, HP);
 }
 
@@ -475,6 +471,8 @@ void CommaXstring (char *s,             // string to compile
     }
 }
 
+// Should retire these, replace with CompString.
+
 void CommaHstring (char *s) {   // compile string to head space
     CommaXstring(s, CommaH, 0, 0); // disable escape sequences
 }
@@ -511,6 +509,8 @@ uint32_t ReadSP(int opcode) {           // read a stack pointer
 }
 
 uint32_t RegRead(int ID) {
+    return vmRegRead(ID);
+    /*
     switch(ID) {
         case 0: return DbgGroup(opDUP, opPORT, opDROP, opSKIP, opNOP);  // T
         case 1: return DbgGroup(opOVER, opPORT, opDROP, opSKIP, opNOP); // N
@@ -520,6 +520,7 @@ uint32_t RegRead(int ID) {
         case 5: return (DbgPC*4); // Don't make this the first RegRead  // PC
         default: return 0;
     }
+    */
 }
 #endif // TRACEABLE
 
@@ -699,7 +700,7 @@ void InitializeTermTCB (void) {
     initFilelist();                     // clear list of filenames used by LOCATE
     EraseSPIimage();                    // clear SPI flash image and ROM image
     StoreCell(HeadPointerOrigin+20, HP); // leave 5 cells for filelist, widlist, hp, cp, and dp
-    StoreCell(CodePointerOrigin, CP);
+    StoreCell(0, CP);
     StoreCell(DataPointerOrigin, DP);
     StoreCell(10, BASE);                // decimal
     StoreCell(FORTHWID, CURRENT);       // definitions are to Forth wordlist
@@ -1014,9 +1015,9 @@ Re: DumpRegs();
     SetCursorPosition(0, DumpRows+4);   // help along the bottom
     printf("\n(0..F)=digit, Enter=Clear, O=pOp, P=Push, R=Refresh, X=eXecute, \\=POR, ESC=Bye\n");
     #ifdef TRACEABLE
-    printf("G=Goto, S=Step, /=Run, @=Fetch, U=dUmp, W=WipeHistory, Y=Redo, Z=Undo \n");
+    printf("G=Goto, S=Step, V=oVer, /=Run, @=Fetch, U=dUmp, W=WipeHistory, Y=Redo, Z=Undo \n");
     #else
-    printf("G=Goto, S=Step, /=Run, @=Fetch, U=dUmp\n");
+    printf("G=Goto, S=Step, V=oVer, /=Run, @=Fetch, U=dUmp\n");
     #endif
     int width = TermWidth();
     if (width < 95) {
@@ -1059,6 +1060,15 @@ Re: DumpRegs();
                 case '@': Param = FetchCell(Param); break;  // @ = Fetch
                 case '\\': InitializeTermTCB();
                           ReloadFile();  goto Re;           // \ = Reset
+                case 'v':
+                case 'V': pc = RegRead(5);
+                          uint32_t done = pc + 4;
+                          while (pc != done) {
+                              Tracing=1;  VMstep(FetchCell(pc),0);
+                              Tracing=0;  pc = RegRead(5);
+                          }
+                          SetPCreg(pc);
+                          goto Re;                          // / = Execute until return
                 case '/': do { pc = RegRead(5);
                               Tracing=1;  VMstep(FetchCell(pc),0);
                               Tracing=0;

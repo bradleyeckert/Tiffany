@@ -44,6 +44,8 @@ void CompPlusUntil (void);
 void CompType(uint32_t cp);     // compile code for TYPE
 void CompCount(uint32_t cp);
 void CompComma (void);
+void CompCommaC (void);
+void CompString (char *s, int mode, int pointer);
 
 extern uint32_t breakpoint;
 

@@ -1,27 +1,49 @@
-\ compiler
+\ Mforth compiler
 
-\ Code and headers are both in flash. Write using SPI!.
+\ Compiling to known-blank flash memory.
+
+\ The VM's !AS instruction is used to program erased cells.
+\ Non-blank cells are assumed safe to write as long as the new data doesn't
+\ write '0's to existing '0' bits.
+
+: ROM!  \ n addr --
+   swap  hld dup >r @ r> swap >r >r 	\ save HLD ( R: hld 'hld )
+   r@ !   r@ swap                  		\ hld=n ( as ad )
+   0 !as  drop drop						\ store 1 cell to AXI space
+   r> r> swap !							\ restore HLD
+;
+: ROMC!  \ c addr --
+   >r  invert 255 and   				\ ~c addr
+   r@ 3 and 2* 2* 2* lshift       		\ c' | addr
+   invert  r> -4 and ROM!				\ write aligned c into blank slot
+;
+
+\ Code and headers are both in ROM.
 
 : ram  0 c_scope c! ;                   \ use RAM scope
 : rom  1 c_scope c! ;                   \ use flash ROM scope
 : h   c_scope c@ if CP exit then DP ;   \ scoped pointers
-: ,x  dup >r @ SPI!  4 r> +! ;          \ n addr --
+: ,x  dup >r @ ROM!  4 r> +! ;          \ n addr --
 : ,c  cp ,x ;                           \ n --
 : ,h  hp ,x ;                           \ n --
 : ,d  dp dup >r @ !  4 r> +! ;          \ n --
 : ,   c_scope c@ if ,c exit then ,d ;   \ n --
 
 : c,x                                   \ c addr --
-   >r  hld swap over c!                 \ hld is temporary byte
-   r@ @  1 SPImove  1 r> +!             \ program one byte
+   dup >r @ ROMC!  r@ @ 1+ r> !
 ;
 : c,c  cp c,x ;                         \ c --
 : c,h  hp c,x ;                         \ c --
 : c,d  dp dup >r @ c!  1 r> +! ;        \ c --
 : c,   c_scope c@ if c,c exit then c,d ;
 
-: ram  0 c_scope c! ;                   \ use RAM scope
-: rom  1 c_scope c! ;                   \ use flash ROM scope
+: ROMmove  ( as ad n -- )
+   negate begin >r
+      over c@ over ROMC!
+	  1+ swap 1+ swap
+   r> 1+ +until
+   drop drop drop
+;
 
 \ Equates for terminal variables puts copies in header space. See tiff.c/tiff.h.
 \ Some are omitted to save header space.
@@ -135,7 +157,7 @@ defer NewGroup
    c_called c@ if
       calladdr link>
       8  [ calladdr 3 + ] literal c@  lshift
-      invert swap SPI!                  \ convert CALL to JUMP
+      invert swap ROM!                  \ convert CALL to JUMP
       0 c_called c!
       0 calladdr ! exit
    then op_exit Implicit

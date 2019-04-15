@@ -341,7 +341,67 @@ void CompComma (void){                  // append number on the stack to code sp
     if (cp & 3) tiffIOR = -23;          // not cell aligned
     StoreCell(cp+4, CP);
 }
+void XcommaC (uint8_t c, uint32_t pointer) {
+    uint32_t p = FetchCell(pointer);
+    uint32_t addr = p & ~3;
+    uint32_t x = ~((0xFF&(~c)) << (8*(p&3))); // align c, all other are '1's
+    StoreROM(x, addr);
+    StoreCell(p+1, pointer);
+}
 
+void CompCommaC (void){
+    XcommaC(PopNum(), CP);
+}
+
+void CompString(char *s, int mode, int pointer) {
+    int length = strlen(s);
+    uint32_t mark = FetchCell(pointer); // Address of byte to resolve
+    char hex[4];
+    int cnt = 0;
+    if (mode & 1) {                     // skip count
+        StoreCell(mark+1, pointer);
+    }
+    for (int i=0; i<length; i++) {
+        char c = *s++;
+        if (0 == (mode & 4)) {          // escape sequences supported
+            if (c == '\\') {
+                c = *s++;
+                length--;
+                switch (c) {
+                    case 'a': c = 7; break;   // BEL  (bell)
+                    case 'b': c = 8; break;   // BS (backspace)
+                    case 'e': c = 27; break;  // ESC (not in C99)
+                    case 'f': c = 12; break;  // FF (form feed)
+                    case 'l': c = 10; break;  // LF
+                    case 'n': c = 10; break;  // newline
+                    case 'q': c = '"'; break; // double-quote
+                    case 'r': c = 13; break;  // CR
+                    case 't': c = 9; break;   // HT (tab)
+                    case 'v': c = 11; break;  // VT
+                    case 'x': hex[2] = 0;  	  // hex byte
+						hex[0] = *s++;
+						hex[1] = *s++;
+						c = (char)strtol(hex, (char **)NULL, 16); break;
+                    case 'z': c = 0; break;   // NUL
+                    case '"': c = '"'; break; // double-quote
+                    default: break;
+                }
+            }
+        }
+        XcommaC(c, pointer);
+        cnt++;
+    }
+    if (mode & 1) {                     // resolve count
+        uint32_t temp = FetchCell(pointer);
+        StoreCell(mark, pointer);
+        XcommaC(cnt, pointer);
+        StoreCell(temp, pointer);
+    }
+    if (mode & 2) {                     // align afterwards
+        uint32_t cp = FetchCell(pointer);
+        StoreCell((cp+3) & (~3), pointer);
+    }
+}
 
 // Compile branches: | 0= -bran <20-bit> |
 
@@ -358,80 +418,84 @@ void NeedSlot(int s) {
     if (cp > 0xEFFF) s += 6;    // large address, leave room for >16-bit address
     if (FetchByte(SLOT)<s)  NewGroup();
 }
-void CompAhead (void){  // ( -- token )
+void CompAhead (void){  // ( -- then )
     NeedSlot(14);
     uint32_t addr = FetchCell(CP);
     int slot = FetchByte(SLOT);
-    PushNum((slot<<24) + addr);
+    PushNum(0x60000000 + (slot<<24) + addr);
     Explicit(opJUMP, ~(-1<<slot));
 }
-void CompIfNC (void){  // ( -- addr slot )
+void CompIfNC (void){  // ( -- then )
     NeedSlot(20);
     uint32_t addr = FetchCell(CP);
     Implicit(opSKIPNC);
     int slot = FetchByte(SLOT);
-    PushNum((slot<<24) + addr);
+    PushNum(0x60000000 + (slot<<24) + addr);
     Explicit(opJUMP, ~(-1<<slot));
 }
-void CompIf (void){  // ( -- addr slot )
+void CompIf (void){  // ( -- then )
     NeedSlot(20);
     uint32_t addr = FetchCell(CP);
     Implicit(opSKIPNZ);
     int slot = FetchByte(SLOT);
-    PushNum((slot<<24) + addr);
+    PushNum(0x60000000 + (slot<<24) + addr);
     Explicit(opJUMP, ~(-1<<slot));
 }
-void CompPlusIf (void){  // ( -- addr slot )
+void CompPlusIf (void){  // ( -- then )
     NeedSlot(20);
     uint32_t addr = FetchCell(CP);
     Implicit(opSKIPGE);
     int slot = FetchByte(SLOT);
-    PushNum((slot<<24) + addr);
+    PushNum(0x60000000 + (slot<<24) + addr);
     Explicit(opJUMP, ~(-1<<slot));
 }
-void CompThen (void){  // ( addr slot -- )
+void CompThen (void){  // ( then -- )
     NewGroup();  NoExecute();
     uint32_t token = PopNum();
     uint32_t mark = token & 0xFFFFFF;
-    int slot = token>>24;
-    uint32_t dest = FetchCell(CP) >> 2;
     if (!mark) return;          // skip if nothing to resolve
+    int slot = token>>24;
+    if ((slot>>5) != 3) {
+        tiffIOR = -22;
+    }
+    slot &= 0x1F;
+    uint32_t dest = FetchCell(CP) >> 2;
 //  printf("\nFwd Resolving %X = %X, slot %d ", mark, dest, slot);
     StoreROM((-1<<slot) + dest, mark);
 }
-void CompElse (void){  // ( addr -- addr' )
+void CompElse (void){  // ( then -- then' )
     NewGroup();  NoExecute();
     uint32_t cp =   FetchCell(CP);
     uint32_t slot = FetchByte(SLOT);
     Explicit(opJUMP, 0x3FFFFFF);
     CompThen();
-    PushNum((slot<<24) + cp);
+    PushNum(0x60000000 + (slot<<24) + cp);
 }
-void CompBegin (void){  // ( -- addr )
+void CompBegin (void){  // ( -- again )
     NewGroup();  NoExecute();
     PushNum(FetchCell(CP));
 }
-void CompAgain (void){  // ( addr -- )
+void CompAgain (void){  // ( then -- )
     NoExecute();
     uint32_t dest = PopNum();
     Explicit(opJUMP, dest>>2);
 }
-void CompWhile (void){  // ( addr -- addr' )
+void CompWhile (void){  // ( then -- then again )
     uint32_t beg = PopNum();
     CompIf();
     PushNum(beg);
 }
-void CompRepeat (void){  // ( addr2 -- addr1 )
+void CompRepeat (void){  // ( then again -- )
     CompAgain();
     CompThen();
 }
-void CompPlusUntil (void){  // ( addr -- )
+void CompPlusUntil (void){  // ( again -- )
     NeedSlot(20);
     uint32_t dest = PopNum();
     Implicit(opSKIPGE);
     Explicit(opJUMP, dest>>2);
 }
-void CompUntil (void){  // ( addr -- )
+void CompUntil (void){  // ( again -- )
     NeedSlot(20);
     uint32_t dest = PopNum();
     Implicit(opSKIPNZ);
@@ -548,7 +612,7 @@ void Execute(uint32_t xt) {
 #ifdef VERBOSE
         printf(" ==> PC=%X", DbgPC);
 #endif // VERBOSE
-        if (DbgPC == 0xDEADC0DC) {                  // Terminator found
+        if ((DbgPC == 0xDEADC0DC) || (tiffIOR)) {          // Terminator or error found
             DbgGroup(opEXIT, opSKIP, opNOP, opNOP, opNOP); // restore PC
 #ifdef VERBOSE
                 printf("\nFinished after %d groups\n", i);
