@@ -11,6 +11,7 @@
 : c+!     dup >r c@ + r> c! ;           \ c addr --
 : negate          invert 1+ ; macro     \ n -- -n
 : 1-       invert 1+ invert ; macro     \ n -- n-1
+: cell- invert cell+ invert ; macro     \ n -- n-4
 : cells               2* 2* ; macro     \ n -- n*4
 : rot       >r swap r> swap ; macro     \ n m x -- m x n
 : -rot      swap >r swap r> ; macro     \ n m x -- x n m

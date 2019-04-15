@@ -163,12 +163,14 @@ void initFilelist (void) {
 void CommaHeader (char *name, uint32_t xte, uint32_t xtc, int Size, int flags){
     uint16_t LineNum = FetchHalf(LINENUMBER);
 	uint8_t fileid = FetchByte(FILEID);
-
+	uint32_t   wid = FetchCell(CURRENT);                  // CURRENT -> Wordlist
+	uint32_t  link = FetchCell(wid);
+	if (link) {
+        StoreROM(0xFF000000 + FetchCell(HP), link - 12);  // resolve forward link
+	}
 	CommaH ((fileid << 24) | 0xFFFFFF);                   // [-3]: File ID | where
 	CommaH (((LineNum & 0xFF)<<24)  +  (xtc & 0xFFFFFF)); // [-2]
 	CommaH (((LineNum & 0xFF00)<<16) + (xte & 0xFFFFFF)); // [-1]
-	uint32_t wid = FetchCell(CURRENT);                 // CURRENT -> Wordlist
-	uint32_t link = FetchCell(wid);
 	StoreCell (FetchCell(HP), wid);
 	CommaH (((Size&0xFF)<<24) | link);                 // [0]: Upper size | link
 	CommaXstring(name, CommaH, flags, 0);              // [1]: Name, not escaped
@@ -536,19 +538,6 @@ void tiffSEE (void) {                   // disassemble word
     uint8_t length = FetchByte(ht+3);
     if (ht) Disassemble(addr, length);
 }
-// Resolve the info needed for EMPTY
-void tiffGILD (void) {                  // resolve wids in the headers
-    int32_t link = HeadPointerOrigin+4; // point to the list of {link, value, wid}
-    link = FetchCell(link);
-    do {
-        uint32_t wid = FetchCell(link+8) & 0xFFFFFF;
-        StoreROM(FetchCell(wid) & 0xFFFFFF, link+4);
-        link = FetchCell(link);         // -1 if end of list
-    } while (link != -1);
-    StoreROM(FetchCell(HP), HeadPointerOrigin+8);
-    StoreROM(FetchCell(CP), HeadPointerOrigin+12);
-    StoreROM(FetchCell(DP), HeadPointerOrigin+16);
-}
 void tiffCPUon (void) {                 // enable CPU display mode
     ShowCPU = 1;
 }
@@ -560,6 +549,10 @@ void tiffRunBrk (void) {                // run to breakpoint
     breakpoint = PopNum();
     tiffFUNC(breakpoint);               // Execute breaks immediately
     tiffCPUon();
+}
+void tiffNoDbg (void) {                // run to breakpoint
+    breakpoint = -1;
+    tiffCPUoff();
 }
 
 void tiffSTATS (void) {
@@ -577,6 +570,11 @@ void tiffSTATS (void) {
     printf("\nMem Sizes: ROM=%X, RAM=%X, SPI=%X", ROMsize*4, RAMsize*4, SPIflashSize*4);
     printf("\nCP=%X, DP=%X/%X, HP=%X/%X", cp, dp, ROMsize*4, hp, (ROMsize+RAMsize)*4);
     printed = 1;
+}
+
+void tiffForthWID (void) {
+    uint32_t p = HeadPointerOrigin+4;
+    PushNum(p);
 }
 
 
@@ -651,6 +649,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("-cpu",    tiffCPUoff);
     AddKeyword("cpu",     tiffCPUgo);
     AddKeyword("dbg",     tiffRunBrk);  // set and run to breakpoint(s)
+    AddKeyword("-dbg",    tiffNoDbg);
     AddKeyword("cls",     tiffCLS);
     AddKeyword("CaseSensitive",   tiffCaseSensitive);
     AddKeyword("CaseInsensitive", tiffCaseIns);
@@ -710,7 +709,6 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("call-only", tiffCALLONLY);
     AddKeyword("anonymous", tiffANON);
     AddKeyword("see",     tiffSEE);
-    AddKeyword("gild",    tiffGILD);
     AddKeyword("dasm",    tiffDASM);
     AddKeyword("locate",  tiffLOCATE);
     AddKeyword("replace-xt", ReplaceXTs);   // Replace XTs  ( NewXT OldXT -- )
@@ -720,11 +718,13 @@ void LoadKeywords(void) {               // populate the list of gator brain func
 
     AddKeyword("idata-make", tiffIDATA);    // compile RAM initialization data structure
     AddKeyword("iwords",  ListKeywords);    // internal words, after the dictionary
-    // CPU opcode names
+    AddKeyword ("_forth",   tiffForthWID);   // WID for Forth
+
     AddEquate ("RAMsize", RAMsize*4);
     AddEquate ("ROMsize", ROMsize*4);
     AddEquate ("SPIflashSize", SPIflashSize*4);
 
+    // CPU opcode names
     AddEquate ("op_dup",   opDUP);
     AddEquate ("op_exit",  opEXIT);
     AddEquate ("op_+",     opADD);

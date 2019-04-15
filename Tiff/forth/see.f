@@ -66,5 +66,17 @@ ram
 ;
 
 : _see  \ "name"
-   h' dup 4 - @  swap 3 + c@  _dasm
+   h' dup cell- link>  swap 3 + c@  _dasm
 ;
+
+: loc  \ "name"
+   h' dup >r 1- c@ 8 lshift
+   r@ 5 - c@ +   ." Line " .
+   r> 9 - c@     ." File "
+   hp0 swap invert begin
+      >r @ r> 1+
+   +until drop cell+
+   count type cr
+;
+
+

@@ -117,6 +117,7 @@ cr .( Test suite: ) cr
 include test/ttester.fs
 include test/coretest.fs
 include test/dbltest.fs
+bye
 [then]
 
 \ make ../templates/app.c ../demo/vm.c       \ C version

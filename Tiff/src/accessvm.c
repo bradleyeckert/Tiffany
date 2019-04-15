@@ -662,44 +662,29 @@ void InitializeTIB (void) {
     StoreCell(0, COLONDEF);             // clear this byte and the other three
     InitIR();
 }
-/*
-| Cell | Usage                          |
-| ---- | ------------------------------:|
-| 0    | Link                           |
-| 1    | Value resolved by GILD         |
-| 2    | WID                            |
-| 3    | Optional name (counted string) |
-*/
-uint32_t WordlistHead (void) {          // find the first blank link
-    int32_t link = HeadPointerOrigin+4;
-    int32_t result;
-    do {
-        result = link;
-        link = FetchCell(link);         // -1 if end of list
-    } while (link != -1);
-    return result;
-}
+
+// Wordlist starts with an optional name. The WID seed points past the name.
+
 void AddWordlistHead (uint32_t wid, char *name) {
-    uint32_t hp = FetchCell(HP);
-    StoreROM(hp, WordlistHead());       // resolve forward link
-    CommaH(-1);                         // link
-    CommaH(-1);                         // to be resolved by GILD
+    char s[36];
     if (name) {
+        strcpy(s, name);
+        int len = strlen(s);
+        s[len] = len+1;                 // append count as last byte
+        s[len+1] = 0;
         CommaH(wid + 0x80000000);       // include "named" tag
-        CommaHstring(name);             // padded to cell alignment
+        CommaHstring(s);                // padded to cell alignment
     } else {
         CommaH(wid);
     }
 }
-
-// GILD stores WORDLISTS in the second header space cell
 
 // Initialize ALL variables in the terminal task
 void InitializeTermTCB (void) {
     VMpor();                            // clear VM and RAM
     initFilelist();                     // clear list of filenames used by LOCATE
     EraseSPIimage();                    // clear SPI flash image and ROM image
-    StoreCell(HeadPointerOrigin+20, HP); // leave 5 cells for filelist, widlist, hp, cp, and dp
+    StoreCell(HeadPointerOrigin+4, HP); // leave 2 cells for filelist
     StoreCell(0, CP);
     StoreCell(DataPointerOrigin, DP);
     StoreCell(10, BASE);                // decimal

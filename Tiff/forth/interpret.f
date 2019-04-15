@@ -113,7 +113,7 @@
    -13 and throw                        \ header not found
 ;
 : '   \ "name" -- xte
-   h' invert cell+ invert link>
+   h' cell- link>
 ;
 
 

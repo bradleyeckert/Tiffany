@@ -5,6 +5,7 @@
 #include <string.h>
 
 #define IMM    (IR & ~(-1<<slot))
+//`0`#define EmbeddedROM
 
 int tiffIOR; // global errorcode
 
@@ -111,9 +112,9 @@ static int error = 0;  // local errorcode
     static uint32_t CARRY;  static uint32_t DebugReg;
 
     static uint32_t RAM[RAMsize];
-//`0`#ifdef __NEVER_INCLUDE__
+#ifndef EmbeddedROM
     static uint32_t ROM[ROMsize];
-//`0`#endif
+#endif
     uint32_t AXI[SPIflashSize+AXIRAMsize];
 
     static void SDUP(void)  { RAM[--SP & (RAMsize-1)] = N;  N = T; }
@@ -156,6 +157,8 @@ static void StoreX (uint32_t addr, uint32_t data, int shift, int mask) {
 #endif // TRACEABLE
 }
 
+/// EXPORTS ////////////////////////////////////////////////////////////////////
+
 uint32_t FetchCell(uint32_t addr) {
     if (addr & 3) {
         error = -23;
@@ -187,34 +190,24 @@ void StoreByte (uint8_t x, uint32_t addr) {
     StoreX(addr>>2, x, (addr&3)*8, 0xFF);
 }
 
-
-
-//`0`#ifdef __NEVER_INCLUDE__
-/// Tiff's ROM write functions for populating internal ROM.
-/// A copy may be stored to SPI flash for targets that boot from SPI.
-/// An MCU-based system will have ROM in actual ROM.
-/// The target system does not use WriteROM, only the host.
-
-int WriteROM(uint32_t data, uint32_t address) { // EXPORTED
+int WriteROM(uint32_t data, uint32_t address) {
     uint32_t addr = address / 4;
     if (address & 3) return -23;        // alignment problem
-    if (addr < ROMsize)  {
-        ROM[addr] = data;
-        return 0;
-    }
-    if (addr < SPIflashSize) {          // only flash region is writable
+    if (addr < SPIflashSize) {          // always write AXI data
+// An embedded system may want to protect certain ranges
         AXI[addr] = data;
-        return 0;
+    } else {
+        return -9;
     }
-    return -9;                          // out of range
+    if (addr < ROMsize)  {
+#ifdef EmbeddedROM
+        return -9;
+#else
+        ROM[addr] = data;
+#endif // EmbeddedROM
+    }
+    return 0;
 }
-//`0`#endif
-
-/// The VM's RAM and ROM are internal to this module.
-/// They are both little endian regardless of the target machine.
-/// RAM and ROM are accessed only through execution of an instruction
-/// group. Writing to ROM is a special case, depending on a USER function
-/// with the restriction that you can't turn '0's into '1's.
 
 
 // Send a stream of RAM words to the AXI bus.

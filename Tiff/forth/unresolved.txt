@@ -2,7 +2,7 @@
 
 [if] [then] [else] // { 
 theme=mono theme=color stats .opcodes .profile +cpu -cpu cpu dbg cls include 
-words xwords locate 
+words xwords
  
 gild replace-xt xte-is make iwords anonymous
 op_exit op_no: op_jmp op_litx op_call op_-if: op_ifc: op_ifz: op_lit op_up op_com 
