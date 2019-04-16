@@ -31,6 +31,7 @@ int Refill(void);
 // used by main.c, defined in tiff.c
 // might move to accessvm.c later, with memory and stack access functions.
 uint32_t vmTEST(void);
+void tiffQUIT (char *cmdline);
 extern char *DefaultFile;
 
 // reference to TiffUser function when Linux is used for I/O

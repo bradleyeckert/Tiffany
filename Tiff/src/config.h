@@ -30,7 +30,9 @@
 // Number of lines in `locate`
 #define LocateLines  10
 
-#define HeadPointerOrigin  ((ROMsize-4096)*4)    /* Lowest SPI code address */
+// put headers in SPI flash to save on ROM space
+//#define HeadPointerOrigin  ((ROMsize-4096)*4)    /* Lowest SPI code address */
+#define HeadPointerOrigin  ((ROMsize+RAMsize)*4)    /* Lowest SPI code address */
 
 //===============================================================================
 // Sanity checks

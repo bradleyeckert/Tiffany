@@ -21,27 +21,27 @@ void StoreCell (uint32_t x, uint32_t addr);
 void StoreHalf (uint16_t x, uint32_t addr);
 void StoreByte (uint8_t x, uint32_t addr);
 
-// Defined in vm.c, used for development only. Not on the target system.
+// Different host and target behaviors:
+// Host: Writes to ROM image, looking for non-blank violations.
+//     For example, to clear bit 5 in a word you would write 0xFFFFFFDF.
+// Target: Triggers an error interrupt if writing to bad address space.
+//     0 to ROMsize-1 is unwritable.
 int WriteROM(uint32_t data, uint32_t address);
+
+// Defined in vm.c, used for development only. Not on the target system.
 void Trace(unsigned int Type, int32_t ID, uint32_t Old, uint32_t New);
 void UnTrace(int32_t ID, uint32_t old);
-extern int tiffIOR;                         // error detection, error when not 0
-extern uint32_t cyclecount;
-extern uint32_t maxReturnPeriod;
-extern uint32_t maxReturnPC;
+extern int tiffIOR;                         // error detected when not 0
+extern uint32_t cyclecount;                 // elapsed clock cycles in hardware
+extern uint32_t maxRPtime;                  // max cycles between RP! occurrences
 extern uint32_t ProfileCounts[ROMsize];     // profiler data
 extern uint32_t OpCounter[64];              // dynamic instruction count
+
+// used by flash.c to simulate SPI flash
 extern uint32_t AXI[SPIflashSize+AXIRAMsize];
-int EraseAXI4K(uint32_t address);
 
-// Defined in vmUser.c:
-//int tiffKEYQ (void);                                      // Check for a key press
-//int tiffEKEY (void);                                  // Raw console keyboard keys
-//void tiffEMIT (uint8_t c);                               // Output char to console
+// Defined in vmUser.c, used by the debugger in accessvm.c.
 uint32_t UserFunction (uint32_t T, uint32_t N, int fn );
-
-// Defined in tiff.c:
-void tiffQUIT(char *s);                                    // The C-side QUIT loop
 
 //================================================================================
 

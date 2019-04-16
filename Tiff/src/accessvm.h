@@ -27,8 +27,6 @@ void CommaC (uint32_t x);                         // append a word to code space
 void CommaC8 (uint8_t c);
 void CommaD (uint32_t x);                         // append a word to data space
 void CommaH (uint32_t x);                       // append a word to header space
-//void CommaHstring (char *s);                     // compile string to head space
-void CommaXstring (char *s, void(*fn)(uint32_t), int flags, int esc); // generic
 void CommaHeader (char *name, uint32_t xte, uint32_t xtc, int Size, int flags);
 
 uint32_t SearchWordlist(char *name, uint32_t WID);

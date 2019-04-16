@@ -6,6 +6,8 @@
 
 #define IMM    (IR & ~(-1<<slot))
 //`0`#define EmbeddedROM
+//`0`#define ROMsize `3`
+//`0`#define RAMsize `4`
 
 int tiffIOR; // global errorcode
 
@@ -65,8 +67,8 @@ static int error = 0;  // local errorcode
     uint32_t OpCounter[64];     // opcode counter
     uint32_t ProfileCounts[ROMsize];
     uint32_t cyclecount;
-    uint32_t retperiod;
-    uint32_t maxReturnPeriod;   // max cycles between RETs
+    static uint32_t RPmark;
+    uint32_t maxRPtime;   // max cycles between RETs
     uint32_t maxReturnPC = 0;   // PC where it occurred
 
     static int New; // New trace type, used to mark new sections of trace
@@ -190,6 +192,7 @@ void StoreByte (uint8_t x, uint32_t addr) {
     StoreX(addr>>2, x, (addr&3)*8, 0xFF);
 }
 
+#ifdef EmbeddedROM
 int WriteROM(uint32_t data, uint32_t address) {
     uint32_t addr = address / 4;
     if (address & 3) return -23;        // alignment problem
@@ -199,15 +202,26 @@ int WriteROM(uint32_t data, uint32_t address) {
     } else {
         return -9;
     }
-    if (addr < ROMsize)  {
-#ifdef EmbeddedROM
+    if (addr < ROMsize) {
         return -9;
-#else
-        ROM[addr] = data;
-#endif // EmbeddedROM
     }
     return 0;
 }
+#else
+int WriteROM(uint32_t data, uint32_t address) {
+    uint32_t addr = address / 4;
+    if (address & 3) return -23;        // alignment problem
+    if (addr < SPIflashSize) {          // always write AXI data
+        AXI[addr] = data;
+    } else {
+        return -9;
+    }
+    if (addr < ROMsize)  {
+        ROM[addr] = data;
+    }
+    return 0;
+}
+#endif // EmbeddedROM
 
 
 // Send a stream of RAM words to the AXI bus.
@@ -270,8 +284,8 @@ void VMpor(void) {  // EXPORTED
     memset(OpCounter,0,64*sizeof(uint32_t)); // clear opcode profile counters
     memset(ProfileCounts, 0, ROMsize*sizeof(uint32_t));  // clear profile counts
     cyclecount = 0;                     // cycles since POR
-    retperiod = 0;
-    maxReturnPeriod = 0;
+    RPmark = 0;
+    maxRPtime = 0;
 #endif // TRACEABLE
     PC = 0;  RP = 64;  SP = 32;  UP = 64;
     T=0;  N=0;  DebugReg = 0;
@@ -310,11 +324,11 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
             opcode = (IR >> slot) & 0x3F;   // slot = 26, 20, 14, 8, 2
         }
 #ifdef TRACEABLE
+        uint32_t time;
         OpCounter[opcode]++;
         New = 1;  // first state change in an opcode
         if (!Paused) {
             cyclecount += 1;
-            retperiod += 1;
         }
 #endif // TRACEABLE
         switch (opcode) {
@@ -326,11 +340,6 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
                 Trace(New, RidPC, PC, M);  New=0;
                 if (!Paused) {
                     cyclecount += 3;    // PC change flushes pipeline
-                    if (retperiod > maxReturnPeriod) {
-                        maxReturnPeriod = retperiod ;
-                        maxReturnPC = PC * 4;
-                    }
-                    retperiod = 0;  // track the longest time between EXITs
                 }
 #endif // TRACEABLE
                 // PC is a cell address. The return stack works in bytes.
@@ -418,7 +427,6 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
                 Trace(New, RidPC, PC, IMM);  New=0;
                 if (!Paused) {
                     cyclecount += 3;
-                    retperiod += 3;
                 }
 				// PC change flushes pipeline in HW version
 #endif // TRACEABLE
@@ -464,7 +472,6 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
                 Trace(0, RidPC, PC, IMM);  PC = IMM;
                 if (!Paused) {
                     cyclecount += 3;
-                    retperiod += 3;
                 }
                 goto ex;
 #else
@@ -537,6 +544,13 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
                 goto GetPointer;
 			case opDROP: SDROP();		    	        break;	// drop
 			case opSetRP:
+#ifdef TRACEABLE
+			    time = cyclecount - RPmark; // cycles since last RP!
+			    RPmark = cyclecount;
+                if (time > maxRPtime) {
+                    maxRPtime = time ;
+                }
+#endif // TRACEABLE
                 M = (T>>2) & (RAMsize-1);
 #ifdef TRACEABLE
                 Trace(New, RidRP, RP, M);  New=0;

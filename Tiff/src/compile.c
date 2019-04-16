@@ -352,7 +352,8 @@ void XcommaC (uint8_t c, uint32_t pointer) {
 void CompCommaC (void){
     XcommaC(PopNum(), CP);
 }
-
+// pointer is HP or CP
+// mode bits usage: 11:4 = flags, 2 = not-escaped, 1 = cell-align, 0 = counted
 void CompString(char *s, int mode, int pointer) {
     int length = strlen(s);
     uint32_t mark = FetchCell(pointer); // Address of byte to resolve
@@ -368,22 +369,22 @@ void CompString(char *s, int mode, int pointer) {
                 c = *s++;
                 length--;
                 switch (c) {
-                    case 'a': c = 7; break;   // BEL  (bell)
-                    case 'b': c = 8; break;   // BS (backspace)
-                    case 'e': c = 27; break;  // ESC (not in C99)
-                    case 'f': c = 12; break;  // FF (form feed)
-                    case 'l': c = 10; break;  // LF
-                    case 'n': c = 10; break;  // newline
-                    case 'q': c = '"'; break; // double-quote
-                    case 'r': c = 13; break;  // CR
-                    case 't': c = 9; break;   // HT (tab)
-                    case 'v': c = 11; break;  // VT
-                    case 'x': hex[2] = 0;  	  // hex byte
+                    case 'a': c = 7;   break;  // BEL  (bell)
+                    case 'b': c = 8;   break;  // BS (backspace)
+                    case 'e': c = 27;  break;  // ESC (not in C99)
+                    case 'f': c = 12;  break;  // FF (form feed)
+                    case 'l': c = 10;  break;  // LF
+                    case 'n': c = 10;  break;  // newline
+                    case 'q': c = '"'; break;  // double-quote
+                    case 'r': c = 13;  break;  // CR
+                    case 't': c = 9;   break;  // HT (tab)
+                    case 'v': c = 11;  break;  // VT
+                    case 'x': hex[2] = 0;  	   // hex byte
 						hex[0] = *s++;
 						hex[1] = *s++;
 						c = (char)strtol(hex, (char **)NULL, 16); break;
-                    case 'z': c = 0; break;   // NUL
-                    case '"': c = '"'; break; // double-quote
+                    case 'z': c = 0;   break;  // NUL
+                    case '"': c = '"'; break;  // double-quote
                     default: break;
                 }
             }
@@ -394,7 +395,7 @@ void CompString(char *s, int mode, int pointer) {
     if (mode & 1) {                     // resolve count
         uint32_t temp = FetchCell(pointer);
         StoreCell(mark, pointer);
-        XcommaC(cnt, pointer);
+        XcommaC(cnt + (mode>>4), pointer);
         StoreCell(temp, pointer);
     }
     if (mode & 2) {                     // align afterwards

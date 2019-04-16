@@ -165,17 +165,17 @@ void CommaHeader (char *name, uint32_t xte, uint32_t xtc, int Size, int flags){
 	uint8_t fileid = FetchByte(FILEID);
 	uint32_t   wid = FetchCell(CURRENT);                  // CURRENT -> Wordlist
     uint32_t  link = FetchCell(wid);
-    /* leave this field blank, not needed. Maybe where field in the future.
+//    /* leave this field blank, not needed. Maybe where field in the future.
     if (link) {
         StoreROM(0xFF000000 + FetchCell(HP), link - 12);  // resolve forward link
 	}
-	*/
+//	*/
 	CommaH ((fileid << 24) | 0xFFFFFF);                   // [-3]: File ID | where
 	CommaH (((LineNum & 0xFF)<<24)  +  (xtc & 0xFFFFFF)); // [-2]
 	CommaH (((LineNum & 0xFF00)<<16) + (xte & 0xFFFFFF)); // [-1]
 	StoreCell (FetchCell(HP), wid);
 	CommaH (((Size&0xFF)<<24) | link);                 // [0]: Upper size | link
-	CommaXstring(name, CommaH, flags, 0);              // [1]: Name, not escaped
+	CompString(name, (flags<<4)+7, HP);
 }
 
 void FollowingToken (char *str, int max) {  // parse the next blank delimited string
@@ -570,8 +570,8 @@ void tiffSTATS (void) {
     printf("\nClock cycles elapsed: %u, since last: %u ",
            cyclecount, cyclecount-mark);
     mark = cyclecount;
-    printf("\nMaximum cycles between EXITs: %u at PC=%Xh ", maxReturnPeriod, maxReturnPC);
-    maxReturnPeriod = 0;
+    printf("\nMaximum cycles between PAUSEs: %u ", maxRPtime);
+    maxRPtime = 0;
 #endif
     uint32_t cp = FetchCell(CP);
     uint32_t dp = FetchCell(DP);

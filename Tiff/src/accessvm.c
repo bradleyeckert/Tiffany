@@ -391,7 +391,6 @@ void CommaC (uint32_t x) {  // append a word to code space
     StoreCell(cp + 4, CP);
 }
 
-
 void CommaD (uint32_t x) {  // append a word to data space
     uint32_t dp = FetchCell(DP);
     StoreCell(x, dp);
@@ -402,84 +401,6 @@ void CommaH (uint32_t x) {  // append a word to header space
     uint32_t hp = FetchCell(HP);
     StoreROM(x, hp);
     StoreCell(hp + 4, HP);
-}
-
-uint8_t xstrlen(char *s) {  // strlen that skips escape codes
-    uint8_t len = 0;
-    char c;
-    while (1) {
-        c = *s++;
-        if (!c) break;
-        if (c == '\\') {
-            if (!*s++) break; // don't skip terminator
-        }
-        len++;
-    }
-    return len;
-}
-
-// Generic counted string compile
-// Include optional flags when compiling a header name
-// The esc flag means
-void CommaXstring (char *s,             // string to compile
-                   void(*fn)(uint32_t), // Post-string padding function
-                   int flags,           // flags to OR with count byte
-                   int esc) {           // true if escape sequences are supported
-    int length;
-    if (esc) length = xstrlen(s);
-    else     length = strlen(s);
-    uint32_t word = 0xFFFFFF00 | ((flags | length) & 0xFF);
-    int i = 1;  uint32_t x, mask;  char hex[4];
-    while (length--) {
-        char c = *s++;
-        if (esc) {                      // escape sequences supported
-            if (c == '\\') {
-                c = *s++;
-                switch (c) {
-                    case 'a': c = 7; break;   // BEL  (bell)
-                    case 'b': c = 8; break;   // BS (backspace)
-                    case 'e': c = 27; break;  // ESC (not in C99)
-                    case 'f': c = 12; break;  // FF (form feed)
-                    case 'l': c = 10; break;  // LF
-                    case 'n': c = 10; break;  // newline
-                    case 'q': c = '"'; break; // double-quote
-                    case 'r': c = 13; break;  // CR
-                    case 't': c = 9; break;   // HT (tab)
-                    case 'v': c = 11; break;  // VT
-                    case 'x': hex[2] = 0;  	  // hex byte
-						hex[0] = *s++;
-						hex[1] = *s++;
-						c = (char)strtol(hex, (char **)NULL, 16); break;
-                    case 'z': c = 0; break;   // NUL
-                    case '"': c = '"'; break; // double-quote
-                    default: break;
-                }
-            }
-        }
-        x = c << (i*8);
-        mask = ~(0xFF << (i*8));
-        word &= (mask | x);
-        if (i == 3) {
-            fn(word);
-            word = 0xFFFFFFFF;
-        }
-        i = (i + 1) & 3;
-    }
-    if (i) {
-        fn(word);                // pad if needed
-    }
-}
-
-// Should retire these, replace with CompString.
-
-void CommaHstring (char *s) {   // compile string to head space
-    CommaXstring(s, CommaH, 0, 0); // disable escape sequences
-}
-void CommaDstring (char *s) {   // compile string to data space
-    CommaXstring(s, CommaD, 0, 1);
-}
-void CommaCstring (char *s) {   // compile string to code space
-    CommaXstring(s, CommaC, 0, 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -684,7 +605,7 @@ void AddWordlistHead (uint32_t wid, char *name) {
     CommaH(0x12345678);                 // name tag
     if (name) {
         CommaH(wid + 0xFF000000);       // include "named" tag
-        CommaHstring(name);             // padded to cell alignment
+        CompString(name, 7, HP);        // padded to cell alignment
     } else {
         CommaH(wid);
     }
@@ -1017,7 +938,7 @@ uint32_t vmTEST (void) {
 Re: DumpRegs();
     RegChanges(stdout, 0);
     SetCursorPosition(0, DumpRows+4);   // help along the bottom
-    printf("\n(0..F)=digit, Enter=Clear, O=pOp, P=Push, R=Refresh, X=eXecute, \\=POR, ESC=Bye\n");
+    printf("\n(0..F)=digit, Enter=Clear, O=pOp, P=Push, R=Refresh, X=eXecute, \\=POR, ^C=Bye\n");
     #ifdef TRACEABLE
     printf("G=Goto, S=Step, V=oVer, /=Run, @=Fetch, U=dUmp, W=WipeHistory, Y=Redo, Z=Undo \n");
     #else
@@ -1036,8 +957,7 @@ Re: DumpRegs();
             Param = Param*16 + (c&0x0F);
         } else {
             switch (c) {
-                case 3:                                     // ^C
-                case 27: SetCursorPosition(0, DumpRows+7);  // ESC = bye
+                case 3:  SetCursorPosition(0, DumpRows+7);  // ^C = bye
                     PopNumR();                              // discard the terminator
 #ifdef __linux__
                     CookedMode();

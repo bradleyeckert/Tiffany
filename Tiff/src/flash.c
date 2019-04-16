@@ -39,7 +39,7 @@ uint32_t addr;
 // 7:0 = SPI data to transmit
 // Return value if the SPI return byte
 
-uint32_t SPIflashXfer (uint32_t n) {    /*EXPORT*/
+uint32_t SPIflashXfer (uint32_t n, uint32_t dummy) {    /*EXPORT*/
 	uint8_t cin = (uint8_t)(n & 0xFF);
 	uint8_t cout = 0xFF;
 	int shift;

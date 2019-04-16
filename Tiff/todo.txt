@@ -3,10 +3,8 @@ Add a simple version of tiff.f (maybe testbench.f) that has some test code.
    Compile to ROM location 0 instructions that exercise one opcode at a time until
    all of them have been hit at least once. 
 
-Add SPI bootloader that waits for hex file for 1 second then attempts boot.
-Note: Underlying system should handle XON/XOFF and serial buffering.
-
 Add a QUIT loop.
 
-Change Tiff to not use !AS for writing to "SPI flash", etc. Use vmUser function 5.
+Bug in compile.f with deferred literals. ": foo 2 user ;" is broken.
+Tiff's version of literal uses long literals for IMM>1FFFFFF, should be 3FFFFFF.
 

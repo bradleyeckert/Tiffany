@@ -17,6 +17,26 @@ include core.f
 include timing.f
 include numio.f                         \ numeric I/O
 
+: main
+   ." Hello World"
+   cr 10 0 do i . loop
+;
+
+include end.f                           \ finish the app
+
+HP @ . .( bytes in ROM, of which ) CP @ . .( is code and ) HP @ hp0 - . .( is head. )
+.( RAM = ) DP @ ROMsize - . .( of ) RAMsize .  cr
+
+\ make ../templates/app.c ../demo/vm.c       \ C version
+make ../src/vm.c ../demo/vm.c       \ C version, vm.c is usable as a template
+\ make ../templates/app.A51 ../8051/vm.A51   \ 8051 version
+
+\ make ../templates/app.c ../testbench/vm.c  \ C version for testbench
+\ 100 make ../templates/test_main.c ../testbench/test.c
+
+
+\ Include the rest of Forth for testing, etc.
+
 : throw  \ n --  						\ for testing, remove later
    ?dup if  port drop  					\ save n in dbg register, like error interrupt
       8 >r								\ fake an error interrupt
@@ -46,12 +66,6 @@ include order.f
 \ include flash.f                         \ SPI flash programming
 include forth.f                         \ high level Forth
 
-: main
-   ." Hello World"
-   cr 10 0 do i . loop
-;
-
-include end.f                           \ finish the app
 
 \ ------------------------------------------------------------------------------
 \ TEST STUFF: The demo doesn't use anything after this...
@@ -108,9 +122,6 @@ cp @ equ s2
  111 mynum z1
  222 mynum z2
 
-HP @ . .( bytes in ROM, of which ) CP @ . .( is code and ) HP @ hp0 - . .( is head. )
-.( RAM = ) DP @ ROMsize - . .( of ) RAMsize .  cr
-
 0 [if]
 : ENVIRONMENT? ( c-addr u -- false ) 2drop 0 ;
 
@@ -121,10 +132,4 @@ include test/dbltest.fs
 bye
 [then]
 
-\ make ../templates/app.c ../demo/vm.c       \ C version
-make ../src/vm.c ../demo/vm.c       \ C version, vm.c is usable as a template
-\ make ../templates/app.A51 ../8051/vm.A51   \ 8051 version
-
-\ make ../templates/app.c ../testbench/vm.c  \ C version for testbench
-\ 100 make ../templates/test_main.c ../testbench/test.c
 theme=color

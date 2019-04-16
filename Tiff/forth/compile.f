@@ -110,11 +110,12 @@ defer NewGroup
    0 c_slot c!  NewGroup
 ;
 
+hex
 : HardLit  \ n --                       \ compile a hard literal
    dup >r -if: negate |                 \ u
-   dup 33554431 invert 2* and if        \ too wide
-      r> drop   dup 24 rshift  op_lit Explicit   \ upper part
-      16777215 and  op_litx Explicit    \ lower part
+   1FFFFFF invert 2* over and if        \ too wide
+      r> drop   dup 18 rshift  op_lit Explicit   \ upper part
+      FFFFFF and  op_litx Explicit      \ lower part
       exit
    then
    r> 0< if                             \ compile negative
@@ -135,7 +136,7 @@ defer NewGroup
 :noname \ NewGroup  \ --                \ finish the group and start a new one
    FlushLit                             \ if a literal is pending, compile it
    c_slot c@
-   dup 21 - +if: 2drop exit |           \ already at first slot
+   dup 15 - +if: 2drop exit |           \ already at first slot
    drop if
       op_no: Implicit                   \ skip unused slots
    then
@@ -145,13 +146,13 @@ defer NewGroup
 
 : literal,  \ n --                      \ compile a literal
    FlushLit
-   dup 33554431 invert 2* and
-   if HardLit exit then
-   nextlit !  1 c_litpend c!
+   1FFFFFF invert 2*  over and
+   if HardLit exit then                 \ oversized literal, compile it now
+   nextlit !  1 c_litpend c!            \ literal is pending
 ;
 : compile,  \ xt --                     \ compile a call
    2/ 2/ op_call Explicit
-   head @ 4 + c@  128 and  c_called c!  \ 0 = call-only
+   head @ 4 + c@  80 and  c_called c!   \ 0 = call-only
 ;
 : ,exit  \ --
    c_called c@ if
@@ -162,3 +163,4 @@ defer NewGroup
       0 calladdr ! exit
    then op_exit Implicit
 ;
+decimal

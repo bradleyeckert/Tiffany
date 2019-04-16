@@ -3,6 +3,26 @@
 #include <stdint.h>
 #include <sys/time.h>
 
+#ifdef __linux__
+#include <string.h>
+#include <unistd.h>
+#include <sys/select.h>
+#include <termios.h>
+#elif _WIN32
+#include <conio.h>
+#endif // __linux__
+
+uint32_t parm1; // global N, optional second parameter
+
+/**
+User Functions may be added to the function table at the end.
+All functions have the format uint32_t function (uint32_t parm0);
+*/
+
+/**
+Built-in functions:
+*/
+
 // Console I/O needs a little help here. stdin is cooked input on Windows.
 // We need raw input from the keyboard. The console is expected to be
 // VT100, VT220, or XTERM without line buffering. It might support utf-8.
@@ -10,11 +30,6 @@
 // corresponding to {KEY?, EKEY, EMIT}.
 
 #ifdef __linux__
-#include <string.h>
-#include <unistd.h>
-#include <sys/select.h>
-#include <termios.h>
-
 // Linux uses cooked mode to input a command line (see Tiff.c's QUIT loop).
 // Any keyboard input uses raw mode.
 // Apparently, Windows getch does this switchover for us.
@@ -46,7 +61,7 @@ void RawMode() {
     }
 }
 
-int tiffKEYQ()
+uint32_t tiffKEYQ(uint32_t dummy)
 {
     RawMode();
     struct timeval tv = { 0L, 0L };
@@ -56,7 +71,7 @@ int tiffKEYQ()
     return select(1, &fds, NULL, NULL, &tv);
 }
 
-int tiffEKEY()
+uint32_t tiffEKEY(uint32_t dummy)
 {
     RawMode();
     int r;
@@ -69,7 +84,6 @@ int tiffEKEY()
 }
 
 #elif _WIN32
-#include <conio.h>
 
 // Arrow keys in Linux are VT220 escape sequences.
 // We are now in Windows, so need to re-map them to escape sequences.
@@ -116,7 +130,7 @@ static const char function_table[30][8] = {
     "\[20;2~","][21;2~"                     // F9 F10
 };
 
-static int fill (void) {
+static int winFill (void) {
     uint8_t c;
     while (kbhit()) {                   // got data?
         if (size() > 248) break;        // FIFO is full
@@ -136,12 +150,12 @@ static int fill (void) {
     return size();
 }
 
-static int tiffKEYQ (void) {
-    return fill();
+static uint32_t tiffKEYQ (uint32_t dummy) {
+    return winFill();
 }
 
-static int tiffEKEY (void) {
-    while (!fill()) {};
+static uint32_t tiffEKEY (uint32_t dummy) {
+    while (!winFill()) {};
     uint8_t c = KbBuf[tail++];
     return c;
 }
@@ -153,7 +167,7 @@ static int tiffEKEY (void) {
 ////////////////////////////////////////////////////////////////////////////////
 // Non-keyboard stuff...
 
-uint32_t SPIflashXfer (uint32_t n);     // import from flash.c
+uint32_t SPIflashXfer (uint32_t n); // import from flash.c
 
 /**
 * Returns the current time in microseconds.
@@ -167,15 +181,13 @@ static long getMicrotime(){
 /**
 * Counter is time in milliseconds/10
 */
-static uint32_t Counter (void) {
+static uint32_t Counter (uint32_t dummy) {
     return (uint32_t) getMicrotime() / 100;
 }
 
-
 // Emit outputs a xchar in UTF8 format
-// putwchar would have been nice, if it worked for Unicode.
 
-void tiffEMIT(uint32_t xchar) {
+uint32_t tiffEMIT(uint32_t xchar) {
     char c[5];
     if (xchar<0xC0) {
         c[0] = (char)xchar;
@@ -204,17 +216,27 @@ void tiffEMIT(uint32_t xchar) {
     while ((b = *s++)) {
         putchar(b);     // avoid printf dependency
     }                   // else use printf("%s",c);
+    return 0;
+}
+static uint32_t tiffQEMIT(uint32_t dummy) {
+    return 1;           // always ready to emit
 }
 
+static uint32_t tiffBye(uint32_t dummy) {
+    exit(10);  return 0;
+}
+
+
 uint32_t UserFunction (uint32_t T, uint32_t N, int fn ) {
-    switch (fn) {
-        case 0: return (uint32_t)tiffKEYQ();    // `key?`
-        case 1: return (uint32_t)tiffEKEY();    // `key`
-        case 2: tiffEMIT(T);  return 0;         // `emit`
-        case 3: return 1;                       // `emit?`
-        case 4: return Counter();               // counter
-        case 5: return SPIflashXfer(T);         // flashctrl
-        case 6: exit(10);                       // bye
-        default: return 0;
+    parm1 = N;
+    static uint32_t (* const pf[])(uint32_t) = {
+        tiffKEYQ, tiffEKEY, tiffEMIT, tiffQEMIT,
+        Counter, SPIflashXfer, tiffBye
+// add your own here...
+    };
+    if (fn < sizeof(pf) / sizeof(*pf)) {
+        return pf[fn](T);
+    } else {
+        return 0;
     }
 }
