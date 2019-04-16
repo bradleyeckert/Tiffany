@@ -11,7 +11,7 @@
 :noname                                 \ immediate opcode
    c_litpend dup c@ if
       0 swap c!
-      equ_ee  nextlit @  Explicit
+      equ_ee  nextlit @  swap Explicit
       exit
    then  -59 throw
 ; -6 replace-xt

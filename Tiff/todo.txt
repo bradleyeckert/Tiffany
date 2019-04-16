@@ -5,6 +5,5 @@ Add a simple version of tiff.f (maybe testbench.f) that has some test code.
 
 Add a QUIT loop.
 
-Bug in compile.f with deferred literals. ": foo 2 user ;" is broken.
 Tiff's version of literal uses long literals for IMM>1FFFFFF, should be 3FFFFFF.
 
