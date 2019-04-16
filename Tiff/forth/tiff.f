@@ -42,6 +42,7 @@ include weanexec.f                      \ replace C execution fns in existing he
 include weancomp.f                      \ replace C compilation fns in existing headers
 include define.f                        \ defining words
 include structure.f						\ control structures
+include order.f
 \ include flash.f                         \ SPI flash programming
 include forth.f                         \ high level Forth
 

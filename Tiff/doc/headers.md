@@ -22,13 +22,16 @@ The link and the name should be adjacent in memory to allow for faster fetch fro
 
 | Cell | \[31:24\]                        | \[23:0\]                           |
 | ---- |:---------------------------------| ----------------------------------:|
-| -3   | Source File ID                   | List of words that reference this  |
+| -3   | Source File ID                   | Forward link                       |
 | -2   | Source Line, Low byte            | xtc, Execution token for compile   |
 | -1   | Source Line, High byte           | xte, Execution token for execute   |
 | 0    | # of instructions in definition  | Link                               |
 
 Immediately after the Link field is a counted string whose first byte is a 5-bit length and three flags.
 The name length byte includes `smudge`, `call-only`, and `anonymous` bits that default to '1' and are set to '0' later on.
+
+The Forward link is used at run time to initialize the WID of a wordlist if its WID is not initialized data (IDATA).
+This is the case of a dictionary appended to a system, if it doesn't have IDATA.
 
 | Bit | Usage       | Description                                  |
 |:---:|:------------|:---------------------------------------------|
@@ -38,13 +41,7 @@ The name length byte includes `smudge`, `call-only`, and `anonymous` bits that d
 | 4:0 | Name Length | 0 to 31                                      |
 
 
-`immediate` works by clearing xtc. The interpreter uses xte if it's zero. It's done this way because flash can't be patched unless it's blank.
-
-The `where` list (cell -3) is 0xFFFFFF if the word is not referenced. Every reference to this header will append to the `where` list, which is a forward linked list whose head pointer is re-calculated (by traversal) each time it's needed. If the referencer's `anonymous` bit is '0', it doesn't get appended to the `where` list. Opcode words are anonymous.
-
-`where` elements are 3-cell chunks initialized to -1, in header space. The first cell is a forward link and the other two are addresses. Each reference takes 6+ bytes of header space, which may be an expense you can do without. So, the `nowhere` flag disables this feature.
-
-WHERE is not implemented yet.
+`immediate` works by clearing a bit in xtc. It's done this way because flash can't program a `0` twice.
 
 ### Macro Compilation
 
@@ -77,9 +74,8 @@ There is a list of wordlists, pointed to by `WORDLISTS`. The header structure is
 | Cell | Usage                          |
 |:----:|-------------------------------:|
 | 0    | Link                           |
-| 1    | Value resolved by GILD         |
-| 2    | WID                            |
-| 3    | Optional name (counted string) |
+| 1    | WID                            |
+| 2    | Optional name (counted string) |
 
 ## Source File ID
 

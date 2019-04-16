@@ -30,13 +30,6 @@
 : word  \ char "<chars>ccc<char>" -- c-addr
    _parse pad  dup >r c! r@ c@+ cmove r>  \ use pad as temporary
 ;
-: find  \ c-addr -- c-addr 0 | xt flag
-   dup count hfind  over if             \ c-addr addr len
-      drop dup xor exit                 \ not found
-   then
-   >r drop drop r>  xtextc              \ xte xtc
-   ['] do-immediate xor 0<> 2* 1+
-;
 
 : cmove>  \ a1 a2 n --                   \ move bytes
    |-if 3drop exit |

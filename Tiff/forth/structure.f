@@ -18,6 +18,13 @@
 : xtextc  \ head -- xte xtc
    8 - dup  cell+ link>  swap link>
 ;
+: xtflag  \ ht -- xt flag
+   xtextc ['] do-immediate  =  invert 2* 1+
+;
+: search-wordlist  \  c-addr u wid -- 0 | xt flag
+   _hfind  dup if xtflag exit then  2drop
+;
+
 : postpone \ "name" --
    h'  xtextc                           \ xte xtc
    ['] do-immediate =                   \ immediate?

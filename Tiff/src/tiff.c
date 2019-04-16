@@ -164,10 +164,12 @@ void CommaHeader (char *name, uint32_t xte, uint32_t xtc, int Size, int flags){
     uint16_t LineNum = FetchHalf(LINENUMBER);
 	uint8_t fileid = FetchByte(FILEID);
 	uint32_t   wid = FetchCell(CURRENT);                  // CURRENT -> Wordlist
-	uint32_t  link = FetchCell(wid);
-	if (link) {
+    uint32_t  link = FetchCell(wid);
+    /* leave this field blank, not needed. Maybe where field in the future.
+    if (link) {
         StoreROM(0xFF000000 + FetchCell(HP), link - 12);  // resolve forward link
 	}
+	*/
 	CommaH ((fileid << 24) | 0xFFFFFF);                   // [-3]: File ID | where
 	CommaH (((LineNum & 0xFF)<<24)  +  (xtc & 0xFFFFFF)); // [-2]
 	CommaH (((LineNum & 0xFF00)<<16) + (xte & 0xFFFFFF)); // [-1]
@@ -478,6 +480,13 @@ void tiffBracketTICK (void) {           // [']
     uint32_t ht = Htick();
     Literal(FetchCell(ht-4) & 0xFFFFFF);// xte
 }
+void tiffWordList (void) {
+    uint32_t x = FetchCell(DP);
+    PushNum(x);
+    x += 4;
+    StoreCell(x, DP);
+    AddWordlistHead(x, NULL);
+}
 
 char *LocateFilename (int id) {         // get filename from FileID
     uint32_t p = HeadPointerOrigin;     // link is at the bottom of header space
@@ -623,6 +632,10 @@ void ListKeywords(void) {
     }   printed = 1;
 }
 
+void tiffWordlistHead(void) {
+    PushNum(WordlistHead());
+}
+
 void LoadKeywords(void) {               // populate the list of gator brain functions
     keywords = 0;                       // start empty
     AddKeyword("bye",     tiffBYE);
@@ -699,6 +712,8 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("loop",    CompLoop);
     AddKeyword("i",       CompI);
     AddKeyword("leave",   CompLeave);
+    AddKeyword("widlist", tiffWordlistHead);
+    AddKeyword("wordlist", tiffWordList);
 
 //    AddKeyword("rom!",    tiffROMstore);
     AddKeyword("h'",      tiffHTICK);
@@ -718,7 +733,6 @@ void LoadKeywords(void) {               // populate the list of gator brain func
 
     AddKeyword("idata-make", tiffIDATA);    // compile RAM initialization data structure
     AddKeyword("iwords",  ListKeywords);    // internal words, after the dictionary
-    AddKeyword ("_forth",   tiffForthWID);   // WID for Forth
 
     AddEquate ("RAMsize", RAMsize*4);
     AddEquate ("ROMsize", ROMsize*4);
@@ -807,7 +821,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddEquate ("nextlit",    NEXTLIT);
     AddEquate ("iracc",      IRACC);
     AddEquate ("context",    CONTEXT);
-    AddEquate ("forthwid",   FORTHWID);
+    AddEquate ("forth-wordlist", FORTHWID);
     AddEquate ("tib",        TIB);
     AddEquate ("head",       HEAD);
     AddEquate ("hld",        HLD);
@@ -1016,6 +1030,7 @@ void tiffQUIT (char *cmdline) {
     int NoHi = 0;                       // suppress extra "ok"s
     LoadKeywords();
     StoreCell(STATUS, FOLLOWER);  	    // only terminal task
+    WordlistHead();
     while (1){
         tiffIOR = 0;
         InitializeTIB();

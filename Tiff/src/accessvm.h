@@ -32,6 +32,7 @@ void CommaXstring (char *s, void(*fn)(uint32_t), int flags, int esc); // generic
 void CommaHeader (char *name, uint32_t xte, uint32_t xtc, int Size, int flags);
 
 uint32_t SearchWordlist(char *name, uint32_t WID);
+void AddWordlistHead (uint32_t wid, char *name);
 uint32_t tiffFIND (void);                     // ( addr len -- addr len | 0 ht )
 uint32_t WordFind (char *name);                                     // C version
 
@@ -49,6 +50,7 @@ void DumpRegs(void);            // clear screen and dump register and stack data
 void Disassemble(uint32_t addr, uint32_t length);
 void MakeTestVectors(FILE *ofp, int length, int format);
 void WipeTIB (void);                                         // clear TIB memory
+uint32_t WordlistHead (void);
 
 
 #define DataStackCol     1

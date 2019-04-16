@@ -1,5 +1,9 @@
 \ Defining words
 
+: alignh    hp @ aligned hp ! ;         \ --
+: alignc    cp @ aligned cp ! ;         \ --
+: align     h @ aligned h ! ;           \ --
+
 \ Create a new header. The source is the keyboard, file, or blocks.
 \ `include` (in tiff.c) saves the filename and manages c_fileid and w_linenum.
 
@@ -34,8 +38,6 @@
 : flags!  \ c --                        \ change flags (from 0)
    [ pad 16 + ] literal c+!
 ;
-: alignc    cp @ aligned cp ! ;         \ --
-: align     h @ aligned h ! ;           \ --
 
 \ | Bit | Usage       | Description                                  |
 \ |:---:|:------------|:---------------------------------------------|

@@ -11,7 +11,7 @@ cp @ equ opnames
    ," +if"   ," lit"  ," up"    ," !as"  ," ?"    ," up!"  ," r@"  ," com"
    cp @ aligned cp !
 
-: opname  \ opcode --					Type opcode name string
+: opname  \ opcode --					\ type opcode name string
    opnames  begin over while
       count +  ( cnt a )  swap 1- swap
    repeat  nip count type
@@ -27,7 +27,7 @@ cp @ equ opimmaddr
    cp @ aligned cp !
 ram
 
-: isimm  \ c table -- flag				Is this opcode an immediate type?
+: isimm  \ c table -- flag				\ is this opcode an immediate type?
    swap >r  count
    begin dup while
       swap  count r@ = if  \ len a' | c
@@ -36,13 +36,35 @@ ram
    repeat  r> drop nip
 ;
 
+: _xtname  \ wid xt -- a a | xt 0       \ search for xt name in a wordlist
+   begin  over cell- link>
+      over = if
+         drop cell+ dup exit
+      then
+      swap link> swap
+   over 0= until swap
+;
+: xtname  \ xt -- addr u | xt 0         \ search in all wordlists
+   c_wids c@
+   begin dup while 1- dup >r
+      cells context + @ link> ( wid )
+      over _xtname  if
+         r> drop swap drop
+         count 31 and  exit
+      then  drop
+   r> repeat
+;
 : _disIR  \ IR slot opcode -- IR slot-6 | IR -1
    dup >r  opimmed isimm  if			\ display immediate field
       2dup  -1 swap lshift  invert and
 	  r@ opimmaddr isimm  if			\ translate to byte address
-	     cells
+	     cells  xtname dup if
+            type space                  \ label can print
+         else  drop 3 h.x               \ unknown address
+         then
+      else
+	  3 h.x                             \ unlabeled IMM
 	  then
-	  3 h.x
 	  drop  5
    then
    r> opname space
@@ -59,17 +81,17 @@ ram
       _disIR dup
    then  3drop
 ;
-: _dasm  \ addr len --
+: _dasm  \ addr len --          DASM
    begin dup while >r
       dup 3 h.x  @+  dup 7 h.x  disIR  cr
    r> 1- repeat  drop drop
 ;
 
-: _see  \ "name"
+: _see  \ "name"                SEE
    h' dup cell- link>  swap 3 + c@  _dasm
 ;
 
-: loc  \ "name"
+: loc  \ "name"                 LOCATE
    h' dup >r 1- c@ 8 lshift
    r@ 5 - c@ +   ." Line " .
    r> 9 - c@     ." File "
@@ -78,5 +100,3 @@ ram
    +until drop cell+
    count type cr
 ;
-
-

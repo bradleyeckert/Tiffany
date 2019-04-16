@@ -192,6 +192,7 @@ next:   WID = FetchCell(WID) & 0xFFFFFF;
 
 static char str[33];
 
+// returns ht if found, 0 otherwise
 uint32_t tiffFIND (void) {  // ( addr len -- addr len | 0 ht )
     uint8_t length = (uint8_t)PopNum();
     uint32_t addr = PopNum();
@@ -298,17 +299,15 @@ void tiffWords (char *substring, int verbosity) {
 
 // Look up the name of a definition from its address (xte)
 char *GetXtNameWID(uint32_t WID, uint32_t xt) {
-//    if (xt) {
-        do {
-            uint32_t xte = FetchCell(WID - 4) & 0xFFFFFF;
-            if (xte == xt) {
-                uint8_t length = (uint8_t) FetchByte(WID + 4);
-                FetchString(str, WID + 5, length & 0x1F);
-                return str;
-            }
-            WID = FetchCell(WID) & 0xFFFFFF;
-        } while (WID);
-//    }
+    do {
+        uint32_t xte = FetchCell(WID - 4) & 0xFFFFFF;
+        if (xte == xt) {
+            uint8_t length = (uint8_t) FetchByte(WID + 4);
+            FetchString(str, WID + 5, length & 0x1F);
+            return str;
+        }
+        WID = FetchCell(WID) & 0xFFFFFF;
+    } while (WID);
     return NULL;
 }
 
@@ -662,29 +661,49 @@ void InitializeTIB (void) {
     StoreCell(0, COLONDEF);             // clear this byte and the other three
     InitIR();
 }
-
-// Wordlist starts with an optional name. The WID seed points past the name.
-
+/*
+| Cell | Usage                          |
+| ---- | ------------------------------:|
+| 0    | Link                           |
+| 1    | WID                            |
+| 2    | Optional name (counted string) |
+*/
+uint32_t WordlistHead (void) {          // find the first blank link
+    int32_t link = HeadPointerOrigin+4;
+    int32_t result;
+    do {
+        result = link;
+        link = FetchCell(link);         // -1 if end of list
+    } while (link != -1);
+    return result;
+}
 void AddWordlistHead (uint32_t wid, char *name) {
-    char s[36];
+    uint32_t hp = FetchCell(HP);
+    StoreROM(hp, WordlistHead());       // resolve forward link
+    CommaH(-1);                         // forward link for WIDLIST
+    CommaH(0x12345678);                 // name tag
     if (name) {
-        strcpy(s, name);
-        int len = strlen(s);
-        s[len] = len+1;                 // append count as last byte
-        s[len+1] = 0;
-        CommaH(wid + 0x80000000);       // include "named" tag
-        CommaHstring(s);                // padded to cell alignment
+        CommaH(wid + 0xFF000000);       // include "named" tag
+        CommaHstring(name);             // padded to cell alignment
     } else {
         CommaH(wid);
     }
+
 }
+
+/*
+The WIDLIST is a forward linked list that figures out the end of its list at
+run time. It traverses forward from fixed address HeadPointerOrigin+8 to find
+the end of the list. This is the cell to resolve when a wordlist is added.
+
+*/
 
 // Initialize ALL variables in the terminal task
 void InitializeTermTCB (void) {
     VMpor();                            // clear VM and RAM
     initFilelist();                     // clear list of filenames used by LOCATE
     EraseSPIimage();                    // clear SPI flash image and ROM image
-    StoreCell(HeadPointerOrigin+4, HP); // leave 2 cells for filelist
+    StoreCell(HeadPointerOrigin+8, HP); // leave 2 cells for filelist, widlist
     StoreCell(0, CP);
     StoreCell(DataPointerOrigin, DP);
     StoreCell(10, BASE);                // decimal
