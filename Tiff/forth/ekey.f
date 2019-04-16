@@ -1,4 +1,5 @@
 \ EKEY conversion from VT220 cursor and function keys
+\ untested, probably better to use a CASE statement to climb the escape sequence tree
 
 cp @ equ ekey_table             \ counted strings are cell-aligned
    ," D"     ," A"     ," B"     ," C"      \ left up down right

@@ -12,24 +12,23 @@ defer coldboot
 defer safemode
 defer errorISR
 
-include core.f
-: pause ; : /pause ; \ include tasker.f \ no multitasker
-include timing.f
-include numio.f                         \ numeric I/O
+include ../forth/core.f
+: pause ; : /pause ; \ include ../forth/tasker.f \ no multitasker
+include ../forth/timing.f
+include ../forth/numio.f                         \ numeric I/O
 
 : main
    ." Hello World"
    cr 10 0 do i . loop
 ;
 
-include end.f                           \ finish the app
+include ../forth/end.f                           \ finish the app
 
 HP @ . .( bytes in ROM, of which ) CP @ . .( is code and ) HP @ hp0 - . .( is head. )
 .( RAM = ) DP @ ROMsize - . .( of ) RAMsize .  cr
 
-\ make ../templates/app.c ../demo/vm.c       \ C version
 make ../src/vm.c ../demo/vm.c       \ C version, vm.c is usable as a template
-\ make ../templates/app.A51 ../8051/vm.A51   \ 8051 version
+make ../templates/app.A51 ../8051/vm.A51   \ 8051 version
 
 \ make ../templates/app.c ../testbench/vm.c  \ C version for testbench
 \ 100 make ../templates/test_main.c ../testbench/test.c
@@ -54,17 +53,17 @@ make ../src/vm.c ../demo/vm.c       \ C version, vm.c is usable as a template
    -1 @  								\ produce an error to quit
 ; is errorISR
 
-include compile.f                       \ compile opcodes, macros, calls, etc.
-include interpret.f                     \ parse, interpret, convert to number
-include tools.f                         \ dump, .s
-include see.f
-include weanexec.f                      \ replace C execution fns in existing headers
-include weancomp.f                      \ replace C compilation fns in existing headers
-include define.f                        \ defining words
-include structure.f						\ control structures
-include order.f
-\ include flash.f                         \ SPI flash programming
-include forth.f                         \ high level Forth
+include ../forth/compile.f                       \ compile opcodes, macros, calls, etc.
+include ../forth/interpret.f                     \ parse, interpret, convert to number
+include ../forth/tools.f                         \ dump, .s
+include ../forth/see.f
+include ../forth/weanexec.f                      \ replace C execution fns in existing headers
+include ../forth/weancomp.f                      \ replace C compilation fns in existing headers
+include ../forth/define.f                        \ defining words
+include ../forth/structure.f						\ control structures
+include ../forth/order.f
+\ include ../forth/flash.f                         \ SPI flash programming
+include ../forth/forth.f                         \ high level Forth
 
 
 \ ------------------------------------------------------------------------------
@@ -126,9 +125,9 @@ cp @ equ s2
 : ENVIRONMENT? ( c-addr u -- false ) 2drop 0 ;
 
 cr .( Test suite: ) cr
-include test/ttester.fs
-include test/coretest.fs
-include test/dbltest.fs
+include ../forth/test/ttester.fs
+include ../forth/test/coretest.fs
+include ../forth/test/dbltest.fs
 bye
 [then]
 
