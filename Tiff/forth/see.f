@@ -81,13 +81,13 @@ ram
       _disIR dup
    then  3drop
 ;
-: _dasm  \ addr len --          DASM
+: _dasm  \ addr len --
    begin dup while >r
       dup 3 h.x  @+  dup 7 h.x  disIR  cr
    r> 1- repeat  drop drop
 ;
 
-: _see  \ "name"                SEE
+: _see  \ "name" --                     \ 15.6.1.2194
    h' dup cell- link>  swap 3 + c@  _dasm
 ;
 

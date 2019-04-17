@@ -16,7 +16,7 @@ hex
       r>  alignh  exit
    then 2drop r> dup ,h
 ;
-: wordlist  \ -- wid                    \ create a wordlist
+: wordlist  \ -- wid                    \ 16.6.1.2460  create a wordlist
    0 dup  _wordlist
 ;
 : (.wid)  \ addr wid --
@@ -39,33 +39,41 @@ hex
 ;
 decimal
 
-: find  \ c-addr -- c-addr 0 | xt flag
+: find  \ c-addr -- c-addr 0 | xt flag  \ 6.1.1550
    dup count hfind  over if             \ c-addr addr len
       drop dup xor exit                 \ not found
    then
    >r drop drop r>  xtflag
 ;
-: get-order  \ -- widn ... wid1 n       \ get search order
+: get-order  \ -- widn ... wid1 n       \ 16.6.1.1647  get search order
    c_wids c@ for
       r@ cells context + @
    next   c_wids c@
 ;
-: set-order  \ widn .. wid1 n --        \ set search order
+: set-order  \ widn .. wid1 n --        \ 16.6.1.2197  set search order
    dup 0< if  drop forth-wordlist 1  then
    dup c_wids c!  0 ?do  i cells context + !  loop ;
 
-: set-current  current ! ;              \ wid --
-: get-current  current @ ;              \ -- wid
+: set-current  current ! ;   \ wid --   \ 16.6.1.2195
+: get-current  current @ ;   \ -- wid   \ 16.6.1.1643
 : only        -1 set-order ;            \ --
 : also         get-order over swap 1+ set-order ;
 : previous     get-order nip 1-       set-order ;
-: definitions  get-order  over set-current  set-order ;
+: definitions  \ --                     \ 16.6.1.1180
+   get-order  over set-current  set-order
+;
 : /forth       forth-wordlist dup 1 set-order  set-current ;
 
-: order ( -- )
+: order  \ --                           \ 16.6.2.1985
    cr ."  Context: "
    context  c_wids c@ 0 ?do  @+ .wid  loop  drop
    cr ."  Current: " current @ .wid
 ;
 
+\ Search Order Extensions not implemented:
+
+\ 16.6.2.0715 ALSO
+\ 16.6.2.1590 FORTH
+\ 16.6.2.1965 ONLY
+\ 16.6.2.2037 PREVIOUS
 

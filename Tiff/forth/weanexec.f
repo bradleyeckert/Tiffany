@@ -37,48 +37,48 @@ defer equ_ec                            \ 3rd cell -> equ compile
 \ So, there's no "-3 replace-xt"
 
 \ Run-time actions of primitives are headerless
-:noname dup    ; xte-is dup
-:noname +      ; xte-is +
-:noname -      ; xte-is -
+:noname dup    ; xte-is dup             \ 6.1.1290
+:noname +      ; xte-is +               \ 6.1.0120
+:noname -      ; xte-is -               \ 6.1.0160
 :noname c+     ; xte-is c+
-:noname r@     ; xte-is r@
-:noname and    ; xte-is and
-:noname over   ; xte-is over
-:noname r>     ; xte-is r>
-:noname xor    ; xte-is xor
-:noname 2*     ; xte-is 2*
+:noname r@     ; xte-is r@              \ 6.1.2070
+:noname and    ; xte-is and             \ 6.1.0720
+:noname over   ; xte-is over            \ 6.1.1990
+:noname r>     ; xte-is r>              \ 6.1.2060
+:noname xor    ; xte-is xor             \ 6.1.2490
+:noname 2*     ; xte-is 2*              \ 6.1.0320
 :noname 2*c    ; xte-is 2*c
 :noname c!+    ; xte-is c!+
 :noname c@+    ; xte-is c@+
 :noname count  ; xte-is count
-:noname c@     ; xte-is c@
+:noname c@     ; xte-is c@              \ 6.1.0870
 :noname w!+    ; xte-is w!+
 :noname w@+    ; xte-is w@+
 :noname w@     ; xte-is w@
 :noname !+     ; xte-is !+
 :noname @+     ; xte-is @+
-:noname @      ; xte-is @
+:noname @      ; xte-is @               \ 6.1.0650
 :noname u2/    ; xte-is u2/
 :noname rept   ; xte-is rept
 :noname -rept  ; xte-is -rept
-:noname 2/     ; xte-is 2/
+:noname 2/     ; xte-is 2/              \ 6.1.0330
 :noname sp     ; xte-is sp
-:noname invert ; xte-is invert
+:noname invert ; xte-is invert          \ 6.1.1720
 :noname rp!    ; xte-is rp!
 :noname rp     ; xte-is rp
 :noname port   ; xte-is port
 :noname sp!    ; xte-is sp!
 :noname up     ; xte-is up
 :noname up!    ; xte-is up!
-:noname drop   ; xte-is drop
-:noname 1+     ; xte-is 1+
-:noname char+  ; xte-is char+
+:noname drop   ; xte-is drop            \ 6.1.1260
+:noname 1+     ; xte-is 1+              \ 6.1.0290
+:noname char+  ; xte-is char+           \ 6.1.0897
 :noname 2+     ; xte-is 2+
-:noname cell+  ; xte-is cell+
-:noname >r     ; xte-is >r
-:noname swap   ; xte-is swap
-:noname 0=     ; xte-is 0=
-:noname 0<     ; xte-is 0<
+:noname cell+  ; xte-is cell+           \ 6.1.0880
+:noname >r     ; xte-is >r              \ 6.1.0580
+:noname swap   ; xte-is swap            \ 6.1.2260
+:noname 0=     ; xte-is 0=              \ 6.1.0270
+:noname 0<     ; xte-is 0<              \ 6.1.0250
 :noname        ; xte-is nop
 
 :noname  \ get-macro                    \ replaces xtc

@@ -1,19 +1,16 @@
 \ Structures and words that use IMMEDIATE.
 
-: \       tibs @ >in ! ; immediate      \ comment to EOL
-: literal literal, ; immediate          \ compile a literal
-: [char]  char literal, ; immediate     \ compile a char
-: exit    ,exit ; immediate             \ compile exit
-: chars   ; immediate
-: (       [char] ) parse 2drop ; immediate
-
-: [']   \ "name" --
-   ' literal,
+: \       tibs @ >in ! ; immediate      \ 6.2.2535  --
+: literal literal, ; immediate          \ 6.1.1780  x --
+: [char]  char literal, ; immediate     \ 6.1.2520  <xchar> --
+: exit    ,exit ; immediate             \ 6.1.1380
+: chars   ; immediate                   \ 6.1.0898
+: (       [char] ) parse 2drop
 ; immediate
 
-\ Note (from Standard): [compile] is obsolescent and is included as a
-\ concession to existing implementations.
-\ : [compile] ( "name" -- )   ' compile, ;  immediate
+: [']   \ "name" --                     \ 6.1.2510
+   ' literal,
+; immediate
 
 : xtextc  \ head -- xte xtc
    8 - dup  cell+ link>  swap link>
@@ -21,17 +18,19 @@
 : xtflag  \ ht -- xt flag
    xtextc ['] do-immediate  =  invert 2* 1+
 ;
-: search-wordlist  \  c-addr u wid -- 0 | xt flag
+: search-wordlist                       \ 16.6.1.2192
+\ c-addr u wid -- 0 | xt flag
    _hfind  dup if xtflag exit then  2drop
 ;
 
-: postpone \ "name" --
+: postpone \ "name" --                  \ 6.1.2033
    h'  xtextc                           \ xte xtc
    ['] do-immediate =                   \ immediate?
    if   compile, exit   then            \ compile it
    literal,  ['] compile, compile,      \ postpone it
 ; immediate
-: recurse  \ --
+
+: recurse  \ --                         \ 6.1.2120
    -4 last link> compile,
 ; immediate
 
@@ -39,7 +38,7 @@
 \ Control structures
 \ see compiler.f
 
-: NoExecute   \ --                      Must be compiling
+: NoExecute   \ --                      \ Must be compiling
    state @ 0= -14 and throw
 ;
 : NeedSlot  \ slot -- addr
@@ -57,7 +56,7 @@ hex
    _branch  18 lshift +                 \ pack the slot and address
    60000000 +							\ tag = 3, forward reference
 ;
-: then      \ C: then --
+: then      \ C: then --                \ 6.1.2270
    NoExecute  NewGroup  				\ then -- addr slot tag
    dup FFFFFF and
    swap 18 rshift
@@ -67,12 +66,12 @@ hex
    swap ROM!
 ; immediate
 
-: begin     \ C: -- again
+: begin     \ C: -- again               \ 6.1.0760
    NoExecute  NewGroup  cp @
    40000000 +							\ tag = 2, backward mark
 ; immediate
 
-: again     \ C: again --
+: again     \ C: again --               \ 6.2.0700
    NoExecute  2/ 2/
    dup 38000000
    and 10000000 <> -16 and throw		\ expect tag of 2
@@ -81,14 +80,14 @@ hex
 
 decimal
 
-: ahead     \ C: -- then
+: ahead     \ C: -- then                \ 15.6.2.0702
    14 NeedSlot  _jump
 ; immediate
 : ifnc      \ C: -- then
    20 NeedSlot
    op_ifc: Implicit  _jump
 ; immediate
-: if        \ C: -- then | E: flag --
+: if        \ C: -- then | E: flag --   \ 6.1.1700
    20 NeedSlot
    op_ifz: Implicit  _jump
 ; immediate
@@ -96,14 +95,14 @@ decimal
    20 NeedSlot
    op_-if: Implicit  _jump
 ; immediate
-: else      \ C: then1 -- then2
+: else      \ C: then1 -- then2         \ 6.1.1310
    postpone ahead  swap
    postpone then
 ; immediate
-: while     \ C: again -- then again | E: flag --
+: while     \ C: again -- then again    \ 6.1.2430
    NoExecute  >r  postpone if  r>
-; immediate
-: repeat    \ C: then again --
+; immediate \ E: flag --
+: repeat    \ C: then again --          \ 6.1.2140
    postpone again
    postpone then
 ; immediate
@@ -112,7 +111,7 @@ decimal
    op_-if: Implicit
    postpone again
 ; immediate
-: until    \ C: again -- | E: flag --
+: until    \ C: again -- | E: flag --   \ 6.1.2390
    20 NeedSlot drop
    op_ifz: Implicit
    postpone again
@@ -151,36 +150,36 @@ decimal
    |-if drop exit |                     \ missing does>
    >r                                   \ do does>
 ;
-: create  \ -- | -- n
+: create  \ -- | -- addr                \ 6.1.1000
    _create
    postpone (create)
    here  c_scope c@ 1 = 8 and +  ,c     \ skip forward if in ROM
    -1 ,c
 ;
-: >body  \ xt -- body
+: >body  \ xt -- body                   \ 6.1.0550
    cell+ @
 ;
 : (does)  \ RA --
    r>  -4 last link> cell+ cell+  ROM!  \ resolve the does> field
 ; call-only
-: does>  \ patches created fields, pointed to by CURRENT
-   postpone (does)
+: does>                                 \ 6.1.1250
+   postpone (does) \ patches created fields, pointed to by CURRENT
 ; immediate
 
 \ Eaker CASE statement
 \ Note: Number of cases is limited by the stack headspace.
 \ For a depth of 64 cells, that's 32 items.
 
-: case      \ C: -- 0
+: case      \ C: -- 0                   \ 6.2.0873
    0
 ; immediate
-: of        \ C: -- addr slot | E: x1 x2 -- | --
+: of        \ C: -- then                \ 6.2.1950
    postpone (of)  postpone ahead
-; immediate
-: endof     \ C: -- addr1 slot1 -- addr2 slot2
+; immediate \ E: x1 x2 -- | --
+: endof     \ C: then -- again          \ 6.2.1343
    postpone else
 ; immediate
-: endcase   \ C: 0 a1 s1 a2 s2 a3 s3 ... | E: x --
+: endcase   \ C: 0 a1 a2 ... | E: x --  \ 6.2.1342
    postpone drop
    begin ?dup while
       postpone then
@@ -189,13 +188,13 @@ decimal
 
 \ PAD is LEAVE stack
 
-: do  \ -- then again
+: do  \ -- then again                   / 6.1.1240
    NoExecute  NewGroup
    op_swap Implicit   op_com  Implicit
    op_1+   Implicit   op_>r   Implicit   op_>r   Implicit
    postpone begin  0 pad !
 ; immediate
-: ?do  \ -- then again
+: ?do  \ -- then again                  / 6.2.0620
    NoExecute
    postpone (?do)  postpone ahead  4 pad 2!
    postpone begin
@@ -204,7 +203,7 @@ decimal
 : pushLV  pad dup >r @+  dup cell+ r> ! + ! ;   \ n --
 : popLV   pad dup dup @ + @ >r -4 swap +! r> ;  \ -- n
 
-: leave  \ pad: <then> <then> <again> -- <then> <again>
+: leave  \ pad: ... -- ... <then>       \ 6.1.1760
    NoExecute  postpone unloop  postpone ahead  pushLV
 ; immediate
 
@@ -213,13 +212,13 @@ decimal
       popLV  postpone then
    repeat
 ;
-: loop
+: loop  \ again --                      \ 6.1.1800
    NoExecute  postpone (loop)  postpone again  _leaves
 ; immediate
-: +loop
+: +loop  \ again --                     \ 6.1.0140
    NoExecute  postpone (+loop)  postpone again  _leaves
 ; immediate
-: i
+: i  \ index                            \ 6.1.1680
    NoExecute  op_r@ Implicit
 ; immediate
 
@@ -234,14 +233,18 @@ decimal
 : _x"  \ string" --
    postpone (string)  ," alignc			\ compile embedded string
 ;
-: ."   \ string" --
+: ."   \ string" --                     \ 6.1.0190
    _x"  op_c@+ Implicit
    postpone type
 ; immediate
 
-: abort" \ string" -- | e: i * x x1 -- | i * x ) ( r: j * x -- | j * x
+: abort  -1 throw ;  \ --               \ 6.1.0670
+
+: abort" \ ( string" -- | e: i * x x1 -- | i * x ) ( r: j * x -- | j * x )
+   postpone if                          \ 6.1.0680
    postpone ."  \ "
-   -1 throw
+   postpone abort
+   postpone then
 ; immediate
 
 \ Execution semantics of S" and C" need a temporary buffer.
@@ -257,5 +260,5 @@ decimal
 \ Solve the state-smartness of S" and C" by giving them custom xtcs.
 
 :noname _x" op_c@+ Implicit ;           \ compilation action of S"
-+: S"   transient" c@+ ;                \ -- a u
-' _x" +: C"   transient" ;              \ -- a
++: S"   transient" c@+ ;                \ 6.1.2165  -- a u
+' _x" +: C"   transient" ;              \ 6.2.0855  -- a

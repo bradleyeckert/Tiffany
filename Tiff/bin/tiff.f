@@ -15,19 +15,19 @@ defer errorISR
 include ../forth/core.f
 : pause ; : /pause ; \ include ../forth/tasker.f \ no multitasker
 include ../forth/timing.f
-include ../forth/numio.f                         \ numeric I/O
+include ../forth/numio.f                \ numeric I/O
 
 : main
    ." Hello World"
    cr 10 0 do i . loop
 ;
 
-include ../forth/end.f                           \ finish the app
+include ../forth/end.f                  \ finish the app
 
 HP @ . .( bytes in ROM, of which ) CP @ . .( is code and ) HP @ hp0 - . .( is head. )
 .( RAM = ) DP @ ROMsize - . .( of ) RAMsize .  cr
 
-make ../src/vm.c ../demo/vm.c       \ C version, vm.c is usable as a template
+make ../src/vm.c ../demo/vm.c           \ C version, vm.c is usable as a template
 make ../templates/app.A51 ../8051/vm.A51   \ 8051 version
 
 \ make ../templates/app.c ../testbench/vm.c  \ C version for testbench
@@ -53,17 +53,23 @@ make ../templates/app.A51 ../8051/vm.A51   \ 8051 version
    -1 @  								\ produce an error to quit
 ; is errorISR
 
-include ../forth/compile.f                       \ compile opcodes, macros, calls, etc.
-include ../forth/interpret.f                     \ parse, interpret, convert to number
-include ../forth/tools.f                         \ dump, .s
+include ../forth/tools.f                \ dump, .s
+include ../forth/compile.f              \ compile opcodes, macros, calls, etc.
+include ../forth/interpret.f            \ parse, interpret, convert to number
 include ../forth/see.f
-include ../forth/weanexec.f                      \ replace C execution fns in existing headers
-include ../forth/weancomp.f                      \ replace C compilation fns in existing headers
-include ../forth/define.f                        \ defining words
-include ../forth/structure.f						\ control structures
+include ../forth/weanexec.f             \ replace C execution fns in existing headers
+include ../forth/weancomp.f             \ replace C compilation fns in existing headers
+include ../forth/define.f               \ defining words
+include ../forth/structure.f			\ control structures
 include ../forth/order.f
-\ include ../forth/flash.f                         \ SPI flash programming
-include ../forth/forth.f                         \ high level Forth
+include ../forth/string.f
+\ include ../forth/flash.f               \ SPI flash programming
+include ../forth/evaluate.f		        \ evaluate
+include ../forth/coreext.f		        \ oddball CORE EXT words
+include ../forth/toolsext.f		        \ oddball TOOLS EXT words
+include ../forth/double.f		        \ double math
+
+include ../forth/forth.f                \ high level Forth
 
 
 \ ------------------------------------------------------------------------------

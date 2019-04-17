@@ -27,7 +27,7 @@
 : ,c  cp ,x ;                           \ n --
 : ,h  hp ,x ;                           \ n --
 : ,d  dp dup >r @ !  4 r> +! ;          \ n --
-: ,   c_scope c@ if ,c exit then ,d ;   \ n --
+: ,   c_scope c@ if ,c exit then ,d ;   \ 6.1.0150  n --
 
 : c,x                                   \ c addr --
    dup >r @ ROMC!  r@ @ 1+ r> !
@@ -35,7 +35,7 @@
 : c,c  cp c,x ;                         \ c --
 : c,h  hp c,x ;                         \ c --
 : c,d  dp dup >r @ c!  1 r> +! ;        \ c --
-: c,   c_scope c@ if c,c exit then c,d ;
+: c,  c_scope c@ if c,c exit then c,d ; \ 6.1.0860  c --
 
 : ROMmove  ( as ad n -- )
    negate begin >r
@@ -49,28 +49,28 @@
 \ Some are omitted to save header space.
 
 handler        equ handler
-base           equ base
+base           equ base                 \ 6.1.0750
 hp             equ hp
 cp             equ cp
 dp             equ dp
-state          equ state
+state          equ state                \ 6.1.2250
 current        equ current
-source-id      equ source-id
+source-id      equ source-id            \ 6.2.2218
 personality    equ personality
 tibs           equ tibs
 tibb           equ tibb
->in            equ >in
+>in            equ >in                  \ 6.1.0560
 c_wids         equ c_wids
 c_casesens     equ c_casesens
 \ head           equ head
 context        equ context
-forth-wordlist equ forth-wordlist
+forth-wordlist equ forth-wordlist       \ 16.6.1.1595
 hld            equ hld
 blk            equ blk
 tib            equ tib
 \ maxtibsize   equ maxtibsize
 |pad|          equ |pad|
-pad            equ pad
+pad            equ pad                  \ 6.2.2000
 
 \ Define a compiler
 \ char params:  c_colondef c_litpend c_slot c_called
@@ -150,7 +150,7 @@ hex
    if HardLit exit then                 \ oversized literal, compile it now
    nextlit !  1 c_litpend c!            \ literal is pending
 ;
-: compile,  \ xt --                     \ compile a call
+: compile,  \ xt --                     \ 6.2.0945  compile a call
    2/ 2/ op_call Explicit
    head @ 4 + c@  80 and  c_called c!   \ 0 = call-only
 ;

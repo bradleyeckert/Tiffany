@@ -13,7 +13,7 @@
    r> over r> u< and                    \ check the base
 ;
 \ convert string to number, stopping at first non-digit
-: >number       \ ud a u -- ud a u   ( 6.1.0570 )
+: >number       \ ud a u -- ud a u      \ 6.1.0570
    begin dup
    while >r  dup >r c@ base @ digit?
    while swap base @ um* drop rot base @ um* d+ r> char+ r> 1-
@@ -39,7 +39,7 @@
       1 /string
    again
 ;
-: parse  \ char "ccc<char>" -- c-addr u
+: parse  \ char "ccc<char>" -- c-addr u \ 6.2.2008
    /source  over >r  rot scan  r>  rot over -  rot 0<>
    1 and over + >in +!
 ;
@@ -48,14 +48,19 @@
    >r  /source over  r@ swap >r         \ a u char | char a
    skip drop r> - >in +!  r> parse      \ a u
 ;
-: parse-word  \ "<spaces>name" -- c-addr u
-   bl _parse
+: parse-name                            \ 6.2.2020
+   bl _parse  \ "<spaces>name" -- c-addr u
 ;
-: .(    \ "string)" --
+: word  \ c "<ccc>string<c>" -- c-addr  \ 6.1.2450
+   _parse pad  dup >r c!
+   r@ c@+ cmove  r>                     \ use pad as temporary
+;
+
+: .(    \ "string)" --                  \ 6.2.0200
     [char] ) parse type                 \ parse to output
 ;
-: char  \ "char" -- n
-   parse-word utf8@  nip nip            \ handle utf8 chars
+: char  \ "char" -- n                   \ 6.1.0895
+   parse-name utf8@  nip nip            \ handle utf8 chars
 ;
 
 \ A version of FIND that accepts a counted string and returns a header token.
@@ -109,10 +114,10 @@
 \ offset from ht: -16 -12  -8  -4    0 4
 
 : h'  \ "name" -- ht
-   parse-word  hfind  swap 0<>          \ len -1 | ht 0
+   parse-name  hfind  swap 0<>          \ len -1 | ht 0
    -13 and throw                        \ header not found
 ;
-: '   \ "name" -- xte
+: '   \ "name" -- xte                   \ 6.1.0070
    h' cell- link>
 ;
 
@@ -178,8 +183,8 @@
 \ These expect a Forth QUIT loop for THROW to work.
 
 : interpret
-   begin  \ >in @ w_>in w!                \ save position in case of error
-      parse-word  dup                   \ next blank-delimited string
+   begin  \ >in @ w_>in w!              \ save position in case of error (remove)
+      parse-name  dup                   \ next blank-delimited string
    while
       hfind                             \ addr len | 0 ht
       over if
@@ -210,7 +215,7 @@
       dup emit 							\ echo if enabled
    then
 ;
-: accept  \ c-addr +n1 -- +n2
+: accept  \ c-addr +n1 -- +n2           \ 6.1.0695
    swap over  begin	 dup  while
    >r getkey  							\ n a char | n'
 	  |-if 2drop r> - exit |			\ terminator found
