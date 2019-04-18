@@ -67,6 +67,9 @@ include ../forth/double.f		        \ double math
 
 include ../forth/end.f                  \ finish the app
 
+cp @  dup    16 !                       \ resolve internal ROM length
+0 swap crc32 12 !                       \ store CRC, which includes length
+
 HP @ . .( bytes in ROM, of which ) CP @ . .( is code and ) HP @ hp0 - . .( is head. )
 .( RAM = ) DP @ ROMsize - . .( of ) RAMsize .  cr
 
