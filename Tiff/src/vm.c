@@ -222,6 +222,7 @@ void StoreCell (uint32_t x, uint32_t addr) {
 #endif // EmbeddedROM
     StoreX(addr>>2, x, 0, 0xFFFFFFFF);
 }
+
 void StoreHalf (uint16_t x, uint32_t addr) {
     if (addr & 1) {
         exception = -23;

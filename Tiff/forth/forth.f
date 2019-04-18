@@ -29,11 +29,16 @@ cp @ ," DataCodeHead" 1+
 \ Since KEY is raw input (rather than the cooked input served up by the terminal)
 \ you would implement keyboard history (if any) here.
 
-: refill  ( -- ior )  0 ;
+: refill  ( -- ior )
+   tib |tib| accept tibs !  0 >in !
+   0
+;
 
 : (quit)  ( -- )
    begin
-      refill drop  interpret  ." >ok"
+      depth 0 .r  [char] : emit  ." ok "
+      refill drop
+      cr interpret
    again
 ;
 

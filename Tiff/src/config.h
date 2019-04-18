@@ -15,7 +15,7 @@
 
 // Instruments the VM to allow Undo and Redo
  #define TRACEABLE
-#define TraceDepth 12               /* Log2 of the trace buffer size, 13*2^N bytes */
+#define TraceDepth 12           /* Log2 of the trace buffer size, 13*2^N bytes */
 
 // number of rows in the CPU register dump, minimum 9, maximum 12
 #define DumpRows         10
@@ -27,9 +27,9 @@
 // Number of lines in `locate`
 #define LocateLines  10
 
-// put headers in SPI flash to save on ROM space
-//#define HeadPointerOrigin  ((ROMsize-4096)*4)    /* Lowest SPI code address */
-#define HeadPointerOrigin  ((ROMsize+RAMsize)*4)    /* Lowest SPI code address */
+// put headers in IROM
+#define HeadPointerOrigin  ((ROMsize-4096)*4)    /* Lowest SPI code address */
+//#define HeadPointerOrigin  ((ROMsize+RAMsize)*4)    /* Lowest SPI code address */
 
 //===============================================================================
 // Sanity checks

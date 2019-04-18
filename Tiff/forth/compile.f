@@ -57,29 +57,32 @@
 \ Equates for terminal variables puts copies in header space. See tiff.c/tiff.h.
 \ Some are omitted to save header space.
 
-handler        equ handler
-base           equ base                 \ 6.1.0750
-hp             equ hp
-cp             equ cp
-dp             equ dp
-state          equ state                \ 6.1.2250
-current        equ current
-source-id      equ source-id            \ 6.2.2218
-personality    equ personality
-tibs           equ tibs
-tibb           equ tibb
->in            equ >in                  \ 6.1.0560
-c_wids         equ c_wids
-c_casesens     equ c_casesens
-\ head           equ head
-context        equ context
-forth-wordlist equ forth-wordlist       \ 16.6.1.1595
-hld            equ hld
-blk            equ blk
-tib            equ tib
-\ maxtibsize   equ maxtibsize
-|pad|          equ |pad|
-pad            equ pad                  \ 6.2.2000
+handler         equ handler
+base            equ base                \ 6.1.0750
+hp              equ hp
+cp              equ cp
+dp              equ dp
+state           equ state               \ 6.1.2250
+current         equ current
+source-id       equ source-id           \ 6.2.2218
+personality     equ personality
+tibs            equ tibs
+tibb            equ tibb
+>in             equ >in                 \ 6.1.0560
+c_wids          equ c_wids
+c_casesens      equ c_casesens
+\ head            equ head
+context         equ context
+forth-wordlist  equ forth-wordlist      \ 16.6.1.1595
+hld             equ hld
+blk             equ blk
+tib             equ tib
+\ maxtibsize    equ maxtibsize
+|pad|           equ |pad|
+pad             equ pad                 \ 6.2.2000
+RAMsize         equ RAMsize
+ROMsize         equ ROMsize
+SPIflashSize    equ SPIflashSize
 
 \ Define a compiler
 \ char params:  c_colondef c_litpend c_slot c_called

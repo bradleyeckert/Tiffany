@@ -825,6 +825,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddEquate ("context",    CONTEXT);
     AddEquate ("forth-wordlist", FORTHWID);
     AddEquate ("tib",        TIB);
+    AddEquate ("|tib|",      MaxTIBsize);
     AddEquate ("head",       HEAD);
     AddEquate ("hld",        HLD);
     AddEquate ("blk",        BLK);

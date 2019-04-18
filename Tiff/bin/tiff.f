@@ -17,9 +17,50 @@ include ../forth/core.f
 include ../forth/timing.f
 include ../forth/numio.f                \ numeric I/O
 
+0 [if] \ not using QUIT yet
+
+    : throw  \ n --  						\ for testing, remove later
+    ?dup if  port drop  					\ save n in dbg register, like error interrupt
+        8 >r								\ fake an error interrupt
+    then
+    ; call-only
+
+    \ The error ISR has the last known good PC on the return stack and the ior in port.
+    \ Usually, you would just throw an error.
+    \ Since the Tiff interpreter is being used, use a test THROW.
+
+    :noname
+    cr ." Error " dup port . ." at PC=" r> .
+    ." Line# " w_linenum w@ .
+    cr
+    -1 @  								\ produce an error to quit
+    ; is errorISR
+    [else]
+    :noname
+    dup port throw
+    ; is errorISR
+
+[then]
+
+include ../forth/flash.f                \ SPI flash programming
+include ../forth/compile.f              \ compile opcodes, macros, calls, etc.
+include ../forth/tools.f                \ dump, .s
+include ../forth/interpret.f            \ parse, interpret, convert to number
+include ../forth/see.f
+include ../forth/wean.f                 \ replace most C fns in existing headers
+include ../forth/define.f               \ defining words
+include ../forth/structure.f			\ control structures
+include ../forth/string.f
+include ../forth/order.f
+include ../forth/evaluate.f		        \ evaluate
+include ../forth/coreext.f		        \ oddball CORE EXT words
+include ../forth/toolsext.f		        \ oddball TOOLS EXT words
+include ../forth/double.f		        \ double math
+include ../forth/forth.f                \ high level Forth
+
 : main
-   ." Hello World"
-   cr 10 0 do i . loop
+   ." May the Forth be with you!" cr
+   quit
 ;
 
 include ../forth/end.f                  \ finish the app
@@ -33,48 +74,9 @@ make ../templates/app.A51 ../8051/vm.A51   \ 8051 version
 \ make ../templates/app.c ../testbench/vm.c  \ C version for testbench
 \ 100 make ../templates/test_main.c ../testbench/test.c
 
-
 \ Include the rest of Forth for testing, etc.
 
-: throw  \ n --  						\ for testing, remove later
-   ?dup if  port drop  					\ save n in dbg register, like error interrupt
-      8 >r								\ fake an error interrupt
-   then
-; call-only
-
-\ The error ISR has the last known good PC on the return stack and the ior in port.
-\ Usually, you would just throw an error.
-\ Since the Tiff interpreter is being used, use a test THROW.
-
-:noname
-   cr ." Error " dup port . ." at PC=" r> .
-   ." Line# " w_linenum w@ .
-   cr
-   -1 @  								\ produce an error to quit
-; is errorISR
-
-include ../forth/flash.f                \ SPI flash programming
-include ../forth/compile.f              \ compile opcodes, macros, calls, etc.
-include ../forth/tools.f                \ dump, .s
-include ../forth/interpret.f            \ parse, interpret, convert to number
-include ../forth/see.f
-include ../forth/weanexec.f             \ replace C execution fns in existing headers
-include ../forth/weancomp.f             \ replace C compilation fns in existing headers
-include ../forth/define.f               \ defining words
-include ../forth/structure.f			\ control structures
-include ../forth/string.f
-include ../forth/order.f
-include ../forth/evaluate.f		        \ evaluate
-include ../forth/coreext.f		        \ oddball CORE EXT words
-include ../forth/toolsext.f		        \ oddball TOOLS EXT words
-include ../forth/double.f		        \ double math
-
-include ../forth/forth.f                \ high level Forth
-
-.( With the whole system, ) CP @ . .( is code and ) HP @ hp0 - . .( is head. )
-.( RAM = ) DP @ ROMsize - . .( of ) RAMsize .  cr
-
-65536 cp !
+\ 65536 cp !  \ uncomment to compile code to flash region (not internal ROM)
 
 \ ------------------------------------------------------------------------------
 \ TEST STUFF: The demo doesn't use anything after this...
@@ -90,8 +92,6 @@ include ../forth/forth.f                \ high level Forth
 
 \ Some test words
 
-: foo hex decimal ;
-
 \ If using ConEmu, set it up to handle UTF8 output. UTF8 input can't paste onto
 \ console input, so you can't directly test 平方.
 \ However, Linux GNOME has proper UTF8 handling. But not good cooked mode.
@@ -102,8 +102,6 @@ include ../forth/forth.f                \ high level Forth
 : dist  \ x y -- dist^2
    平方 swap 平方 +
 ;
-
- : zz ." hello" ;
 
 cp @ equ s1
    ," 123456"
