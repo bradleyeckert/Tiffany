@@ -21,7 +21,7 @@ void Trace(unsigned int Type, int32_t ID, uint32_t Old, uint32_t New);
 void UnTrace(int32_t ID, uint32_t old);
 extern int tiffIOR;                           // error detection, error when not 0
 extern unsigned long cyclecount;
-extern uint32_t AXI[SPIflashSize+AXIRAMsize];
+extern uint32_t ROM[SPIflashSize];
 int EraseAXI4K(uint32_t address);
 
 // Defined in vmUser.c:

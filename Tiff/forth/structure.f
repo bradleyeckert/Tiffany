@@ -91,7 +91,7 @@ decimal
    20 NeedSlot
    op_ifz: Implicit  _jump
 ; immediate
-: if+       \ C: -- then | E: n -- n
+: +if       \ C: -- then | E: n -- n
    20 NeedSlot
    op_-if: Implicit  _jump
 ; immediate
@@ -101,6 +101,9 @@ decimal
 ; immediate
 : while     \ C: again -- then again    \ 6.1.2430
    NoExecute  >r  postpone if  r>
+; immediate \ E: flag --
+: +while    \ C: again -- then again
+   NoExecute  >r  postpone +if  r>
 ; immediate \ E: flag --
 : repeat    \ C: then again --          \ 6.1.2140
    postpone again

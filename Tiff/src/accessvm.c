@@ -35,15 +35,7 @@ int TermWidth(void) {
 }
 #endif
 
-/// Stacks, RAM and ROM are inside the VM, accessed through a narrow channel,
-/// see vm.c. This abstraction allows you to put the VM anywhere, such as in
-/// a DLL or at the end of a JTAG cable.
-/// Access is through executing an instruction group in the VM:
-/// VMstep() and DebugReg.
-/// Even if TRACEABLE allows easier access, it isn't used here.
-
-/// Bytes are read and written using cell operations so that the VM needn't
-/// implement byte memory operations.
+/// Stacks are accessed by stepping the VM (without advancing the PC).
 
 uint32_t DbgPC; // last PC returned by VMstep
 
@@ -66,37 +58,11 @@ void PushNumR (uint32_t N) {            // Push to the return stack
     SetDbgReg(N);
     DbgGroup(opDUP, opPORT, opPUSH, opSKIP, opNOP);
 }
-/*
-uint8_t FetchByte (uint32_t addr) {     // Read from RAM or ROM
-    return (uint8_t) 0xFF & (FetchCell(addr&(~3)) >> (8*(addr&3)));
-}
-uint16_t FetchHalf (uint32_t addr) {    // Read from RAM or ROM
-    return (uint16_t) 0xFFFF & (FetchCell(addr&(~2)) >> (8*(addr&2)));
-}
-
-void StoreCell (uint32_t N, uint32_t addr) {  // Write to RAM
-    SetDbgReg(N);
-    DbgGroup(opDUP, opPORT, opDUP, opSKIP, opNOP);
-    SetDbgReg(addr);
-    DbgGroup(opPORT, opStorePlus, opDROP, opSKIP, opNOP);
-}
-void StoreHalf (uint16_t N, uint32_t addr) {  // Write half with cell rd/wr
-    SetDbgReg(N);
-    DbgGroup(opDUP, opPORT, opDUP, opSKIP, opNOP);
-    SetDbgReg(addr);
-    DbgGroup(opPORT, opWstorePlus, opDROP, opSKIP, opNOP);
-}
-void StoreByte (uint8_t N, uint32_t addr) {  // Write byte with cell rd/wr
-    SetDbgReg(N);
-    DbgGroup(opDUP, opPORT, opDUP, opSKIP, opNOP);
-    SetDbgReg(addr);
-    DbgGroup(opPORT, opCstorePlus, opDROP, opSKIP, opNOP);
-}
-*/
 void SetPCreg (uint32_t PC) {           // Set new PC
     SetDbgReg(PC);
     DbgGroup(opDUP, opPORT, opPUSH, opEXIT, opNOP);
 }
+
 void WipeTIB (void) {
     StoreCell(0, TIBS);
     StoreCell(0, TOIN);
@@ -106,19 +72,6 @@ void WipeTIB (void) {
     for (int i=0; i<PADsize; i+=4) {
         StoreCell(0, i+PAD);            // clear PAD
     }
-}
-
-// Write to AXI through SetDbgReg and DbgGroup.
-// accessing this way allows target hardware to write
-// to SPI flash through the debug interface when brain dead
-// Store data to a temporary cell at the top of RAM, which gets trashed.
-static void WriteAXI(uint32_t data, uint32_t address) {
-    VMstep((uint32_t)opLIT*0x100000 + ((ROMsize+RAMsize-1)*4), 1);
-    SetDbgReg(data);
-    DbgGroup(opDUP, opPORT, opOVER, opStorePlus, opDROP); // save in temp
-    SetDbgReg(address);
-    DbgGroup(opDUP, opPORT, opStoreAS, opNOP, opNOP); // 1 word to AXI
-    DbgGroup(opDROP, opDROP, opSKIP, opNOP, opNOP);
 }
 
 void FetchString(char *s, unsigned int address, uint8_t length){
@@ -155,10 +108,10 @@ void SPIonesie (int command) {
 }
 
 int EraseSPI4K (uint32_t addr) {        // erase VM's SPI flash
-    SPIonesie(6);
-    SPIaddressCmd(addr, 32, 0);
-    SPIonesie(4);
-    // should insert SPIwait here
+    SPIonesie(6);                       // WREN
+    SPIaddressCmd(addr, 32, 0);         // 4K erase
+    SPIonesie(4);                       // WRDI
+    // should insert SPIwait here, but okay not to in simulation.
     return 0;
 }
 
@@ -380,7 +333,7 @@ void StoreROM (uint32_t data, uint32_t address) {
         if (~(rom|data)) ior = -60; // non-blank bits
     }
     if (address >= ((ROMsize+RAMsize)*4)){
-        WriteAXI(data, address);
+        StoreCell(data, address);
     }
     if (!tiffIOR) tiffIOR = ior;
 }
@@ -579,7 +532,7 @@ void InitializeTIB (void) {
 //    StoreCell(STATUS, FOLLOWER);  	    // only one task
     StoreCell(TIB, TIBB);               // point to TIB
     StoreCell(0, STATE);
-    StoreCell(0, COLONDEF);             // clear this byte and the other three
+    StoreByte(0, COLONDEF);             // clear this byte
     InitIR();
 }
 /*
@@ -634,6 +587,7 @@ void InitializeTermTCB (void) {
     AddWordlistHead(FORTHWID, "forth");
     InitializeTIB();
     InitCompiler();                     // load compiler words
+    StoreByte(StartupTheme, THEME);
 }
 
 int Rdepth(void) {                      // return stack depth
@@ -805,7 +759,7 @@ void DumpReturnStack(void){
 }
 
 void ResetColor(void) {
-    if (ColorTheme) {
+    if (FetchByte(THEME)) {
         printf("\033[0m");              // reset colors
     }
 }
@@ -815,7 +769,7 @@ uint32_t DisassembleGroup(uint32_t addr, int hilight) {
     uint32_t ir = FetchCell(addr);
     if (hilight) {
         ColorHilight();
-        if (!ColorTheme) {
+        if (!FetchByte(THEME)) {
             printf("*");                // no colors, hilight with asterisk
         }
     } else {

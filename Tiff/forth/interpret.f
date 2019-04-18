@@ -202,23 +202,3 @@
       depth 0< -4 and throw             \ stack underflow
    repeat  2drop
 ;
-
-: getkey  \ -- char       char=0 if invalid char, -1 if terminator
-   begin pause key? until  key
-   dup 13 = if
-      drop -1 exit						\ terminator
-   then
-   dup bl < if
-      drop 0 exit						\ other control character
-   then
-   c_noecho c@ 0= if
-      dup emit 							\ echo if enabled
-   then
-;
-: accept  \ c-addr +n1 -- +n2           \ 6.1.0695
-   swap over  begin	 dup  while
-   >r getkey  							\ n a char | n'
-	  |-if 2drop r> - exit |			\ terminator found
-	  ?dup if  swap c!+  then			\ append
-   r> 1- repeat  2drop					\ filled
-;

@@ -73,6 +73,7 @@ void UnCase(char *s);
 #define COLONDEF    termTCB(19)+0  /* colon definition is in progress         */
 #define CASESENS    termTCB(19)+1  /* case-sensitive flag                     */
 #define NOECHO      termTCB(19)+2  /* inhibit ACCEPT echoing                  */
+#define THEME       termTCB(19)+3  /* color scheme for VT220, 0=mono          */
 // Compiler internal state
 #define CALLADDR    termTCB(20)  /* address+slot of last compiled CALL        */
 #define NEXTLIT     termTCB(21)  /* Next literal to be compiled               */

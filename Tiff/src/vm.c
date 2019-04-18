@@ -4,6 +4,9 @@
 #include "vm.h"
 #include <string.h>
 
+// This file serves as the official specification for the Mforth VM.
+// It is usable as a template for generating a C testbench or embedding in an app.
+
 #define IMM    (IR & ~(-1<<slot))
 //`0`#define EmbeddedROM
 //`0`#define ROMsize `3`
@@ -11,32 +14,17 @@
 
 int tiffIOR; // global errorcode
 
-static int error = 0;  // local errorcode
+static int exception = 0;  // local errorcode
 
-// This file is usable as a template for generating a C testbench
-
-//`0`static const uint32_t ROM[`2`] = {`5`};
+//`0`static const uint32_t IROM[`2`] = {`5`};
 //`0`uint32_t FetchROM(uint32_t addr) {
 //`0`  if (addr < `2`) {
-//`0`    return ROM[addr];
+//`0`    return IROM[addr];
 //`0`  }
 //`0`  return -1;
 //`0`}
 
 /// Virtual Machine for 32-bit MachineForth.
-
-/// The VM registers are defined here but generally not accessible outside this
-/// module except through VMstep. The VM could be at the end of a cable, so we
-/// don't want direct access to its innards.
-
-/// These functions are always exported: VMpor, VMstep, SetDbgReg, GetDbgReg.
-/// If TRACEABLE, you get more exported: UnTrace, VMreg[],
-/// while importing the Trace function. This offers a way to break the
-/// "no direct access" rule in a PC environment, for testing and VM debugging.
-
-/// Flash writing is handled by streaming data to AXI space, through VMstep and
-/// friends. ROM writing uses a WriteROM function exported to Tiff but not used
-/// in a target system.
 
 /// The optional Trace function tracks state changes using these parameters:
 /// Type of state change: 0 = unmarked, 1 = new opcode, 2 or 3 = new group;
@@ -73,10 +61,8 @@ static int error = 0;  // local errorcode
 
     static int New; // New trace type, used to mark new sections of trace
     static uint32_t RAM[RAMsize];
-//`0`#ifdef __NEVER_INCLUDE__
-    static uint32_t ROM[ROMsize];
-//`0`#endif
-    uint32_t AXI[SPIflashSize+AXIRAMsize];
+    uint32_t ROM[SPIflashSize];
+    uint32_t AXI[AXIRAMsize];
 
     static void SDUP(void)  {
         Trace(New,RidSP,SP,SP-1); New=0;
@@ -114,10 +100,8 @@ static int error = 0;  // local errorcode
     static uint32_t CARRY;  static uint32_t DebugReg;
 
     static uint32_t RAM[RAMsize];
-#ifndef EmbeddedROM
-    static uint32_t ROM[ROMsize];
-#endif
-    uint32_t AXI[SPIflashSize+AXIRAMsize];
+    uint32_t ROM[SPIflashSize];
+    uint32_t AXI[AXIRAMsize];
 
     static void SDUP(void)  { RAM[--SP & (RAMsize-1)] = N;  N = T; }
     static void SDROP(void) { T = N;  N = RAM[SP++ & (RAMsize-1)]; }
@@ -127,18 +111,24 @@ static int error = 0;  // local errorcode
 
 #endif // TRACEABLE
 
-// Generic fetch from ROM or RAM: ROM is at the bottom, RAM is in middle, AXI is at top
+// Generic fetch from ROM or RAM: ROM is at the bottom, RAM is in middle, ROM is at top
 static uint32_t FetchX (uint32_t addr, int shift, int mask) {
     if (addr >= (SPIflashSize+AXIRAMsize)) {
         return 0;
     }
     if (addr < ROMsize) {
+#ifdef EmbeddedROM
+        return (IROM[addr] >> shift) & mask;
+#else
         return (ROM[addr] >> shift) & mask;
+#endif // EmbeddedROM
     } else {
         if (addr < (ROMsize + RAMsize)) {
             return (RAM[addr-ROMsize] >> shift) & mask;
+        } else if (addr <= SPIflashSize) {
+            return (ROM[addr] >> shift) & mask;
         } else {
-            return (AXI[addr] >> shift) & mask;
+            return 0;
         }
     }
 }
@@ -146,7 +136,7 @@ static uint32_t FetchX (uint32_t addr, int shift, int mask) {
 // Generic store to RAM only.
 static void StoreX (uint32_t addr, uint32_t data, int shift, int mask) {
     if ((addr<ROMsize) || (addr>=(ROMsize+RAMsize))) {
-        error = -9;  return;
+        exception = -9;  return;
     }
     addr -= ROMsize;
     uint32_t temp = RAM[addr] & (~(mask << shift));
@@ -161,15 +151,45 @@ static void StoreX (uint32_t addr, uint32_t data, int shift, int mask) {
 
 /// EXPORTS ////////////////////////////////////////////////////////////////////
 
+// Unprotected write: Doesn't care what's already there.
+#ifdef EmbeddedROM
+int WriteROM(uint32_t data, uint32_t address) {
+    uint32_t addr = address / 4;
+    if (address & 3) return -23;        // alignment problem
+    if (addr < SPIflashSize) {          // always write ROM data
+// An embedded system may want to protect certain ranges
+        ROM[addr] = data;
+    } else {
+        return -9;
+    }
+    if (addr < ROMsize) {
+        return -20;                     // writing to read-only memory (duh)
+    }
+    return 0;
+}
+#else
+int WriteROM(uint32_t data, uint32_t address) {
+    uint32_t addr = address / 4;
+    if (address & 3) return -23;        // alignment problem
+    if (addr < SPIflashSize) {          // always write ROM data
+        ROM[addr] = data;
+    } else {
+        return -9;                      // Address out of range
+    }
+    return 0;
+}
+#endif // EmbeddedROM
+
+
 uint32_t FetchCell(uint32_t addr) {
     if (addr & 3) {
-        error = -23;
+        exception = -23;
     }
     return FetchX(addr>>2, 0, 0xFFFFFFFF);
 }
 uint16_t FetchHalf(uint32_t addr) {
     if (addr & 1) {
-        error = -23;
+        exception = -23;
     }
     return FetchX(addr>>2, (addr&2)*8, 0xFFFF);
 }
@@ -178,13 +198,33 @@ uint8_t FetchByte(uint32_t addr) {
 }
 void StoreCell (uint32_t x, uint32_t addr) {
     if (addr & 3) {
-        error = -23;
+        exception = -23;
     }
+#ifdef EmbeddedROM
+    if (addr < ROMsize*4) {
+        exception = -9;
+        return;
+    }
+    if (addr >= (ROMsize+RAMsize)*4) { // support "SPI flash"
+        uint32_t old = FetchCell(addr);
+        exception = WriteROM(old & x, addr);
+        if ((old|x) != 0xFFFFFFFF) exception = -60;
+        return;
+    }
+#else
+// Simulated ROM bits are checked for blank. You may not write a '0' to a blank bit.
+    if ((addr < ROMsize*4) || (addr >= (ROMsize+RAMsize)*4)) {
+        uint32_t old = FetchCell(addr);
+        exception = WriteROM(old & x, addr);
+        if ((old|x) != 0xFFFFFFFF) exception = -60;
+        return;
+    }
+#endif // EmbeddedROM
     StoreX(addr>>2, x, 0, 0xFFFFFFFF);
 }
 void StoreHalf (uint16_t x, uint32_t addr) {
     if (addr & 1) {
-        error = -23;
+        exception = -23;
     }
     StoreX(addr>>2, x, (addr&2)*8, 0xFFFF);
 }
@@ -192,69 +232,36 @@ void StoreByte (uint8_t x, uint32_t addr) {
     StoreX(addr>>2, x, (addr&3)*8, 0xFF);
 }
 
-#ifdef EmbeddedROM
-int WriteROM(uint32_t data, uint32_t address) {
-    uint32_t addr = address / 4;
-    if (address & 3) return -23;        // alignment problem
-    if (addr < SPIflashSize) {          // always write AXI data
-// An embedded system may want to protect certain ranges
-        AXI[addr] = data;
-    } else {
-        return -9;
-    }
-    if (addr < ROMsize) {
-        return -9;
-    }
-    return 0;
-}
-#else
-int WriteROM(uint32_t data, uint32_t address) {
-    uint32_t addr = address / 4;
-    if (address & 3) return -23;        // alignment problem
-    if (addr < SPIflashSize) {          // always write AXI data
-        AXI[addr] = data;
-    } else {
-        return -9;
-    }
-    if (addr < ROMsize)  {
-        ROM[addr] = data;
-    }
-    return 0;
-}
-#endif // EmbeddedROM
-
 
 // Send a stream of RAM words to the AXI bus.
-// The only thing on the AXI bus here is SPI flash.
+// The only thing on the AXI bus here is RAM that can only be accessed by !AS and @AS.
 // An external function could be added in the future for other stuff.
-// dest is a cell address, length is 0 to 255 meaning 1 to 256 words.
-// *** Modify to only support the AXIRAMsize region after SPI flash.
 static void SendAXI(uint32_t src, uint32_t dest, uint8_t length) {
     for (int i=0; i<=length; i++) {
-        uint32_t old = FetchCell(dest);
         uint32_t data = FetchCell(src);
-//        printf("[%X]=[%X]:%X ", dest, src, data);
-        WriteROM(old & data, dest);
+        if (dest >= AXIRAMsize) {
+            exception = -9;
+        } else {
+            AXI[dest++] = data;
+        }
         src += 4;
-        dest += 4;
     } return;
 }
 
 // Receive a stream of RAM words from the AXI bus.
-// The only thing on the AXI bus here is SPI flash.
 // An external function could be added in the future for other stuff.
-// src is a cell address, length is 0 to 255 meaning 1 to 256 words.
 static void ReceiveAXI(uint32_t src, uint32_t dest, uint8_t length) {
-    dest -= ROMsize;
-    if (dest < 0) goto bogus;            // below RAM address
-    if (dest >= (RAMsize-length)) goto bogus;  // won't fit
-    if (src >= (SPIflashSize+AXIRAMsize-length)) goto bogus;
-    memmove(&AXI[dest], &RAM[src], length+1);  // can read all of AXI space
-    return;
-bogus: error = -9;                    // out of range
+    for (int i=0; i<=length; i++) {
+        uint32_t data = 0;
+        if (src >= AXIRAMsize) {
+            exception = -9;
+        } else {
+            data = AXI[src++];
+        }
+        StoreCell(data, dest);
+        dest += 4;
+    } return;
 }
-
-
 
 #ifdef TRACEABLE
     // Untrace undoes a state change by restoring old data
@@ -579,7 +586,7 @@ GetPointer:     M = T + (M + ROMsize)*4;
 #endif // TRACEABLE
 			    T = M;                                  break;
 			case opFetchAS:
-                ReceiveAXI(N/4, T/4, IMM);  goto ex;	        // @as
+                ReceiveAXI(N, T, IMM);  goto ex;	            // @as
 			case opSetSP:
                 M = (T>>2) & (RAMsize-1);
 #ifdef TRACEABLE
@@ -601,8 +608,6 @@ GetPointer:     M = T + (M + ROMsize)*4;
                 T=DebugReg;
                 DebugReg=M;
                 break;	                                        // port
-			case opSKIPLT: if ((signed)T >= 0) break;           // +if:
-                goto ex;
 			case opLIT: SDUP();
 #ifdef TRACEABLE
                 Trace(0, RidT, T, IMM);
@@ -610,7 +615,7 @@ GetPointer:     M = T + (M + ROMsize)*4;
                 T = IMM;  goto ex;                              // lit
 			case opUP: M = UP;  	                            // up
                 goto GetPointer;
-			case opStoreAS:  // ( src dest -- src dest ) imm length
+			case opStoreAS:
                 SendAXI(N, T, IMM);  goto ex;                   // !as
 			case opSetUP:
                 M = (T>>2) & (RAMsize-1);
@@ -632,12 +637,23 @@ GetPointer:     M = T + (M + ROMsize)*4;
 			default:                           		    break;	//
 		}
 	} while (slot>=0);
-ex: if (error) {
-        tiffIOR = error;                // tell Tiff there was an error
+ex:
+#ifdef EmbeddedROM
+    if (PC >= SPIflashSize) {
+        exception = -9;                 // Invalid memory address
+    }
+#else                                   // ignore PC=DEADC0DC
+    if ((PC >= SPIflashSize) && (PC != 0x37AB7037)) {
+        exception = -9;                 // Invalid memory address
+    }
+#endif // EmbeddedROM
+
+    if (exception) {
+        tiffIOR = exception;            // tell Tiff there was an error
         RDUP(PC<<2);
-        PC = 2;                         // call an error_interrupt
-        DebugReg = error;
-        error = 0;
+        PC = 2;                         // call an error interrupt
+        DebugReg = exception;
+        exception = 0;
     }
     return PC;
 }

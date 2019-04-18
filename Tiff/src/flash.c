@@ -20,12 +20,12 @@ static int Erase4K(uint32_t address) {
 	if (address & 3) return -23;        // alignment problem
 	if (addr > (SPIflashSize-1024)) return -9;   // out of range
 	for (i=0; i<1024; i++) {            // erase 4KB sector
-		AXI[addr+i] = 0xFFFFFFFF;
+		ROM[addr+i] = 0xFFFFFFFF;
 	}
 	return 0;
 }
 
-// Use SPI transfer (user function 5) to write to the AXI space.
+// Use SPI transfer (user function 5) to write to the ROM space.
 // This simulates SPI flash.
 
 uint8_t state = 0;						// FSM state
@@ -73,11 +73,11 @@ uint32_t SPIflashXfer (uint32_t n, uint32_t dummy) {    /*EXPORT*/
                     }
 				case 9:	state++;  break;				// dummy byte before read
 				case 10:								// read as long as you want
-					word = AXI[addr/4];
+					word = ROM[addr/4];
 					cout = (uint8_t)(word >> shift);
 					addr++;  break;
 				case 11:								// write byte to flash
-					word = AXI[addr/4];
+					word = ROM[addr/4];
 					mask = ~(0xFF << shift);
 					data = mask | (cin << shift);
 					if (~(word|data)) {
@@ -86,7 +86,7 @@ uint32_t SPIflashXfer (uint32_t n, uint32_t dummy) {    /*EXPORT*/
 						state=0;
 						break;
 					}
-					AXI[addr/4] = word & data;
+					ROM[addr/4] = word & data;
 					addr++;
 					if (((addr & 0xFF) == 0) && ((n & 0x100) == 0)) {
 						tiffIOR = -60;              	// page overflow

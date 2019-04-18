@@ -426,30 +426,24 @@ void CompAhead (void){  // ( -- then )
     PushNum(0x60000000 + (slot<<24) + addr);
     Explicit(opJUMP, ~(-1<<slot));
 }
-void CompIfNC (void){  // ( -- then )
+void CompIfX (int opcode){  // ( -- then )
     NeedSlot(20);
     uint32_t addr = FetchCell(CP);
-    Implicit(opSKIPNC);
+    Implicit(opcode);
     int slot = FetchByte(SLOT);
     PushNum(0x60000000 + (slot<<24) + addr);
     Explicit(opJUMP, ~(-1<<slot));
+}
+void CompIfNC (void){  // ( -- then )
+    CompIfX(opSKIPNC);
 }
 void CompIf (void){  // ( -- then )
-    NeedSlot(20);
-    uint32_t addr = FetchCell(CP);
-    Implicit(opSKIPNZ);
-    int slot = FetchByte(SLOT);
-    PushNum(0x60000000 + (slot<<24) + addr);
-    Explicit(opJUMP, ~(-1<<slot));
+    CompIfX(opSKIPNZ);
 }
 void CompPlusIf (void){  // ( -- then )
-    NeedSlot(20);
-    uint32_t addr = FetchCell(CP);
-    Implicit(opSKIPGE);
-    int slot = FetchByte(SLOT);
-    PushNum(0x60000000 + (slot<<24) + addr);
-    Explicit(opJUMP, ~(-1<<slot));
+    CompIfX(opSKIPGE);
 }
+
 void CompThen (void){  // ( then -- )
     NewGroup();  NoExecute();
     uint32_t token = PopNum();
@@ -484,6 +478,11 @@ void CompAgain (void){  // ( then -- )
 void CompWhile (void){  // ( then -- then again )
     uint32_t beg = PopNum();
     CompIf();
+    PushNum(beg);
+}
+void CompPlusWhile (void){  // ( then -- then again )
+    uint32_t beg = PopNum();
+    CompPlusIf();
     PushNum(beg);
 }
 void CompRepeat (void){  // ( then again -- )
@@ -681,7 +680,6 @@ void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     CommaHeader("|", ~4, ~8, 0, 0);     // skip to new opcode group
     AddImplicit(opNOP       , "nop");
     AddImplicit(opDUP       , "dup");
-//    AddImplicit(opEXIT      , "exit");
     AddImplicit(opADD       , "+");
     AddImplicit(opSUB       , "-");
     AddImplicit(opADDC      , "c+");
@@ -731,12 +729,10 @@ void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     AddSkip    (opSKIP      , "no:");
     AddSkip    (opSKIPNC    , "ifc:");
     AddSkip    (opSKIPNZ    , "ifz:");
-    AddSkip    (opSKIPLT    , "+if:");
     AddSkip    (opSKIPGE    , "-if:");
     AddHardSkip(opSKIP      , "|no");
     AddHardSkip(opSKIPNC    , "|ifc");
     AddHardSkip(opSKIPNZ    , "|ifz");
-    AddHardSkip(opSKIPLT    , "|+if");
     AddHardSkip(opSKIPGE    , "|-if");
     AddImplicit(opZeroEquals, "0=");
     AddImplicit(opZeroLess  , "0<");
@@ -745,5 +741,4 @@ void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     AddUserVar (2           , "rp0");
     AddUserVar (3           , "sp0");
     AddUserVar (4           , "tos");
-
 }

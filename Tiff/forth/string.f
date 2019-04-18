@@ -31,9 +31,7 @@
 \ there was no match and c-addr3 is c-addr1 and u3 is u1.
 
 : search  \ a1 u1 a2 u2 -- a3 u3 flag   \ 17.6.1.2191
-   dup 0= if   \ special-case zero-length search
-      2drop true exit
-   then
+   dup ifz: drop exit |   \ special-case zero-length search
    2>r 2dup
    begin
       dup

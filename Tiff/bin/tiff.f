@@ -53,17 +53,17 @@ make ../templates/app.A51 ../8051/vm.A51   \ 8051 version
    -1 @  								\ produce an error to quit
 ; is errorISR
 
-include ../forth/tools.f                \ dump, .s
+include ../forth/flash.f                \ SPI flash programming
 include ../forth/compile.f              \ compile opcodes, macros, calls, etc.
+include ../forth/tools.f                \ dump, .s
 include ../forth/interpret.f            \ parse, interpret, convert to number
 include ../forth/see.f
 include ../forth/weanexec.f             \ replace C execution fns in existing headers
 include ../forth/weancomp.f             \ replace C compilation fns in existing headers
 include ../forth/define.f               \ defining words
 include ../forth/structure.f			\ control structures
-include ../forth/order.f
 include ../forth/string.f
-\ include ../forth/flash.f               \ SPI flash programming
+include ../forth/order.f
 include ../forth/evaluate.f		        \ evaluate
 include ../forth/coreext.f		        \ oddball CORE EXT words
 include ../forth/toolsext.f		        \ oddball TOOLS EXT words
@@ -71,6 +71,10 @@ include ../forth/double.f		        \ double math
 
 include ../forth/forth.f                \ high level Forth
 
+.( With the whole system, ) CP @ . .( is code and ) HP @ hp0 - . .( is head. )
+.( RAM = ) DP @ ROMsize - . .( of ) RAMsize .  cr
+
+65536 cp !
 
 \ ------------------------------------------------------------------------------
 \ TEST STUFF: The demo doesn't use anything after this...

@@ -2,73 +2,77 @@
 #include <stdlib.h>
 #include "config.h"
 #include "colors.h"
+#include "vm.h"
+#include "tiff.h"
 
 // Hilighting colors
 
-int ColorTheme = StartupTheme;
+int theme (void) {                      // 0 = mono, 1 = color
+    return FetchByte(THEME);
+}
 
 void ColorHilight(void){                // set color to hilighted
-  if (ColorTheme) {
+  if (theme()) {
 	printf("\033[1;35m");				// magenta
   }
 }
 
 void ColorNormal(void){                	// set color to normal
-  if (ColorTheme) {
+  if (theme()) {
 	printf("\033[1;37;40m");		    // bright, white with black background
   }
 }
 
 void ColorError(void){                	// set color to error
-  if (ColorTheme) {
+  if (theme()) {
 	printf("\033[1;31m");				// red
   }
 }
 
 void ColorDef(void){                	// set color to defining/defined
-  if (ColorTheme) {
+  if (theme()) {
 	printf("\033[1;31m");				// red
   }
 }
 
 void ColorCompiled(void){               // set color to compiled
-  if (ColorTheme) {
+  if (theme()) {
 	printf("\033[1;32m");				// green
   }
 }
 
 void ColorImmediate(void){              // set color to immediate data
-  if (ColorTheme) {
+  if (theme()) {
 	printf("\033[1;33m");				// yellow
   }
 }
 
 void ColorImmAddress(void){             // set color to immediate address
-  if (ColorTheme) {
+  if (theme()) {
 	printf("\033[0;33m");				// yellow dim
   }
 }
 
 void ColorOpcode(void){                 // set color to opcode
-  if (ColorTheme) {
+  if (theme()) {
 	printf("\033[0m");					// plain
   }
 }
 
 void ColorFilePath(void){               // set color to file path
-  if (ColorTheme) {
+  if (theme()) {
 	printf("\033[0;35m");				// cyan
   }
 }
 
 void ColorFileLine(void){               // set color to file path
-  if (ColorTheme) {
+  if (theme()) {
 	printf("\033[0;32m");				// green
   }
 }
 
 void ColorNone(void){                	// set color to ACCEPT mode
-  if (ColorTheme) {
+  if (theme()) {
 	printf("\033[0m");          		// reset colors
   }
 }
@@ -85,7 +89,7 @@ static char WordColors[16] = {          // FG  BG
 };
 
 void WordColor(int color) {             // set color based on word type
-  if (ColorTheme) {
+  if (theme()) {
     printf("\033[1;%d;%dm", WordColors[color], WordColors[color+1]);
   }
 }

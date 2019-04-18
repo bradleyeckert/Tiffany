@@ -1,5 +1,8 @@
 \ Disassembler
 
+\ Note: Misspellings to allow host versions to run:
+\ LOC instead of LOCATE
+
 cp @ equ opnames
    ," ."     ," dup"  ," exit"  ," +"    ," user" ," 0<"   ," r>"  ," 2/"
    ," ifc:"  ," 1+"   ," swap"  ," -"    ," ?"    ," c!+"  ," c@+" ," u2/"
@@ -11,10 +14,10 @@ cp @ equ opnames
    ," +if"   ," lit"  ," up"    ," !as"  ," ?"    ," up!"  ," r@"  ," com"
    cp @ aligned cp !
 
-: opname  \ opcode --					\ type opcode name string
+: opname  \ opcode -- c-addr u			\ type opcode name string
    opnames  begin over while
       count +  ( cnt a )  swap 1- swap
-   repeat  nip count type
+   repeat  nip count
 ;
 
 rom
@@ -59,18 +62,18 @@ ram
       2dup  -1 swap lshift  invert and
 	  r@ opimmaddr isimm  if			\ translate to byte address
 	     cells  xtname dup if
-            type space                  \ label can print
-         else  drop 3 h.x               \ unknown address
+            ColorComp type space        \ label can print
+         else  drop  ColorImmA 3 h.x    \ unknown address
          then
       else
-	  3 h.x                             \ unlabeled IMM
+	     ColorImm .                     \ unlabeled IMM
 	  then
 	  drop  5
    then
-   r> opname space
+   r> opname  ColorOpcod type space
    6 -
 ;
-: disIR  \ IR --
+: disIR  \ IR --                        \ disassemble instruction group
    26 begin
    dup 0< 0= while
       2dup rshift 63 and 				\ IR slot opcode
@@ -80,15 +83,21 @@ ram
    over -4 = if
       _disIR dup
    then  3drop
+   ColorNone
 ;
-: _dasm  \ addr len --
+: dasm  \ addr len --                   \ disassemble groups
+   ColorNone
    begin dup while >r
-      dup 3 h.x  @+  dup 7 h.x  disIR  cr
+      dup >r  dup 3 h.x  @+  dup 7 h.x  disIR
+      r> xtname  dup if
+        ." \\ "  ColorDef type  ColorNone
+      else 2drop
+      then cr
    r> 1- repeat  drop drop
 ;
 
-: _see  \ "name" --                     \ 15.6.1.2194
-   h' dup cell- link>  swap 3 + c@  _dasm
+: see  \ "name" --                      \ 15.6.1.2194
+   h' dup cell- link>  swap 3 + c@  dasm
 ;
 
 : loc  \ "name"                 LOCATE

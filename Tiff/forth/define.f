@@ -52,15 +52,14 @@
    ]header
 ;
 
-: last  current @ @ + ;       \ n -- a  \ index into last defined header
-: clrlast    last dup >r @ and r> ROM! ;   \ bits offset --
-\ : clrlast    last dup SPI! ;   \ bits offset --
+: last         current @ @ + ;          \ n -- a  \ index into last defined header
+: clrlast      last ROM! ;              \ bits offset --
 : clr-xtcbits  invert -8 clrlast ;      \ n --   flip bits in the current xtc
-: clr-xtebits  invert -4 clrlast ;      \ n --   flip bits in the current xte
-: clr-flagbits  invert 4 clrlast ;      \ n --   flip bits in the flags
-: macro      4 clr-xtcbits ;  \ --      \ flip xtc from compile to macro
-: immediate  8 clr-xtcbits ;  \ --      \ 6.1.1710  flip xtc from compile to immediate
-: call-only  128 clr-flagbits ;  \ --   \ clear the jumpable bit
+\ : clr-xtebits  invert -4 clrlast ;      \ n --   flip bits in the current xte
+: clr-flagbits invert  4 clrlast ;      \ n --   flip bits in the flags
+: macro        4 clr-xtcbits ;  \ --    \ flip xtc from compile to macro
+: immediate    8 clr-xtcbits ;  \ --    \ 6.1.1710  flip xtc from compile to immediate
+: call-only    128 clr-flagbits ;  \ -- \ clear the jumpable bit
 
 : ]  1 state ! ;              \ --      \ 6.1.2540  resume compilation
 : [  0 state ! ; immediate    \ --      \ 6.1.2500  interpret

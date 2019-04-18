@@ -20,17 +20,27 @@
    endcase
 ;
 
+: roll                                  \ 6.2.2150
+\ xu xu-1 ... x0 u -- xu-1 ... x0 xu
+    dup ifz: drop exit |
+    swap >r  1- recurse  r> swap
+;
+
 \ Note (from Standard): [compile] is obsolescent and is included as a
 \ concession to existing implementations.
 : [compile]  ' compile, ; immediate     \ 6.2.2530
+
+\ http://www.forth200x.org/documents/html/core.html
+: HOLDS  \ addr u --                    \ 6.2.1675
+   BEGIN DUP WHILE 1- 2DUP + C@ HOLD REPEAT 2DROP
+;
 
 \ VALUE and TO - I don't use them but feel free to define them here.
 \ 6.2.2405 VALUE
 \ 6.2.2295 TO
 
-\ 6.2.1675 HOLDS
+\ Other undefined:
 \ 6.2.1850 MARKER
 \ 6.2.2125 REFILL
-\ 6.2.2150 ROLL
 \ 6.2.2266 S\
 

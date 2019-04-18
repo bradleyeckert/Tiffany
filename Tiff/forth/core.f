@@ -29,8 +29,9 @@
 : 2over    >r >r 2dup r> r> 2swap ;     \ 6.1.0400  d1 d2 -- d1 d2 d1
 : 3drop      drop drop drop ; macro     \ abc --
 : ?dup  dup ifz: exit | dup ;           \ 6.1.0630  n -- n n | 0
-: s>d   dup +if: dup xor exit |         \ 6.1.2170  n -- d
-        dup xor invert ;
+: s>d   dup -if: dup xor invert exit |  \ 6.1.2170  n -- d
+        dup xor ;
+: not                    0= ; macro     \           x -- f
 : =                  xor 0= ; macro     \ 6.1.0530  x y -- f
 : <>              xor 0= 0= ; macro     \ 6.2.0500  x y -- f
 : 0<>                 0= 0= ; macro     \ 6.2.0260  x y -- f
@@ -56,7 +57,6 @@
 : decimal 10 base ! ;                   \ 6.1.1170  --
 : hex     16 base ! ;                   \ 6.2.1660  --
 : link>   @ 16777215 and ;              \ a1 -- a2, mask off upper 8 bits
-
          \ do is  "swap negate >r >r"  macro
          \ run loop?             no    yes
 : (?do)  \ limit i -- | R: RA -- RA | -limit i RA+4
@@ -110,26 +110,28 @@
 : >  swap < ;                           \ 6.1.0540  n1 n2 -- flag
 
 : umove  \ a1 a2 n --                   \ move cells, assume cell aligned
-   negate |+if 3drop exit |
-   1+ swap >r swap
-   | @+ r> !+ >r -rept                  \ n a1' | a2'
-   r> 3drop
+   1- +if
+      negate  swap >r swap
+      | @+ r> !+ >r -rept               \ n a1' | a2'
+      r> 3drop exit
+   then  3drop
 ;
 : cmove  \ a1 a2 n --                   \ 17.6.1.0910
-   negate |+if 3drop exit |
-   1+ swap >r swap
-   | c@+ r> c!+ >r -rept                \ n a1' | a2'
-   r> 3drop
+   1- +if
+      negate  swap >r swap
+      | c@+ r> c!+ >r -rept             \ n a1' | a2'
+      r> 3drop exit
+   then  3drop
 ;
 
 : cmove>  \ a1 a2 n --                  \ 17.6.1.0920
-   |-if 3drop exit |
-   dup >r +  swap r@ +  swap  r>        \ a1 a2 n
-   negate begin >r
-      1- swap 1- swap
-      over c@ over c!
-   r> 1+ +until
-   2drop
+   1- +if  1+
+      dup >r +  swap r@ +  swap  r>     \ a1 a2 n
+      negate begin >r
+         1- swap 1- swap
+         over c@ over c!
+      r> 1+ +until
+   then  3drop
 ;
 
 : move  \ from to count --              \ 6.1.1900
@@ -137,25 +139,26 @@
 ;
 
 : fill  \ a1 n c --                     \ 6.1.1540
-   swap negate |+if 3drop exit |        \ a c n
-   1+ swap >r swap                      \ n a | c
-   | r@ swap c!+ -rept                  \ n a' | c
-   r> 3drop
+   over if
+      swap negate                       \ a c n
+      1+ swap >r swap                   \ n a | c
+      | r@ swap c!+ -rept               \ n a' | c
+      r> 3drop exit
+   then  3drop
 ;
 
 \ Software versions of math functions
 \ May be replaced by user functions.
 
-: lshift  \ x count                     \ 6.1.1805
-   63 and                               \ limit the count
-   negate +if: drop exit |              \ 0
-   1+ swap
+: lshift  \ x count -- x'               \ 6.1.1805
+   1- -if: drop exit |
+   63 and   negate  swap
    | 2* -rept swap drop ;
 ;
+
 : rshift  \ x count                     \ 6.1.2162
-   63 and                               \ limit the count
-   negate +if: drop exit |              \ 0
-   1+ swap
+   1- -if: drop exit |
+   63 and   negate  swap
    | u2/ -rept swap drop ;
 ;
 

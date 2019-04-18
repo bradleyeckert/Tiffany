@@ -34,6 +34,7 @@ void CompBegin (void);
 void CompAgain (void);
 void CompUntil (void);
 void CompWhile (void);
+void CompPlusWhile (void);
 void CompRepeat(void);
 void CompQDo   (void);
 void CompDo    (void);

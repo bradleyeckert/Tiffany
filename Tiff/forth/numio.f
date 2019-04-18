@@ -76,8 +76,8 @@ cp @ equ term_personality               \ terminal personality
 ; is type
 
 : space   bl emit ;                     \ 6.1.2220  --
-: spaces  negate begin +if: drop exit | \ 6.1.2230  n --
-          space 1+ again ;
+: spaces  begin |-if drop exit |        \ 6.1.2230  n --
+          space 1- again ;
 
 \ Numeric conversion, from eForth mostly.
 \ Output is built starting at the end of a fixed `pad` of `|pad|` bytes.
@@ -105,3 +105,25 @@ cp @ equ term_personality               \ terminal personality
 : ?       @ . ;                         \ 15.6.1.0220  a --
 : <#>     <# negate begin >r # r> 1+ +until drop #s #> ;  \ ud digits-1
 : h.x     base @ >r hex  0 swap <#> r> base !  type space ;
+
+\ ACCEPT is needed by safemode flash programming, must be in internal ROM.
+
+: getkey  \ -- char       char=0 if invalid char, -1 if terminator
+   begin pause key? until  key
+   dup 13 = if
+      drop -1 exit						\ terminator
+   then
+   dup bl < if
+      drop 0 exit						\ other control character
+   then
+   c_noecho c@ 0= if
+      dup emit 							\ echo if enabled
+   then
+;
+: accept  \ c-addr +n1 -- +n2           \ 6.1.0695
+   swap over  begin	 dup  while
+   >r getkey  							\ n a char | n'
+	  |-if 2drop r> - exit |			\ terminator found
+	  ?dup if  swap c!+  then			\ append
+   r> 1- repeat  2drop					\ filled
+;

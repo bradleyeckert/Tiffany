@@ -18,12 +18,18 @@ hex
 ;
 decimal
 
-\ 8.6.1.0360 2CONSTANT
-\ 8.6.1.0390 2LITERAL
-\ 8.6.1.0440 2VARIABLE
+: 2literal  \ d --                      \ 8.6.1.0390
+   swap  postpone literal
+   postpone literal
+; immediate
 
-\ 8.6.1.1820 M*/
-\ 8.6.1.1830 M+
+: 2variable  \ <name> --                \ 8.6.1.0440
+    create 2 cells /allot
+;
+
+: 2constant  \ d <name> --              \ 8.6.1.0360
+    create , , does> 2@
+;
 
 : d< ( d1 d2 -- flag )                  \ 8.6.1.1110
    rot  2dup = if  2drop u<  exit then  2nip >
@@ -38,5 +44,43 @@ decimal
    2over 2over d< 0= if  2swap  then  2drop
 ;
 
-\ Double-Number extension words undefined:
+: m+    s>d d+ ;                        \ 8.6.1.1830
+
+: m*                                    \ 8.6.1.1820
+    2dup xor >r
+    abs swap abs um*
+    r> 0< if dnegate then
+;
+
+\ From Wil Baden's "FPH Popular Extensions"
+\ http://www.wilbaden.com/neil_bawd/fphpop.txt
+
+: tnegate                           ( t . . -- -t . . )
+    >r  2dup or dup if drop  dnegate 1  then
+    r> +  negate ;
+
+: t*                                ( d . n -- t . . )
+                                    ( d0 d1 n)
+    2dup xor >r                     ( r: sign)
+    >r dabs r> abs
+    2>r                             ( d0)( r: sign d1 n)
+    r@ um* 0                        ( t0 d1 0)
+    2r> um*                         ( t0 d1 0 d1*n .)( r: sign)
+    d+                              ( t0 t1 t2)
+    r> 0< if tnegate then ;
+
+: t/                                ( t . . u -- d . )
+                                    ( t0 t1 t2 u)
+    over >r >r                      ( t0 t1 t2)( r: t2 u)
+    dup 0< if tnegate then
+    r@ um/mod                       ( t0 rem d1)
+    rot rot                         ( d1 t0 rem)
+    r> um/mod                       ( d1 rem' d0)( r: t2)
+    nip swap                        ( d0 d1)
+    r> 0< if dnegate then ;
+
+: m*/  ( d . n u -- d . )  >r t*  r> t/ ;
+
+
+\ Double-Number extension words not defined:
 \ 8.6.2.0435 2VALUE

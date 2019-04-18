@@ -56,13 +56,17 @@ decimal
 
 : set-current  current ! ;   \ wid --   \ 16.6.1.2195
 : get-current  current @ ;   \ -- wid   \ 16.6.1.1643
-: only        -1 set-order ;            \ --
-: also         get-order over swap 1+ set-order ;
-: previous     get-order nip 1-       set-order ;
+: only        -1 set-order ; \ --       \ 16.6.2.1965
+: also         get-order over swap 1+   \ 16.6.2.0715
+               set-order ;
+: previous     get-order nip 1-         \ 16.6.2.2037
+               set-order ;
 : definitions  \ --                     \ 16.6.1.1180
    get-order  over set-current  set-order
 ;
 : /forth       forth-wordlist dup 1 set-order  set-current ;
+: forth        get-order nip            \ 16.6.2.1590
+               forth-wordlist swap set-order ;
 
 : order  \ --                           \ 16.6.2.1985
    cr ."  Context: "
@@ -70,10 +74,36 @@ decimal
    cr ."  Current: " current @ .wid
 ;
 
-\ Search Order Extensions not implemented:
+\ WORDS takes an optional substring
 
-\ 16.6.2.0715 ALSO
-\ 16.6.2.1590 FORTH
-\ 16.6.2.1965 ONLY
-\ 16.6.2.2037 PREVIOUS
+\ Use case-insensitive MATCH to find a substring
+: wsearch  \ a1 u1 a2 u2 -- a1 | 0
+   dup ifz: 3drop exit |                \ zero-length is found
+   begin  third  while
+      fourth over  2over  match  ( a1 u1 a2 u2   a1 u1 0 | nz )
+      if  3drop exit  then  2drop
+      >r >r  1 /string  r> r>
+   repeat
+   3drop  dup xor                       \ 0 if no match
+;
 
+: _words  \ ak uk wid -- ak uk          \ display one wordlist
+   @ begin
+      dup >r cell+ count                ( ak uk c-addr flags|u )
+      dup >r 31 and                     \ mask off flags
+      2over 2over 2swap wsearch if      \ displayable
+         r> 5 rshift ColorWord  type  ColorNone  space
+      else r> drop  2drop
+      then
+      r> link>
+   dup 0= until  drop                   \ example: context @ @ _words
+;
+: words  \ <name> --                    \ 15.6.1.2465
+   parse-name
+   c_wids c@ begin  1-  +while
+      dup >r cells context + @ _words r>
+   repeat  3drop
+;
+: wwords  \ wid <name> --               \ words in a wordlist, optional substring
+   parse-name _words
+;

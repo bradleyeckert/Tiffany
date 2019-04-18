@@ -38,7 +38,7 @@ extern uint32_t ProfileCounts[ROMsize];     // profiler data
 extern uint32_t OpCounter[64];              // dynamic instruction count
 
 // used by flash.c to simulate SPI flash
-extern uint32_t AXI[SPIflashSize+AXIRAMsize];
+extern uint32_t ROM[SPIflashSize];
 
 // Defined in vmUser.c, used by the debugger in accessvm.c.
 uint32_t UserFunction (uint32_t T, uint32_t N, int fn );
@@ -99,7 +99,6 @@ uint32_t UserFunction (uint32_t T, uint32_t N, int fn );
 #define opCfetch     (066)  // c@
 #define opPORT       (067)  // port  ( n -- m ) swap T with port
 
-#define opSKIPLT     (070)  // +if:  slot=end if T < 0
 #define opLIT        (071)  // lit
 #define opUP         (072)  // up
 #define opStoreAS    (073)  // !as

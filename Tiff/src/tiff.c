@@ -401,10 +401,10 @@ void TiffCR (void) {
     printf("\n");
 }
 void TiffMonoTheme (void) {
-    ColorTheme = 0;
+    StoreByte(0, THEME);
 }
 void TiffColorTheme (void) {
-    ColorTheme = 1;
+    StoreByte(1, THEME);
 }
 
 void tiffCommaString (void) {   // ,"
@@ -706,6 +706,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("until",   CompUntil);
     AddKeyword("+until",  CompPlusUntil);
     AddKeyword("while",   CompWhile);
+    AddKeyword("+while",  CompPlusWhile);
     AddKeyword("repeat",  CompRepeat);
     AddKeyword("?do",     CompQDo);
     AddKeyword("do",      CompDo);
@@ -817,6 +818,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddEquate ("c_litpend",  LITPEND);
     AddEquate ("c_colondef", COLONDEF);
     AddEquate ("c_casesens", CASESENS);
+    AddEquate ("c_theme",    THEME);
     AddEquate ("calladdr",   CALLADDR);
     AddEquate ("nextlit",    NEXTLIT);
     AddEquate ("iracc",      IRACC);

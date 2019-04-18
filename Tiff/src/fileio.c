@@ -37,7 +37,7 @@ int BinaryLoad (char* filename) {       // Load ROM from binary file
             n += data[i] << (8 * i);
         }
         if ((addr < (ROMsize*4)) || (addr >= ((ROMsize+RAMsize)*4))) {
-            WriteROM(n, addr);          // write to internal ROM as well as AXI image (SPI flash)
+            WriteROM(n, addr);          // write to internal ROM as well as ROM image (SPI flash)
         } else {                        // unless in RAM address range
             StoreCell(n, addr - ROMsize*4);
         }
@@ -205,13 +205,13 @@ default: fprintf(ofp, "/*%d*/", n);
 }
 
 /*
-The raw image includes all internal ROM, RAM, and SPI flash (AXI space)
+The raw image includes all internal ROM, RAM, and SPI flash (ROM space)
 Use the -b directive to load it instead of (or before) a Forth file.
 */
 
 void SaveImage (char *filename) {
     WipeTIB();                          // don't need to see TIB contents
-    int32_t length = ROMwords(SPIflashSize); // end of AXI data
+    int32_t length = ROMwords(SPIflashSize); // end of ROM data
     FILE *ofp;
     ofp = fopen(filename, "wb");
     if (ofp == NULL) {
