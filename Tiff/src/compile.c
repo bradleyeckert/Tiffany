@@ -257,7 +257,7 @@ void CompSemi (void) {  /*EXPORT*/
         uint32_t cp  = FetchCell(CP);     // end address
         uint32_t length = (cp - org) / 4; // length in cells
         if (length>255) length=255;       // limit to 8-bit
-        StoreROM((length<<24) + 0xFFFFFF, wid);
+        StoreROM(length + 0xFFFF0000, wid - 12);
     }
     StoreCell(0, STATE);
 }
@@ -292,7 +292,7 @@ static void HardLit (int32_t N) {
             Explicit(opLIT, u);
         }
     } else {
-        Explicit(opLIT, (N>>24));       // split into 8 and 24
+        Explicit(opLIT, ((N>>24) & 0xFF)); // split into 8 and 24
         Explicit(opLitX, (N & 0xFFFFFF));
     }
 }

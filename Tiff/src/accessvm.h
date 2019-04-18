@@ -20,7 +20,6 @@ uint8_t FetchByte (uint32_t addr);                       // Read from RAM or ROM
 */
 void StoreString(char *s, unsigned int address);       // Store unbounded string
 void FetchString(char *s, unsigned int address, uint8_t length);   // get string
-void EraseSPIimage (void);                   // Erase ROM and/or SPI flash image
 int Rdepth(void);                                          // return stack depth
 int Sdepth(void);                                            // data stack depth
 void CommaC (uint32_t x);                         // append a word to code space

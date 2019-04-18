@@ -135,7 +135,7 @@ decimal
 hex
 : _create  \ "name" --
    cp @  ['] get-compile  header[
-   1 [ pad 0F + ] literal c!            \ count byte = 1
+   1 pad w!                             \ count byte = 1
    0C0 flags!                           \ flags: jumpable, anon
    ]header   NewGroup
 ;

@@ -10,7 +10,7 @@
 \ |Cell| \[31:24\]                        | \[23:0\]                           |
 \ |----|:---------------------------------| ----------------------------------:|
 \ | -4 | optional W                                                            |
-\ | -3 | Source File ID                   | List of words that reference this  |
+\ | -3 | Source File ID                   | spare byte | # of instructions     |
 \ | -2 | Source Line, Low byte            | xtc, Execution token for compile   |
 \ | -1 | Source Line, High byte           | xte, Execution token for execute   |
 \ | 0  | # of instructions in definition  | Link                               |
@@ -51,7 +51,7 @@
    header[  ,h
    ]header
 ;
-
+hex
 : last         current @ @ + ;          \ n -- a  \ index into last defined header
 : clrlast      last ROM! ;              \ bits offset --
 : clr-xtcbits  invert -8 clrlast ;      \ n --   flip bits in the current xtc
@@ -59,32 +59,32 @@
 : clr-flagbits invert  4 clrlast ;      \ n --   flip bits in the flags
 : macro        4 clr-xtcbits ;  \ --    \ flip xtc from compile to macro
 : immediate    8 clr-xtcbits ;  \ --    \ 6.1.1710  flip xtc from compile to immediate
-: call-only    128 clr-flagbits ;  \ -- \ clear the jumpable bit
+: call-only    80 clr-flagbits ;  \ --  \ clear the jumpable bit
 
 : ]  1 state ! ;              \ --      \ 6.1.2540  resume compilation
 : [  0 state ! ; immediate    \ --      \ 6.1.2500  interpret
 
 : ;  \ --                               \ 6.1.0460
    ,exit  NewGroup
-   4 last c@  32 and if                 \ smudge bit is set?
-      32 clr-flagbits                   \ clear it
+   4 last c@  20 and if                 \ smudge bit is set?
+      20 clr-flagbits                   \ clear it
    then
    c_colondef c@ if                     \ wid
       0 c_colondef c!
       cp @  -4 last link> - 2/ 2/       \ length
-      255 min
-      1+ 24 lshift 1-  0 clrlast
+      invert 0FFFF and invert  -0C clrlast
    then
    0 state !
 ; immediate
 
 : +:  \ xtc <name> --                   \ new : with custom xtc
    >r alignc  cp @ r> header[
-   255 [ pad 15 + ] literal c!          \ blank count byte = 255
-   224 flags!                           \ flags: jumpable, anon, smudged
+   0E0 flags!                           \ flags: jumpable, anon, smudged
    ]header
    1 c_colondef c!  ]
 ;
+decimal
+
 : :  \ <name> --                        \ 6.1.0450
    ['] get-compile  +:
 ;

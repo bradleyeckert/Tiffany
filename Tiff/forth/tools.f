@@ -69,13 +69,14 @@ Blue			Display		Format word (editor display-time)
 : dump  \ addr bytes --                 \ 15.6.1.1280
    swap -4 and swap                     \ cell-align the address
    begin dup while
-      cr over 3 h.x
+      cr over  ColorHi 3 h.x  ColorImm
       2dup  [ DumpColumns ] literal
       dup >r min  r> over - 9 * >r      \ a u addr len | padding
       begin dup while >r                \ dump cells in 32-bit hex
          @+ 7 h.x r> 1-
       repeat  2drop  r> spaces
       2dup  [ DumpColumns 2* 2* ] literal min
+      ColorComp
       begin dup while >r                \ dump chars in ASCII
          c@+
          dup bl 192 within |ifz drop [char] .
@@ -84,7 +85,7 @@ Blue			Display		Format word (editor display-time)
       [ DumpColumns 2* 2* ] literal /string
       0 max
    repeat  2drop
-   cr
+   ColorNone  cr
 ;
 
 \ http://lars.nocrew.org/forth2012/tools/NtoR.html

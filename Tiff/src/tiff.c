@@ -152,11 +152,11 @@ void initFilelist (void) {
 /*
 | Cell | \[31:24\]                        | \[23:0\]                           |
 | ---- |:---------------------------------| ----------------------------------:|
-| -3   | Source File ID                   | List of words that reference this  |
+| -3   | Source File ID                   | spare byte | definition length     |
 | -2   | Source Line, Low byte            | xtc, Execution token for compile   |
 | -1   | Source Line, High byte           | xte, Execution token for execute   |
 | 0    | # of instructions in definition  | Link                               |
-| 1    | Name Length                      | Name Text, first 3 characters      |
+| 1    | tag                              | Name Text, first 3 characters      |
 | 2    | 4th name character               | Name Text, chars 5-7, etc...       |
 */
 // Use Size=-1 if unknown
@@ -165,16 +165,11 @@ void CommaHeader (char *name, uint32_t xte, uint32_t xtc, int Size, int flags){
 	uint8_t fileid = FetchByte(FILEID);
 	uint32_t   wid = FetchCell(CURRENT);                  // CURRENT -> Wordlist
     uint32_t  link = FetchCell(wid);
-//    /* leave this field blank, not needed. Maybe where field in the future.
-    if (link) {
-        StoreROM(0xFF000000 + FetchCell(HP), link - 12);  // resolve forward link
-	}
-//	*/
-	CommaH ((fileid << 24) | 0xFFFFFF);                   // [-3]: File ID | where
+	CommaH ((fileid << 24) | 0xFF0000 | (Size&0xFFFF));   // [-3]: File ID | size
 	CommaH (((LineNum & 0xFF)<<24)  +  (xtc & 0xFFFFFF)); // [-2]
 	CommaH (((LineNum & 0xFF00)<<16) + (xte & 0xFFFFFF)); // [-1]
 	StoreCell (FetchCell(HP), wid);
-	CommaH (((Size&0xFF)<<24) | link);                 // [0]: Upper size | link
+	CommaH (0xFF000000 | link);                           // [0]: spare | link
 	CompString(name, (flags<<4)+7, HP);
 }
 
@@ -256,7 +251,7 @@ void tiffINCLUDED (char *name) {
         StoreROM(hp, FilenameListHead);
         FilenameListHead = hp;
         CommaH(0xFFFFFFFF);             // forward link
-        CompString(File.FilePath, 3, HP);
+        CompString(File.FilePath, 7, HP);
         FileID++;
         if (FileID == 255) tiffIOR = -99;
         SwallowBOM(File.fp);
@@ -407,13 +402,21 @@ void TiffColorTheme (void) {
     StoreByte(1, THEME);
 }
 
-void tiffCommaString (void) {   // ,"
+void tiffCommaEString (void) {  // ,\"
     GetQuotedString('"');
     CompString(name, 1, CP);
 }
+void tiffCommaString (void) {   // ,"
+    GetQuotedString('"');
+    CompString(name, 5, CP);
+}
+static void CommaEQString (void) {
+    GetQuotedString('"');
+    CompString(name, 3, CP);    // aligned string
+}
 static void CommaQString (void) {
     GetQuotedString('"');
-    CompString(name, 3, CP);       // aligned string
+    CompString(name, 7, CP);    // aligned string, not escaped
 }
 
 void tiffMsgString (void) {     // ."
@@ -438,6 +441,33 @@ void tiffSString (void) {       // S"
         CompAhead();
         uint32_t cp = FetchCell(CP);
         CommaQString();
+        CompThen();
+        CompCount(cp);
+    }
+}
+
+void tiffEMsgString (void) {     // .\"
+    NoExecute();
+    CompAhead();
+    uint32_t cp = FetchCell(CP);
+    CommaEQString();
+    CompThen();
+    CompType(cp);
+}
+void tiffECString (void) {       // C\"
+    if (FetchCell(STATE)) {
+        CompAhead();
+        uint32_t cp = FetchCell(CP);
+        CommaEQString();
+        CompThen();
+        Literal(cp);
+    }
+}
+void tiffESString (void) {       // S\"
+    if (FetchCell(STATE)) {
+        CompAhead();
+        uint32_t cp = FetchCell(CP);
+        CommaEQString();
         CompThen();
         CompCount(cp);
     }
@@ -544,7 +574,7 @@ void tiffDASM (void) {                  // disassemble range ( addr len )
 void tiffSEE (void) {                   // disassemble word
     uint32_t ht = Htick();
     uint32_t addr =  FetchCell(ht-4) & 0xFFFFFF;
-    uint8_t length = FetchByte(ht+3);
+    uint8_t length = FetchHalf(ht-12);
     if (ht) Disassemble(addr, length);
 }
 void tiffCPUon (void) {                 // enable CPU display mode
@@ -687,9 +717,13 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("c,",      CompCommaC);
     AddKeyword("literal", CompLiteral);
     AddKeyword(",\"",     tiffCommaString);
+    AddKeyword(",\\\"",   tiffCommaEString);
     AddKeyword(".\"",     tiffMsgString);
+    AddKeyword(".\\\"",   tiffEMsgString);
     AddKeyword("s\"",     tiffSString);
+    AddKeyword("s\\\"",   tiffESString);
     AddKeyword("c\"",     tiffCString);
+    AddKeyword("c\\\"",   tiffECString);
 
     AddKeyword("[char]",  TiffLitChar);
     AddKeyword("char",    TiffChar);
@@ -952,8 +986,8 @@ void tiffINTERPRET(void) {
             uint32_t address = PopNum();
             FetchString(name, address, (uint8_t)length);
             if (NotKeyword(name)) {     // try to convert to number
-                char *eptr;
-                long int x = strtol(name, &eptr, FetchCell(BASE));
+                char *eptr;             // long long to handle 80000000 to FFFFFFFF
+                long long int x = strtoll(name, &eptr, FetchCell(BASE));
                 if ((x == 0) && ((errno == EINVAL) || (errno == ERANGE))) {
                     bogus: tiffIOR = -13;   // not a number
                 } else {
@@ -962,7 +996,7 @@ void tiffINTERPRET(void) {
 #ifdef VERBOSE
                         printf(", Literal %d\n", (int32_t)x);  printed = 1;
 #endif
-                        Literal(x);
+                        Literal((uint32_t)x);
                     } else {
 #ifdef VERBOSE
                         printf(", Push %d\n", (int32_t)x);  printed = 1;

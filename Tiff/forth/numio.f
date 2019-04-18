@@ -12,8 +12,8 @@ defer type
 \ VT100 escape sequences are assumed to work.
 
 : $type      count type ;               \ addr --
-cp @ equ string_cr ," \r\l"             \ CRLF
-cp @ equ string_pg ," \e[2J"            \ ANSI "clear screen"
+cp @ equ string_cr 2 c, 13 c, 10 c,
+cp @ equ string_pg 4 c, 27 c, char [ c, char 2 c, char J c, \ VT100 "clear screen"
 cp @ aligned cp !
 : term_cr    string_cr $type ;          \ --
 : term_page  string_pg $type ;          \ --

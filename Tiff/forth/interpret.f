@@ -137,28 +137,30 @@
 ;
 \ Attempt to convert to an integer in the current base
 : tonumber  \ addr len -- n
-   0 0 2swap >number 0<> -13 and throw  2drop
+   0 dup 2swap >number 0<> -13 and throw  2drop
 ;
+hex
 \ Attempt to convert utf-8 code point
 : nextutf8  \ n a -- n' a'              \ add to utf-8 xchar
-   >r 6 lshift r> count
-   dup 192 and 128 <> -13 and throw     \ n' a c
-   63 and  swap >r  +  r>
+   >r 6 lshift r> count                 \ expect 80..BF
+   dup 0C0 and 80 <> -0D and throw      \ n' a c
+   3F and  swap >r  +  r>
 ;
 : isutf8  \ addr len -- xchar
-   over c@ 192 <  over 1 = and  if      \ plain ASCII
+   over c@ 0F0 <  over 1 = and  if      \ plain ASCII
       drop c@ exit
    then
-   over c@ 224 <  over 2 = and  if      \ 2-byte utf-8
-      drop count 31 and  swap  nextutf8
+   over c@ 0E0 <  over 2 = and  if      \ 2-byte utf-8
+      drop count 1F and  swap  nextutf8
       drop exit
    then
-   over c@ 240 <  over 3 = and  if      \ 3-byte utf-8
-      drop count 31 and  swap  nextutf8  nextutf8
+   over c@ 0F0 <  over 3 = and  if      \ 3-byte utf-8
+      drop count 1F and  swap  nextutf8  nextutf8
       drop exit
    then
-   -13 throw
+   -0D throw
 ;
+decimal
 \ Attempt to convert string to a number
 : isnumber  \ addr u -- n
    numbersign  >r                       \ accept leading '-'

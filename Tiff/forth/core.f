@@ -232,6 +232,22 @@
 : */     */mod swap drop ;              \ 6.1.0100  n1 n2 n3 -- n1*n2/n3
 : bye    6 user ;                       \ 15.6.2.0830  exit to OS if there is one
 
+hex
+: crc32  \ c-addr u -- crc              \ CRC32 of string, about 160 cycles per byte
+   swap -1 >r                           ( u addr | crc )
+   begin  over  while
+      swap 1- swap
+      count r> xor                      ( u addr' crc' )
+      -8 begin  1+ >r                   \ do 8 times
+         dup  1 and negate              ( u addr crc mask )
+         EDB88320 and
+         swap u2/ xor
+      r> +until  drop  >r
+   repeat
+   2drop r> invert
+;
+decimal
+
 \ This version expects two registers for the top of the data stack
 
 : catch  \ xt -- exception# | 0         \ 9.6.1.0875

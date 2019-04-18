@@ -69,9 +69,8 @@ decimal
                forth-wordlist swap set-order ;
 
 : order  \ --                           \ 16.6.2.1985
-   cr ."  Context: "
-   context  c_wids c@ 0 ?do  @+ .wid  loop  drop
-   cr ."  Current: " current @ .wid
+   ."  Context: "    context  c_wids c@ 0 ?do  @+ .wid  loop  drop
+   cr ."  Current: " current @ .wid  cr
 ;
 
 \ WORDS takes an optional substring

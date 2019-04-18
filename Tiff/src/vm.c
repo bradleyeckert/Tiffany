@@ -205,15 +205,9 @@ void StoreCell (uint32_t x, uint32_t addr) {
         exception = -9;
         return;
     }
-    if (addr >= (ROMsize+RAMsize)*4) { // support "SPI flash"
-        uint32_t old = FetchCell(addr);
-        exception = WriteROM(old & x, addr);
-        if ((old|x) != 0xFFFFFFFF) exception = -60;
-        return;
-    }
 #else
 // Simulated ROM bits are checked for blank. You may not write a '0' to a blank bit.
-    if ((addr < ROMsize*4) || (addr >= (ROMsize+RAMsize)*4)) {
+    if (addr < ROMsize*4) {
         uint32_t old = FetchCell(addr);
         exception = WriteROM(old & x, addr);
         if ((old|x) != 0xFFFFFFFF) exception = -60;
@@ -297,7 +291,8 @@ void VMpor(void) {  // EXPORTED
 #endif // TRACEABLE
     PC = 0;  RP = 64;  SP = 32;  UP = 64;
     T=0;  N=0;  DebugReg = 0;
-    memset(RAM, 0, RAMsize*sizeof(uint32_t));  // clear RAM
+    memset(RAM,  0, RAMsize*sizeof(uint32_t));       // clear RAM
+    memset(ROM, -1, SPIflashSize*sizeof(uint32_t));  // clear ROM
 }
 
 uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED

@@ -88,33 +88,6 @@ void StoreString(char *s, unsigned int address){
     }
 }
 
-// Access VM's SPI flash through USER opcode
-void SPIaddressCmd (uint32_t addr, int command, int ending) {
-    SetDbgReg(command);
-    VMstep((uint32_t)opDUP*0x100000 + (uint32_t)opPORT*0x4000 + opUSER*0x100 + 5, 1);
-    SetDbgReg((addr>>16) & 0xFF);
-    VMstep((uint32_t)opPORT*0x4000 + opUSER*0x100 + 5, 1);
-    SetDbgReg((addr>>8) & 0xFF);
-    VMstep((uint32_t)opPORT*0x4000 + opUSER*0x100 + 5, 1);
-    SetDbgReg((addr & 0xFF) + ending);
-    VMstep((uint32_t)opPORT*0x4000 + opUSER*0x100 + 5, 1);
-    DbgGroup(opDROP, opSKIP, opNOP, opNOP, opNOP);
-}
-
-void SPIonesie (int command) {
-    SetDbgReg(command + 0x100);
-    VMstep((uint32_t)opDUP*0x100000 + (uint32_t)opPORT*0x4000 + opUSER*0x100 + 5, 1);
-    DbgGroup(opDROP, opSKIP, opNOP, opNOP, opNOP);
-}
-
-int EraseSPI4K (uint32_t addr) {        // erase VM's SPI flash
-    SPIonesie(6);                       // WREN
-    SPIaddressCmd(addr, 32, 0);         // 4K erase
-    SPIonesie(4);                       // WRDI
-    // should insert SPIwait here, but okay not to in simulation.
-    return 0;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // Dictionary Traversal Words
 
@@ -305,17 +278,6 @@ void ReplaceXTs(void) {  // ( newXT oldXT -- )
 
 ////////////////////////////////////////////////////////////////////////////////
 // Dumb Compilation
-
-void EraseSPIimage (void) {  // Erase SPI flash image and internal ROM
-    int i, ior;
-    for (i=0; i < (SPIflashSize/1024); i++) {
-        ior = EraseSPI4K(i * 4096);     // start at a byte address
-        if (!tiffIOR) tiffIOR = ior;
-    }
-    for (i=0; i < ROMsize; i++) {       // size is cells
-        WriteROM(-1, i*4);              // addressing is bytes
-    }
-}
 
 // StoreROM simulates flash memory.
 // It starts out blank and writing '0's clears bits.
@@ -576,7 +538,6 @@ the end of the list. This is the cell to resolve when a wordlist is added.
 void InitializeTermTCB (void) {
     VMpor();                            // clear VM and RAM
     initFilelist();                     // clear list of filenames used by LOCATE
-    EraseSPIimage();                    // clear SPI flash image and ROM image
     StoreCell(HeadPointerOrigin+8, HP); // leave 2 cells for filelist, widlist
     StoreCell(0, CP);
     StoreCell(DataPointerOrigin, DP);

@@ -11,52 +11,54 @@
 defer coldboot
 defer safemode
 defer errorISR
+-1 , -1 ,                               \ space for CRC and LENGTH
 
 include ../forth/core.f
 : pause ; : /pause ; \ include ../forth/tasker.f \ no multitasker
 include ../forth/timing.f
 include ../forth/numio.f                \ numeric I/O
+include ../forth/flash.f                \ SPI flash programming
 
 0 [if] \ not using QUIT yet
 
-    : throw  \ n --  						\ for testing, remove later
-    ?dup if  port drop  					\ save n in dbg register, like error interrupt
-        8 >r								\ fake an error interrupt
-    then
-    ; call-only
+	: throw  \ n --  				    \ for testing, remove later
+	?dup if  port drop  			    \ save n in dbg register, like error interrupt
+		16 >r						    \ fake an error interrupt
+	then
+	; call-only
 
-    \ The error ISR has the last known good PC on the return stack and the ior in port.
-    \ Usually, you would just throw an error.
-    \ Since the Tiff interpreter is being used, use a test THROW.
+	\ The error ISR has the last known good PC on the return stack and the ior in port.
+	\ Usually, you would just throw an error.
+	\ Since the Tiff interpreter is being used, use a test THROW.
 
-    :noname
-    cr ." Error " dup port . ." at PC=" r> .
-    ." Line# " w_linenum w@ .
-    cr
-    -1 @  								\ produce an error to quit
-    ; is errorISR
-    [else]
-    :noname
-    dup port throw
-    ; is errorISR
+	:noname
+	cr ." Error " dup port . ." at PC=" r> .
+	." Line# " w_linenum w@ .
+	cr
+	-1 @  								\ produce an error to quit
+	; is errorISR
+	[else]
+	:noname
+	dup port throw
+	; is errorISR
 
 [then]
 
-include ../forth/flash.f                \ SPI flash programming
 include ../forth/compile.f              \ compile opcodes, macros, calls, etc.
 include ../forth/tools.f                \ dump, .s
 include ../forth/interpret.f            \ parse, interpret, convert to number
-include ../forth/see.f
 include ../forth/wean.f                 \ replace most C fns in existing headers
 include ../forth/define.f               \ defining words
 include ../forth/structure.f			\ control structures
-include ../forth/string.f
-include ../forth/order.f
 include ../forth/evaluate.f		        \ evaluate
+include ../forth/quit.f                 \ the quit loop
+
+include ../forth/order.f
+include ../forth/see.f
 include ../forth/coreext.f		        \ oddball CORE EXT words
 include ../forth/toolsext.f		        \ oddball TOOLS EXT words
+include ../forth/string.f
 include ../forth/double.f		        \ double math
-include ../forth/forth.f                \ high level Forth
 
 : main
    ." May the Forth be with you!" cr
@@ -87,7 +89,15 @@ make ../templates/app.A51 ../8051/vm.A51   \ 8051 version
 \ This is also necessary because the Forth can't modify internal ROM at run time.
 
 
-\ If you XWORDS at this point, you'll see that all XTEs and XTCs are now Forth words.
+cp @ ," DataCodeHead" 1+
+: .unused  \ --
+   literal                              \ sure is nice to pull in external literal
+   3 0 do                               \ even it's not ANS
+      i c_scope c!
+      dup i cells + 4 type
+      ." : " unused . cr
+   loop  drop  ram
+;
 
 
 \ Some test words
@@ -109,7 +119,7 @@ cp @ equ s1
 : str1 s1 count ;
 
 cp @ equ s2
-    ," +你~好~，~世~界+"
+	," +你~好~，~世~界+"
 : str2 s2 count ;
 
 : spell  \ n --
@@ -130,7 +140,7 @@ cp @ equ s2
  222 mynum z2
 
 0 [if]
-: ENVIRONMENT? ( c-addr u -- false ) 2drop 0 ;
+\ : ENVIRONMENT? ( c-addr u -- false ) 2drop 0 ;
 
 cr .( Test suite: ) cr
 include ../forth/test/ttester.fs

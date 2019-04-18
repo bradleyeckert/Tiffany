@@ -85,19 +85,36 @@ ram
    then  3drop
    ColorNone
 ;
+: _dasm  \ a -- a+4
+   dup >r  ColorHi     dup 3 h.x
+   @+      ColorOpcod  dup 7 h.x  disIR
+   r> xtname  dup if
+     ." \ "  ColorDef type
+   else 2drop
+   then  ColorNone  cr
+;
+hex
+: defer?  \ addr 1 -- addr 1 false | addr addr' true
+   over @ dup  1A rshift op_jmp = if    ( a 1 a IR )
+      swap drop  3FFFFFF and cells  dup exit
+   then dup xor \ drop 0
+;
+decimal
+
 : dasm  \ addr len --                   \ disassemble groups
-   ColorNone
-   begin dup while >r
-      dup >r  dup 3 h.x  @+  dup 7 h.x  disIR
-      r> xtname  dup if
-        ." \\ "  ColorDef type  ColorNone
-      else 2drop
-      then cr
-   r> 1- repeat  drop drop
+   dup 1 = if
+      defer? if
+         swap _dasm drop  10
+         14 spaces ." refers to:" cr
+      then
+   then
+   begin dup while >r _dasm  r> 1- repeat
+   drop drop
 ;
 
 : see  \ "name" --                      \ 15.6.1.2194
-   h' dup cell- link>  swap 3 + c@  dasm
+   h' dup cell- link>  swap 12 - w@
+   1000 min  dasm
 ;
 
 : loc  \ "name"                 LOCATE
