@@ -292,7 +292,9 @@ void VMpor(void) {  // EXPORTED
     PC = 0;  RP = 64;  SP = 32;  UP = 64;
     T=0;  N=0;  DebugReg = 0;
     memset(RAM,  0, RAMsize*sizeof(uint32_t));       // clear RAM
+#ifdef EmbeddedROM
     memset(ROM, -1, SPIflashSize*sizeof(uint32_t));  // clear ROM
+#endif // EmbeddedROM
 }
 
 uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED

@@ -78,759 +78,1453 @@ int main()
 	RegChangeInit();
 
 //           INS_GROUP  Test#
-    newstep(0x4C0001D1, 0);  // PC = 0000h
-    changes(5, 0x00000744);
-    newstep(0x6C0001C5, 1);  // PC = 0744h
-    changes(2, 0x000020FC);
-    changes(5, 0x00000714);
-    newstep(0x1B902218, 2);  // PC = 0714h
-    changes(0, 0x00002218);
-    changes(1, 0x00000748);
-    changes(2, 0x00002100);
-    changes(3, 0x00002078);
-    newstep(0x96BE6200, 3);  // PC = 0718h
-    changes(0, 0x00002200);
+    newstep(0x4C00016B, 0);  // PC = 0000h
+    changes(5, 0x000005AC);
+    newstep(0x6C000119, 1);  // PC = 05ACh
+    changes(2, 0x000080FC);
+    changes(5, 0x00000464);
+    newstep(0x09000000, 2);  // PC = 0464h
+    changes(2, 0x00008100);
+    changes(5, 0x000005B0);
+    newstep(0x6C00011A, 3);  // PC = 05B0h
+    changes(2, 0x000080FC);
+    changes(5, 0x00000468);
+    newstep(0x01000000, 4);  // PC = 0468h
+    newstep(0xE40004D2, 5);  // PC = 046Ch
+    changes(0, 0x000004D2);
+    changes(3, 0x0000807C);
+    newstep(0x05000000, 6);  // PC = 0470h
+    changes(1, 0x000004D2);
+    changes(3, 0x00008078);
+    newstep(0xAD000000, 7);  // PC = 0474h
     changes(1, 0x00000000);
-    changes(3, 0x0000207C);
-    newstep(0xF7902100, 4);  // PC = 071Ch
-    changes(0, 0x00002100);
-    changes(4, 0x00002200);
-    newstep(0x0790000C, 5);  // PC = 0720h
-    changes(0, 0x0000000C);
-    changes(1, 0x00002100);
-    changes(3, 0x00002074);
-    newstep(0xEA5AF540, 6);  // PC = 0724h
-    changes(0, 0x00002100);
+    changes(3, 0x0000807C);
+    newstep(0x05000000, 8);  // PC = 0478h
+    changes(1, 0x000004D2);
+    changes(3, 0x00008078);
+    newstep(0x85000000, 9);  // PC = 047Ch
+    changes(0, 0x000004D6);
+    newstep(0x0D000000, 10);  // PC = 0480h
+    changes(0, 0x000009A8);
     changes(1, 0x00000000);
-    changes(3, 0x00002100);
-    newstep(0xE40021F0, 7);  // PC = 0728h
-    changes(0, 0x000021F0);
-    changes(1, 0x00002100);
-    changes(3, 0x000020FC);
-    newstep(0x07900008, 8);  // PC = 072Ch
-    changes(0, 0x00000008);
-    changes(1, 0x000021F0);
-    changes(3, 0x000020F4);
-    newstep(0xEA5AF904, 9);  // PC = 0730h
+    changes(3, 0x0000807C);
+    newstep(0x15000000, 11);  // PC = 0484h
+    changes(0, 0x00000000);
+    newstep(0x45000000, 12);  // PC = 0488h
+    changes(0, 0x00000002);
+    newstep(0xFD000000, 13);  // PC = 048Ch
+    changes(0, 0xFFFFFFFD);
+    newstep(0x05A40000, 14);  // PC = 0490h
+    changes(2, 0x000080F8);
+    newstep(0x1D000000, 15);  // PC = 0494h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x25000000, 16);  // PC = 0498h
+    changes(0, 0xFFFFFFFF);
+    newstep(0xF9000000, 17);  // PC = 049Ch
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFF);
+    changes(3, 0x00008078);
+    newstep(0x2D000000, 18);  // PC = 04A0h
+    changes(0, 0x00000002);
+    changes(1, 0x00000000);
+    changes(3, 0x0000807C);
+    newstep(0x19000000, 19);  // PC = 04A4h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0x00000002);
+    changes(2, 0x000080FC);
+    changes(3, 0x00008078);
+    newstep(0x7D000000, 20);  // PC = 04A8h
+    changes(0, 0xFFFFFFFF);
+    changes(1, 0x00000000);
+    changes(3, 0x0000807C);
+    newstep(0x75000000, 21);  // PC = 04ACh
+    changes(0, 0x00000000);
+    newstep(0x74540000, 22);  // PC = 04B0h
+    changes(0, 0xFFFFFFFF);
+    newstep(0xE4BC614E, 23);  // PC = 04B4h
+    changes(0, 0x00BC614E);
+    changes(1, 0xFFFFFFFF);
+    changes(3, 0x00008078);
+    newstep(0xE4008288, 24);  // PC = 04B8h
+    changes(0, 0x00008288);
+    changes(1, 0x00BC614E);
+    changes(3, 0x00008074);
+    newstep(0x05A40000, 25);  // PC = 04BCh
+    changes(2, 0x000080F8);
+    newstep(0x95000000, 26);  // PC = 04C0h
+    changes(0, 0x0000828C);
+    changes(1, 0xFFFFFFFF);
+    changes(3, 0x00008078);
+    newstep(0xAD000000, 27);  // PC = 04C4h
+    changes(0, 0xFFFFFFFF);
+    changes(1, 0x00000000);
+    changes(3, 0x0000807C);
+    newstep(0xF8E40000, 28);  // PC = 04C8h
+    changes(0, 0x0000004E);
+    changes(1, 0x00008289);
+    changes(3, 0x00008074);
+    newstep(0x29000000, 29);  // PC = 04CCh
+    changes(0, 0x00008289);
+    changes(1, 0x0000004E);
+    newstep(0xD9000000, 30);  // PC = 04D0h
+    changes(0, 0x00000061);
+    newstep(0xAEB40000, 31);  // PC = 04D4h
+    changes(0, 0xFFFFFFFF);
+    changes(1, 0x00000000);
+    changes(3, 0x0000807C);
+    newstep(0xF9640000, 32);  // PC = 04D8h
+    changes(0, 0x0000614E);
+    changes(1, 0x0000828A);
+    changes(3, 0x00008074);
+    newstep(0x29000000, 33);  // PC = 04DCh
+    changes(0, 0x0000828A);
+    changes(1, 0x0000614E);
+    newstep(0x79000000, 34);  // PC = 04E0h
+    changes(0, 0x000000BC);
+    newstep(0xAEB40000, 35);  // PC = 04E4h
+    changes(0, 0xFFFFFFFF);
+    changes(1, 0x00000000);
+    changes(3, 0x0000807C);
+    newstep(0xFA640000, 36);  // PC = 04E8h
+    changes(0, 0x00BC614E);
+    changes(1, 0x0000828C);
+    changes(3, 0x00008074);
+    newstep(0x29000000, 37);  // PC = 04ECh
+    changes(0, 0x0000828C);
+    changes(1, 0x00BC614E);
+    newstep(0xB9000000, 38);  // PC = 04F0h
+    changes(0, 0x00000000);
+    newstep(0x5D000000, 39);  // PC = 04F4h
+    changes(1, 0xFFFFFFFF);
+    changes(3, 0x00008078);
+    newstep(0xE40003E8, 40);  // PC = 04F8h
+    changes(0, 0x000003E8);
+    changes(1, 0x00000000);
+    changes(3, 0x00008074);
+    newstep(0xF95AD000, 41);  // PC = 04FCh
+    changes(0, 0x00000000);
+    changes(1, 0xFFFFFFFF);
+    changes(3, 0x00008078);
+    newstep(0xF9E40000, 42);  // PC = 0500h
+    changes(0, 0x000003E8);
+    changes(1, 0x00000000);
+    changes(3, 0x00008074);
+    newstep(0xAF900063, 43);  // PC = 0504h
+    changes(0, 0x00000063);
+    newstep(0xF8DAD000, 44);  // PC = 0508h
+    changes(0, 0x00000000);
+    changes(1, 0xFFFFFFFF);
+    changes(3, 0x00008078);
+    newstep(0x1B640000, 45);  // PC = 050Ch
+    changes(0, 0x00000063);
+    changes(1, 0x00000000);
+    changes(2, 0x000080FC);
+    changes(3, 0x00008074);
+    newstep(0x8D000000, 46);  // PC = 0510h
+    changes(1, 0xFFFFFFFF);
+    changes(3, 0x00008078);
+    newstep(0x89000000, 47);  // PC = 0514h
+    changes(0, 0xFFFFFFFF);
+    changes(1, 0x00000063);
+    changes(3, 0x00008074);
+    newstep(0x3D000000, 48);  // PC = 0518h
+    changes(0, 0x7FFFFFFF);
+    newstep(0x1D000000, 49);  // PC = 051Ch
+    changes(0, 0x3FFFFFFF);
+    newstep(0x8D000000, 50);  // PC = 0520h
+    changes(0, 0x40000063);
+    changes(1, 0xFFFFFFFF);
+    changes(3, 0x00008078);
+    newstep(0x29000000, 51);  // PC = 0524h
+    changes(0, 0xFFFFFFFF);
+    changes(1, 0x40000063);
+    newstep(0x1CF40000, 52);  // PC = 0528h
+    changes(0, 0x7FFFFFFF);
+    newstep(0xBD000000, 53);  // PC = 052Ch
+    changes(0, 0xFFFFFFFF);
+    newstep(0x9D000000, 54);  // PC = 0530h
+    changes(0, 0xFFFFFFFE);
+    newstep(0xFC340000, 55);  // PC = 0534h
+    changes(0, 0x40000064);
+    changes(1, 0x00000000);
+    changes(3, 0x0000807C);
+    newstep(0x64000055, 56);  // PC = 0538h
+    changes(0, 0x64000055);
+    newstep(0xAC240000, 57);  // PC = 053Ch
+    changes(0, 0x00000000);
+    changes(2, 0x00008100);
+    changes(3, 0x00008080);
+    changes(5, 0x000005B4);
+    newstep(0xE400005B, 58);  // PC = 05B4h
+    changes(0, 0x0000005B);
+    changes(3, 0x0000807C);
+    newstep(0x6C000150, 59);  // PC = 05B8h
+    changes(2, 0x000080FC);
+    changes(5, 0x00000540);
+    newstep(0x10000002, 60);  // PC = 0540h
+    changes(0, 0x00000000);
+    newstep(0xAC240000, 61);  // PC = 0544h
+    changes(2, 0x00008100);
+    changes(3, 0x00008080);
+    changes(5, 0x000005BC);
+    newstep(0x6C000152, 62);  // PC = 05BCh
+    changes(2, 0x000080FC);
+    changes(5, 0x00000548);
+    newstep(0xE4008315, 63);  // PC = 0548h
+    changes(0, 0x00008315);
+    changes(3, 0x0000807C);
+    newstep(0xB9000000, 64);  // PC = 054Ch
+    changes(0, 0x00000000);
+    changes(2, 0x000080F8);
+    changes(5, 0x00000008);
+    newstep(0x4C000156, 65);  // PC = 0008h
+    changes(5, 0x00000558);
+    newstep(0x09000000, 66);  // PC = 0558h
+    changes(2, 0x000080FC);
+    changes(5, 0x00000550);
+    newstep(0xAD000000, 67);  // PC = 0550h
+    changes(3, 0x00008080);
+    newstep(0x09000000, 68);  // PC = 0554h
+    changes(2, 0x00008100);
+    changes(5, 0x000005C0);
+    newstep(0xE400002D, 69);  // PC = 05C0h
+    changes(0, 0x0000002D);
+    changes(3, 0x0000807C);
+    newstep(0x6C000150, 70);  // PC = 05C4h
+    changes(2, 0x000080FC);
+    changes(5, 0x00000540);
+    newstep(0x10000002, 71);  // PC = 0540h
+    changes(0, 0x00000000);
+    newstep(0xAC240000, 72);  // PC = 0544h
+    changes(2, 0x00008100);
+    changes(3, 0x00008080);
+    changes(5, 0x000005C8);
+    newstep(0x6C000157, 73);  // PC = 05C8h
+    changes(2, 0x000080FC);
+    changes(5, 0x0000055C);
+    newstep(0xE4000000, 74);  // PC = 055Ch
+    changes(3, 0x0000807C);
+    newstep(0xE4008314, 75);  // PC = 0560h
+    changes(0, 0x00008314);
+    changes(3, 0x00008078);
+    newstep(0xE4000004, 76);  // PC = 0564h
     changes(0, 0x00000004);
-    changes(3, 0x000020F8);
-    newstep(0x2ED6C0CA, 10);  // PC = 0734h
-    changes(0, 0x00002100);
-    changes(1, 0x00000000);
-    changes(2, 0x000021E8);
-    changes(3, 0x00002100);
-    changes(5, 0x00000328);
-    newstep(0x09000000, 11);  // PC = 0328h
-    changes(2, 0x000021EC);
-    changes(5, 0x00000738);
-    newstep(0x6C0000ED, 12);  // PC = 0738h
-    changes(2, 0x000021E8);
-    changes(5, 0x000003B4);
-    newstep(0xE40003A0, 13);  // PC = 03B4h
-    changes(0, 0x000003A0);
-    changes(1, 0x00002100);
-    changes(3, 0x000020FC);
-    newstep(0xE4002234, 14);  // PC = 03B8h
-    changes(0, 0x00002234);
-    changes(1, 0x000003A0);
-    changes(3, 0x000020F8);
-    newstep(0x96B09000, 15);  // PC = 03BCh
-    changes(0, 0x00002100);
-    changes(1, 0x00000000);
-    changes(2, 0x000021EC);
-    changes(3, 0x00002100);
-    changes(5, 0x0000073C);
-    newstep(0xE4002218, 16);  // PC = 073Ch
-    changes(0, 0x00002218);
-    changes(1, 0x00002100);
-    changes(3, 0x000020FC);
-    newstep(0xB9A4C047, 17);  // PC = 0740h
-    changes(0, 0x00002100);
-    changes(1, 0x00000000);
-    changes(2, 0x000021E8);
-    changes(3, 0x00002100);
-    changes(5, 0x0000011C);
-    newstep(0xE400000A, 18);  // PC = 011Ch
-    changes(0, 0x0000000A);
-    changes(1, 0x00002100);
-    changes(3, 0x000020FC);
-    newstep(0xE4002218, 19);  // PC = 0120h
-    changes(0, 0x00002218);
-    changes(1, 0x0000000A);
-    changes(3, 0x000020F8);
-    newstep(0x96B09000, 20);  // PC = 0124h
-    changes(0, 0x00002100);
-    changes(1, 0x00000000);
-    changes(2, 0x000021EC);
-    changes(3, 0x00002100);
-    changes(5, 0x00000748);
-    newstep(0x4C0001D6, 21);  // PC = 0748h
-    changes(5, 0x00000758);
-    newstep(0xE400074C, 22);  // PC = 0758h
-    changes(0, 0x0000074C);
-    changes(1, 0x00002100);
-    changes(3, 0x000020FC);
-    newstep(0x39B000DB, 23);  // PC = 075Ch
-    changes(0, 0x0000000B);
-    changes(1, 0x0000074D);
-    changes(2, 0x000021E8);
-    changes(3, 0x000020F8);
-    changes(5, 0x0000036C);
-    newstep(0x4C000119, 24);  // PC = 036Ch
-    changes(5, 0x00000464);
-    newstep(0x07F27F14, 25);  // PC = 0464h
+    changes(1, 0x00008314);
+    changes(3, 0x00008074);
+    newstep(0x6C00006E, 77);  // PC = 0568h
+    changes(2, 0x000080F8);
+    changes(5, 0x000001B8);
+    newstep(0xFC9FD000, 78);  // PC = 01B8h
+    changes(0, 0x00000003);
+    newstep(0xC1300073, 79);  // PC = 01BCh
+    newstep(0xFC929A28, 80);  // PC = 01C0h
     changes(0, 0x00000000);
-    changes(1, 0x0000000B);
-    changes(3, 0x000020F4);
-    newstep(0xFD24C11E, 26);  // PC = 0468h
-    changes(0, 0x0000000B);
-    changes(1, 0x0000074D);
-    changes(3, 0x000020F8);
-    newstep(0x6C000103, 27);  // PC = 046Ch
-    changes(2, 0x000021E4);
-    changes(5, 0x0000040C);
-    newstep(0x6C0000FC, 28);  // PC = 040Ch
-    changes(2, 0x000021E0);
-    changes(5, 0x000003F0);
-    newstep(0x89AFC9FC, 29);  // PC = 03F0h
-    changes(0, 0x0000000A);
-    changes(2, 0x000021DC);
-    newstep(0x289286DA, 30);  // PC = 03F4h
-    changes(0, 0x00000048);
-    changes(1, 0x0000000A);
-    changes(2, 0x000021E4);
-    changes(3, 0x000020F4);
-    changes(5, 0x00000410);
-    newstep(0x079000C0, 31);  // PC = 0410h
-    changes(0, 0x000000C0);
-    changes(1, 0x00000048);
-    changes(3, 0x000020EC);
-    newstep(0x5F900080, 32);  // PC = 0414h
-    changes(0, 0x00000080);
-    changes(1, 0x00000040);
-    newstep(0x7DD40000, 33);  // PC = 0418h
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F4);
+    changes(3, 0x00008078);
+    newstep(0x98695AA0, 81);  // PC = 01C4h
+    changes(0, 0x00000010);
+    changes(1, 0x00000001);
+    newstep(0x1ABAEB08, 82);  // PC = 01C8h
     changes(0, 0x00000000);
-    changes(1, 0x00000048);
-    changes(3, 0x000020F0);
-    newstep(0x49300109, 34);  // PC = 041Ch
-    changes(0, 0x00000048);
-    changes(1, 0x0000000A);
-    changes(3, 0x000020F4);
-    changes(5, 0x00000424);
-    newstep(0x07900080, 35);  // PC = 0424h
-    changes(0, 0x00000080);
-    changes(1, 0x00000048);
-    changes(3, 0x000020EC);
-    newstep(0x5D24C118, 36);  // PC = 0428h
-    changes(0, 0x00000048);
-    changes(1, 0x0000000A);
-    changes(3, 0x000020F4);
-    changes(5, 0x00000460);
-    newstep(0x09000000, 37);  // PC = 0460h
-    changes(2, 0x000021E8);
-    changes(5, 0x00000470);
-    newstep(0x6C0000F2, 38);  // PC = 0470h
-    changes(2, 0x000021E4);
-    changes(5, 0x000003C8);
-    newstep(0xE4000000, 39);  // PC = 03C8h
-    changes(0, 0x00000000);
-    changes(1, 0x00000048);
-    changes(3, 0x000020F0);
-    newstep(0x4C0000F0, 40);  // PC = 03CCh
-    changes(5, 0x000003C0);
-    newstep(0x9E7E6234, 41);  // PC = 03C0h
-    changes(0, 0x00002234);
     changes(1, 0x00000000);
-    changes(3, 0x000020EC);
-    newstep(0xB83B9A08, 42);  // PC = 03C4h
-    changes(0, 0x00000048);
-    changes(1, 0x0000000A);
-    changes(3, 0x000020F4);
-    changes(5, 0x00000358);
-    newstep(0x6C0000C9, 43);  // PC = 0358h
-    changes(2, 0x000021E0);
-    changes(5, 0x00000324);
-    newstep(0x09000000, 44);  // PC = 0324h
-    changes(2, 0x000021E4);
-    changes(5, 0x0000035C);
-    newstep(0x04400003, 45);  // PC = 035Ch
+    changes(2, 0x000080FC);
+    changes(3, 0x00008080);
+    changes(5, 0x0000056C);
+    newstep(0xE4008324, 83);  // PC = 056Ch
+    changes(0, 0x00008324);
+    changes(3, 0x0000807C);
+    newstep(0x07900010, 84);  // PC = 0570h
+    changes(0, 0x00000010);
+    changes(1, 0x00008324);
+    changes(3, 0x00008074);
+    newstep(0x0F900010, 85);  // PC = 0574h
+    changes(1, 0x00008334);
+    newstep(0x6C000074, 86);  // PC = 0578h
+    changes(2, 0x000080F8);
+    changes(5, 0x000001D0);
+    newstep(0xFC9FD000, 87);  // PC = 01D0h
+    changes(0, 0x0000000F);
+    newstep(0xC1300079, 88);  // PC = 01D4h
+    newstep(0xFC929A28, 89);  // PC = 01D8h
+    changes(0, 0x00008324);
+    changes(1, 0xFFFFFFF1);
+    changes(2, 0x000080F4);
+    changes(3, 0x00008078);
+    newstep(0x38635AA0, 90);  // PC = 01DCh
+    changes(0, 0x00008334);
+    changes(1, 0x00000001);
+    newstep(0x1ABAEB08, 91);  // PC = 01E0h
+    changes(0, 0x00000000);
+    changes(1, 0x00000000);
+    changes(2, 0x000080FC);
+    changes(3, 0x00008080);
+    changes(5, 0x0000057C);
+    newstep(0xE4000000, 92);  // PC = 057Ch
+    changes(3, 0x0000807C);
+    newstep(0xFF900000, 93);  // PC = 0580h
+    changes(1, 0xFFFFFFFF);
+    changes(3, 0x00008078);
+    newstep(0xFDB0009A, 94);  // PC = 0584h
+    changes(0, 0xFFFFFFFF);
+    changes(2, 0x000080F8);
+    changes(5, 0x00000268);
+    newstep(0x0417F91F, 95);  // PC = 0268h
+    changes(0, 0x0000001F);
+    changes(1, 0x00000000);
+    changes(3, 0x00008070);
+    newstep(0xFD000000, 96);  // PC = 026Ch
+    changes(0, 0xFFFFFFE0);
+    newstep(0x6A76AF40, 97);  // PC = 0270h
+    changes(0, 0xFFFFFFFE);
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 98);  // PC = 0274h
+    newstep(0x20940000, 99);  // PC = 0278h
+    newstep(0x18625000, 100);  // PC = 027Ch
+    changes(0, 0xFFFFFFE1);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 101);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 102);  // PC = 0270h
+    changes(0, 0xFFFFFFFD);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 103);  // PC = 0274h
+    newstep(0x20940000, 104);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 105);  // PC = 027Ch
+    changes(0, 0xFFFFFFE2);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 106);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 107);  // PC = 0270h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 108);  // PC = 0274h
+    newstep(0x20940000, 109);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 110);  // PC = 027Ch
+    changes(0, 0xFFFFFFE3);
+    changes(1, 0xFFFFFFF9);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 111);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 112);  // PC = 0270h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 113);  // PC = 0274h
+    newstep(0x20940000, 114);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 115);  // PC = 027Ch
+    changes(0, 0xFFFFFFE4);
+    changes(1, 0xFFFFFFF1);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 116);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 117);  // PC = 0270h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 118);  // PC = 0274h
+    newstep(0x20940000, 119);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 120);  // PC = 027Ch
+    changes(0, 0xFFFFFFE5);
+    changes(1, 0xFFFFFFE1);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 121);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 122);  // PC = 0270h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 123);  // PC = 0274h
+    newstep(0x20940000, 124);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 125);  // PC = 027Ch
+    changes(0, 0xFFFFFFE6);
+    changes(1, 0xFFFFFFC1);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 126);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 127);  // PC = 0270h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 128);  // PC = 0274h
+    newstep(0x20940000, 129);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 130);  // PC = 027Ch
+    changes(0, 0xFFFFFFE7);
+    changes(1, 0xFFFFFF81);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 131);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 132);  // PC = 0270h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 133);  // PC = 0274h
+    newstep(0x20940000, 134);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 135);  // PC = 027Ch
+    changes(0, 0xFFFFFFE8);
+    changes(1, 0xFFFFFF01);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 136);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 137);  // PC = 0270h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 138);  // PC = 0274h
+    newstep(0x20940000, 139);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 140);  // PC = 027Ch
+    changes(0, 0xFFFFFFE9);
+    changes(1, 0xFFFFFE01);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 141);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 142);  // PC = 0270h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 143);  // PC = 0274h
+    newstep(0x20940000, 144);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 145);  // PC = 027Ch
+    changes(0, 0xFFFFFFEA);
+    changes(1, 0xFFFFFC01);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 146);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 147);  // PC = 0270h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 148);  // PC = 0274h
+    newstep(0x20940000, 149);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 150);  // PC = 027Ch
+    changes(0, 0xFFFFFFEB);
+    changes(1, 0xFFFFF801);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 151);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 152);  // PC = 0270h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 153);  // PC = 0274h
+    newstep(0x20940000, 154);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 155);  // PC = 027Ch
+    changes(0, 0xFFFFFFEC);
+    changes(1, 0xFFFFF001);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 156);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 157);  // PC = 0270h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 158);  // PC = 0274h
+    newstep(0x20940000, 159);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 160);  // PC = 027Ch
+    changes(0, 0xFFFFFFED);
+    changes(1, 0xFFFFE001);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 161);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 162);  // PC = 0270h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 163);  // PC = 0274h
+    newstep(0x20940000, 164);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 165);  // PC = 027Ch
+    changes(0, 0xFFFFFFEE);
+    changes(1, 0xFFFFC001);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 166);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 167);  // PC = 0270h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 168);  // PC = 0274h
+    newstep(0x20940000, 169);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 170);  // PC = 027Ch
+    changes(0, 0xFFFFFFEF);
+    changes(1, 0xFFFF8001);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 171);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 172);  // PC = 0270h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 173);  // PC = 0274h
+    newstep(0x20940000, 174);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 175);  // PC = 027Ch
+    changes(0, 0xFFFFFFF0);
+    changes(1, 0xFFFF0001);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 176);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 177);  // PC = 0270h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 178);  // PC = 0274h
+    newstep(0x20940000, 179);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 180);  // PC = 027Ch
+    changes(0, 0xFFFFFFF1);
+    changes(1, 0xFFFE0001);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 181);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 182);  // PC = 0270h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 183);  // PC = 0274h
+    newstep(0x20940000, 184);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 185);  // PC = 027Ch
+    changes(0, 0xFFFFFFF2);
+    changes(1, 0xFFFC0001);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 186);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 187);  // PC = 0270h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 188);  // PC = 0274h
+    newstep(0x20940000, 189);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 190);  // PC = 027Ch
+    changes(0, 0xFFFFFFF3);
+    changes(1, 0xFFF80001);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 191);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 192);  // PC = 0270h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 193);  // PC = 0274h
+    newstep(0x20940000, 194);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 195);  // PC = 027Ch
+    changes(0, 0xFFFFFFF4);
+    changes(1, 0xFFF00001);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 196);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 197);  // PC = 0270h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 198);  // PC = 0274h
+    newstep(0x20940000, 199);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 200);  // PC = 027Ch
+    changes(0, 0xFFFFFFF5);
+    changes(1, 0xFFE00001);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 201);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 202);  // PC = 0270h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 203);  // PC = 0274h
+    newstep(0x20940000, 204);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 205);  // PC = 027Ch
+    changes(0, 0xFFFFFFF6);
+    changes(1, 0xFFC00001);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 206);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 207);  // PC = 0270h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 208);  // PC = 0274h
+    newstep(0x20940000, 209);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 210);  // PC = 027Ch
+    changes(0, 0xFFFFFFF7);
+    changes(1, 0xFF800001);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 211);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 212);  // PC = 0270h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 213);  // PC = 0274h
+    newstep(0x20940000, 214);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 215);  // PC = 027Ch
+    changes(0, 0xFFFFFFF8);
+    changes(1, 0xFF000001);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 216);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 217);  // PC = 0270h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 218);  // PC = 0274h
+    newstep(0x20940000, 219);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 220);  // PC = 027Ch
+    changes(0, 0xFFFFFFF9);
+    changes(1, 0xFE000001);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 221);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 222);  // PC = 0270h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 223);  // PC = 0274h
+    newstep(0x20940000, 224);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 225);  // PC = 027Ch
+    changes(0, 0xFFFFFFFA);
+    changes(1, 0xFC000001);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 226);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 227);  // PC = 0270h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 228);  // PC = 0274h
+    newstep(0x20940000, 229);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 230);  // PC = 027Ch
+    changes(0, 0xFFFFFFFB);
+    changes(1, 0xF8000001);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 231);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 232);  // PC = 0270h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 233);  // PC = 0274h
+    newstep(0x20940000, 234);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 235);  // PC = 027Ch
+    changes(0, 0xFFFFFFFC);
+    changes(1, 0xF0000001);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 236);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 237);  // PC = 0270h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 238);  // PC = 0274h
+    newstep(0x20940000, 239);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 240);  // PC = 027Ch
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xE0000001);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 241);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 242);  // PC = 0270h
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 243);  // PC = 0274h
+    newstep(0x20940000, 244);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 245);  // PC = 027Ch
+    changes(1, 0xC0000001);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 246);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 247);  // PC = 0270h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 248);  // PC = 0274h
+    newstep(0x20940000, 249);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 250);  // PC = 027Ch
+    changes(0, 0xFFFFFFFF);
+    changes(1, 0x80000001);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 251);  // PC = 0280h
+    changes(5, 0x00000270);
+    newstep(0x6A76AF40, 252);  // PC = 0270h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008078);
+    newstep(0x22218368, 253);  // PC = 0274h
+    newstep(0x20940000, 254);  // PC = 0278h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x18625000, 255);  // PC = 027Ch
+    changes(0, 0x00000000);
+    changes(1, 0x00000001);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008070);
+    newstep(0xC130009C, 256);  // PC = 0280h
+    newstep(0xADA6AB18, 257);  // PC = 0284h
+    changes(0, 0xFFFFFFFE);
+    changes(1, 0x00000000);
+    changes(2, 0x000080F4);
+    changes(3, 0x0000807C);
+    newstep(0x18A09000, 258);  // PC = 0288h
+    changes(1, 0x00000001);
+    changes(2, 0x000080FC);
+    changes(3, 0x00008078);
+    changes(5, 0x00000588);
+    newstep(0xAF900000, 259);  // PC = 0588h
+    changes(0, 0x00000000);
+    newstep(0xFCF07902, 260);  // PC = 058Ch
+    changes(0, 0x00000002);
+    changes(1, 0x7FFFFFFF);
+    changes(3, 0x00008070);
+    newstep(0xFDB000A3, 261);  // PC = 0590h
+    changes(0, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(5, 0x0000028C);
+    newstep(0x8A22EB40, 262);  // PC = 028Ch
+    newstep(0x213000A7, 263);  // PC = 0290h
+    changes(5, 0x0000029C);
+    newstep(0xE400001F, 264);  // PC = 029Ch
+    changes(0, 0x0000001F);
+    changes(1, 0xFFFFFFFD);
+    changes(3, 0x0000806C);
+    newstep(0xFCF9D000, 265);  // PC = 02A0h
+    changes(0, 0xFFFFFFE0);
+    newstep(0x69A6AF18, 266);  // PC = 02A4h
+    changes(0, 0x7FFFFFFF);
+    changes(1, 0xFFFFFFFE);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 267);  // PC = 02A8h
+    changes(0, 0xFFFFFFFE);
+    newstep(0x07E2EB40, 268);  // PC = 02ACh
+    newstep(0x213000AE, 269);  // PC = 02B0h
+    newstep(0xF8B40000, 270);  // PC = 02B4h
     changes(0, 0x00000001);
-    changes(1, 0x00000048);
-    changes(3, 0x000020F0);
-    newstep(0x493000D6, 46);  // PC = 0360h
-    changes(0, 0x00000048);
-    changes(1, 0x0000000A);
-    changes(3, 0x000020F4);
-    newstep(0x10000002, 47);  // PC = 0364h
-    changes(0, 0x00000000);
-    newstep(0xAC240000, 48);  // PC = 0368h
-    changes(0, 0x0000000A);
-    changes(1, 0x0000074E);
-    changes(2, 0x000021E8);
-    changes(3, 0x000020F8);
-    changes(5, 0x00000474);
-    newstep(0x4C000119, 49);  // PC = 0474h
-    changes(5, 0x00000464);
-    newstep(0x07F27F14, 50);  // PC = 0464h
-    changes(0, 0x00000000);
-    changes(1, 0x0000000A);
-    changes(3, 0x000020F4);
-    newstep(0xFD24C11E, 51);  // PC = 0468h
-    changes(0, 0x0000000A);
-    changes(1, 0x0000074E);
-    changes(3, 0x000020F8);
-    newstep(0x6C000103, 52);  // PC = 046Ch
-    changes(2, 0x000021E4);
-    changes(5, 0x0000040C);
-    newstep(0x6C0000FC, 53);  // PC = 040Ch
-    changes(2, 0x000021E0);
-    changes(5, 0x000003F0);
-    newstep(0x89AFC9FC, 54);  // PC = 03F0h
-    changes(0, 0x00000009);
-    changes(2, 0x000021DC);
-    newstep(0x289286DA, 55);  // PC = 03F4h
-    changes(0, 0x00000065);
-    changes(1, 0x00000009);
-    changes(2, 0x000021E4);
-    changes(3, 0x000020F4);
-    changes(5, 0x00000410);
-    newstep(0x079000C0, 56);  // PC = 0410h
-    changes(0, 0x000000C0);
-    changes(1, 0x00000065);
-    changes(3, 0x000020EC);
-    newstep(0x5F900080, 57);  // PC = 0414h
-    changes(0, 0x00000080);
-    changes(1, 0x00000040);
-    newstep(0x7DD40000, 58);  // PC = 0418h
-    changes(0, 0x00000000);
-    changes(1, 0x00000065);
-    changes(3, 0x000020F0);
-    newstep(0x49300109, 59);  // PC = 041Ch
-    changes(0, 0x00000065);
-    changes(1, 0x00000009);
-    changes(3, 0x000020F4);
-    changes(5, 0x00000424);
-    newstep(0x07900080, 60);  // PC = 0424h
-    changes(0, 0x00000080);
-    changes(1, 0x00000065);
-    changes(3, 0x000020EC);
-    newstep(0x5D24C118, 61);  // PC = 0428h
-    changes(0, 0x00000065);
-    changes(1, 0x00000009);
-    changes(3, 0x000020F4);
-    changes(5, 0x00000460);
-    newstep(0x09000000, 62);  // PC = 0460h
-    changes(2, 0x000021E8);
-    changes(5, 0x00000470);
-    newstep(0x6C0000F2, 63);  // PC = 0470h
-    changes(2, 0x000021E4);
-    changes(5, 0x000003C8);
-    newstep(0xE4000000, 64);  // PC = 03C8h
-    changes(0, 0x00000000);
-    changes(1, 0x00000065);
-    changes(3, 0x000020F0);
-    newstep(0x4C0000F0, 65);  // PC = 03CCh
-    changes(5, 0x000003C0);
-    newstep(0x9E7E6234, 66);  // PC = 03C0h
-    changes(0, 0x00002234);
-    changes(1, 0x00000000);
-    changes(3, 0x000020EC);
-    newstep(0xB83B9A08, 67);  // PC = 03C4h
-    changes(0, 0x00000065);
-    changes(1, 0x00000009);
-    changes(3, 0x000020F4);
-    changes(5, 0x00000358);
-    newstep(0x6C0000C9, 68);  // PC = 0358h
-    changes(2, 0x000021E0);
-    changes(5, 0x00000324);
-    newstep(0x09000000, 69);  // PC = 0324h
-    changes(2, 0x000021E4);
-    changes(5, 0x0000035C);
-    newstep(0x04400003, 70);  // PC = 035Ch
+    newstep(0x4C0000B1, 271);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 272);  // PC = 02C4h
+    changes(0, 0xFFFFFFE1);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 273);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 274);  // PC = 02A4h
     changes(0, 0x00000001);
-    changes(1, 0x00000065);
-    changes(3, 0x000020F0);
-    newstep(0x493000D6, 71);  // PC = 0360h
-    changes(0, 0x00000065);
-    changes(1, 0x00000009);
-    changes(3, 0x000020F4);
-    newstep(0x10000002, 72);  // PC = 0364h
-    changes(0, 0x00000000);
-    newstep(0xAC240000, 73);  // PC = 0368h
-    changes(0, 0x00000009);
-    changes(1, 0x0000074F);
-    changes(2, 0x000021E8);
-    changes(3, 0x000020F8);
-    changes(5, 0x00000474);
-    newstep(0x4C000119, 74);  // PC = 0474h
-    changes(5, 0x00000464);
-    newstep(0x07F27F14, 75);  // PC = 0464h
-    changes(0, 0x00000000);
-    changes(1, 0x00000009);
-    changes(3, 0x000020F4);
-    newstep(0xFD24C11E, 76);  // PC = 0468h
-    changes(0, 0x00000009);
-    changes(1, 0x0000074F);
-    changes(3, 0x000020F8);
-    newstep(0x6C000103, 77);  // PC = 046Ch
-    changes(2, 0x000021E4);
-    changes(5, 0x0000040C);
-    newstep(0x6C0000FC, 78);  // PC = 040Ch
-    changes(2, 0x000021E0);
-    changes(5, 0x000003F0);
-    newstep(0x89AFC9FC, 79);  // PC = 03F0h
-    changes(0, 0x00000008);
-    changes(2, 0x000021DC);
-    newstep(0x289286DA, 80);  // PC = 03F4h
-    changes(0, 0x0000006C);
-    changes(1, 0x00000008);
-    changes(2, 0x000021E4);
-    changes(3, 0x000020F4);
-    changes(5, 0x00000410);
-    newstep(0x079000C0, 81);  // PC = 0410h
-    changes(0, 0x000000C0);
-    changes(1, 0x0000006C);
-    changes(3, 0x000020EC);
-    newstep(0x5F900080, 82);  // PC = 0414h
-    changes(0, 0x00000080);
-    changes(1, 0x00000040);
-    newstep(0x7DD40000, 83);  // PC = 0418h
-    changes(0, 0x00000000);
-    changes(1, 0x0000006C);
-    changes(3, 0x000020F0);
-    newstep(0x49300109, 84);  // PC = 041Ch
-    changes(0, 0x0000006C);
-    changes(1, 0x00000008);
-    changes(3, 0x000020F4);
-    changes(5, 0x00000424);
-    newstep(0x07900080, 85);  // PC = 0424h
-    changes(0, 0x00000080);
-    changes(1, 0x0000006C);
-    changes(3, 0x000020EC);
-    newstep(0x5D24C118, 86);  // PC = 0428h
-    changes(0, 0x0000006C);
-    changes(1, 0x00000008);
-    changes(3, 0x000020F4);
-    changes(5, 0x00000460);
-    newstep(0x09000000, 87);  // PC = 0460h
-    changes(2, 0x000021E8);
-    changes(5, 0x00000470);
-    newstep(0x6C0000F2, 88);  // PC = 0470h
-    changes(2, 0x000021E4);
-    changes(5, 0x000003C8);
-    newstep(0xE4000000, 89);  // PC = 03C8h
-    changes(0, 0x00000000);
-    changes(1, 0x0000006C);
-    changes(3, 0x000020F0);
-    newstep(0x4C0000F0, 90);  // PC = 03CCh
-    changes(5, 0x000003C0);
-    newstep(0x9E7E6234, 91);  // PC = 03C0h
-    changes(0, 0x00002234);
-    changes(1, 0x00000000);
-    changes(3, 0x000020EC);
-    newstep(0xB83B9A08, 92);  // PC = 03C4h
-    changes(0, 0x0000006C);
-    changes(1, 0x00000008);
-    changes(3, 0x000020F4);
-    changes(5, 0x00000358);
-    newstep(0x6C0000C9, 93);  // PC = 0358h
-    changes(2, 0x000021E0);
-    changes(5, 0x00000324);
-    newstep(0x09000000, 94);  // PC = 0324h
-    changes(2, 0x000021E4);
-    changes(5, 0x0000035C);
-    newstep(0x04400003, 95);  // PC = 035Ch
-    changes(0, 0x00000001);
-    changes(1, 0x0000006C);
-    changes(3, 0x000020F0);
-    newstep(0x493000D6, 96);  // PC = 0360h
-    changes(0, 0x0000006C);
-    changes(1, 0x00000008);
-    changes(3, 0x000020F4);
-    newstep(0x10000002, 97);  // PC = 0364h
-    changes(0, 0x00000000);
-    newstep(0xAC240000, 98);  // PC = 0368h
-    changes(0, 0x00000008);
-    changes(1, 0x00000750);
-    changes(2, 0x000021E8);
-    changes(3, 0x000020F8);
-    changes(5, 0x00000474);
-    newstep(0x4C000119, 99);  // PC = 0474h
-    changes(5, 0x00000464);
-    newstep(0x07F27F14, 100);  // PC = 0464h
-    changes(0, 0x00000000);
-    changes(1, 0x00000008);
-    changes(3, 0x000020F4);
-    newstep(0xFD24C11E, 101);  // PC = 0468h
-    changes(0, 0x00000008);
-    changes(1, 0x00000750);
-    changes(3, 0x000020F8);
-    newstep(0x6C000103, 102);  // PC = 046Ch
-    changes(2, 0x000021E4);
-    changes(5, 0x0000040C);
-    newstep(0x6C0000FC, 103);  // PC = 040Ch
-    changes(2, 0x000021E0);
-    changes(5, 0x000003F0);
-    newstep(0x89AFC9FC, 104);  // PC = 03F0h
+    changes(1, 0xFFFFFFFC);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 275);  // PC = 02A8h
+    changes(0, 0x00000003);
+    newstep(0x07E2EB40, 276);  // PC = 02ACh
+    newstep(0x213000AE, 277);  // PC = 02B0h
+    changes(5, 0x000002B8);
+    newstep(0x4C0000B1, 278);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 279);  // PC = 02C4h
+    changes(0, 0xFFFFFFE2);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 280);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 281);  // PC = 02A4h
+    changes(0, 0x00000003);
+    changes(1, 0xFFFFFFF9);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 282);  // PC = 02A8h
     changes(0, 0x00000007);
-    changes(2, 0x000021DC);
-    newstep(0x289286DA, 105);  // PC = 03F4h
-    changes(0, 0x0000006C);
-    changes(1, 0x00000007);
-    changes(2, 0x000021E4);
-    changes(3, 0x000020F4);
-    changes(5, 0x00000410);
-    newstep(0x079000C0, 106);  // PC = 0410h
-    changes(0, 0x000000C0);
-    changes(1, 0x0000006C);
-    changes(3, 0x000020EC);
-    newstep(0x5F900080, 107);  // PC = 0414h
-    changes(0, 0x00000080);
-    changes(1, 0x00000040);
-    newstep(0x7DD40000, 108);  // PC = 0418h
-    changes(0, 0x00000000);
-    changes(1, 0x0000006C);
-    changes(3, 0x000020F0);
-    newstep(0x49300109, 109);  // PC = 041Ch
-    changes(0, 0x0000006C);
-    changes(1, 0x00000007);
-    changes(3, 0x000020F4);
-    changes(5, 0x00000424);
-    newstep(0x07900080, 110);  // PC = 0424h
-    changes(0, 0x00000080);
-    changes(1, 0x0000006C);
-    changes(3, 0x000020EC);
-    newstep(0x5D24C118, 111);  // PC = 0428h
-    changes(0, 0x0000006C);
-    changes(1, 0x00000007);
-    changes(3, 0x000020F4);
-    changes(5, 0x00000460);
-    newstep(0x09000000, 112);  // PC = 0460h
-    changes(2, 0x000021E8);
-    changes(5, 0x00000470);
-    newstep(0x6C0000F2, 113);  // PC = 0470h
-    changes(2, 0x000021E4);
-    changes(5, 0x000003C8);
-    newstep(0xE4000000, 114);  // PC = 03C8h
-    changes(0, 0x00000000);
-    changes(1, 0x0000006C);
-    changes(3, 0x000020F0);
-    newstep(0x4C0000F0, 115);  // PC = 03CCh
-    changes(5, 0x000003C0);
-    newstep(0x9E7E6234, 116);  // PC = 03C0h
-    changes(0, 0x00002234);
-    changes(1, 0x00000000);
-    changes(3, 0x000020EC);
-    newstep(0xB83B9A08, 117);  // PC = 03C4h
-    changes(0, 0x0000006C);
-    changes(1, 0x00000007);
-    changes(3, 0x000020F4);
-    changes(5, 0x00000358);
-    newstep(0x6C0000C9, 118);  // PC = 0358h
-    changes(2, 0x000021E0);
-    changes(5, 0x00000324);
-    newstep(0x09000000, 119);  // PC = 0324h
-    changes(2, 0x000021E4);
-    changes(5, 0x0000035C);
-    newstep(0x04400003, 120);  // PC = 035Ch
-    changes(0, 0x00000001);
-    changes(1, 0x0000006C);
-    changes(3, 0x000020F0);
-    newstep(0x493000D6, 121);  // PC = 0360h
-    changes(0, 0x0000006C);
-    changes(1, 0x00000007);
-    changes(3, 0x000020F4);
-    newstep(0x10000002, 122);  // PC = 0364h
-    changes(0, 0x00000000);
-    newstep(0xAC240000, 123);  // PC = 0368h
+    newstep(0x07E2EB40, 283);  // PC = 02ACh
+    newstep(0x213000AE, 284);  // PC = 02B0h
+    changes(5, 0x000002B8);
+    newstep(0x4C0000B1, 285);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 286);  // PC = 02C4h
+    changes(0, 0xFFFFFFE3);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 287);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 288);  // PC = 02A4h
     changes(0, 0x00000007);
-    changes(1, 0x00000751);
-    changes(2, 0x000021E8);
-    changes(3, 0x000020F8);
-    changes(5, 0x00000474);
-    newstep(0x4C000119, 124);  // PC = 0474h
-    changes(5, 0x00000464);
-    newstep(0x07F27F14, 125);  // PC = 0464h
+    changes(1, 0xFFFFFFF3);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 289);  // PC = 02A8h
+    changes(0, 0x0000000F);
+    newstep(0x07E2EB40, 290);  // PC = 02ACh
+    newstep(0x213000AE, 291);  // PC = 02B0h
+    changes(5, 0x000002B8);
+    newstep(0x4C0000B1, 292);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 293);  // PC = 02C4h
+    changes(0, 0xFFFFFFE4);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 294);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 295);  // PC = 02A4h
+    changes(0, 0x0000000F);
+    changes(1, 0xFFFFFFE7);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 296);  // PC = 02A8h
+    changes(0, 0x0000001F);
+    newstep(0x07E2EB40, 297);  // PC = 02ACh
+    newstep(0x213000AE, 298);  // PC = 02B0h
+    changes(5, 0x000002B8);
+    newstep(0x4C0000B1, 299);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 300);  // PC = 02C4h
+    changes(0, 0xFFFFFFE5);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 301);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 302);  // PC = 02A4h
+    changes(0, 0x0000001F);
+    changes(1, 0xFFFFFFCF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 303);  // PC = 02A8h
+    changes(0, 0x0000003F);
+    newstep(0x07E2EB40, 304);  // PC = 02ACh
+    newstep(0x213000AE, 305);  // PC = 02B0h
+    changes(5, 0x000002B8);
+    newstep(0x4C0000B1, 306);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 307);  // PC = 02C4h
+    changes(0, 0xFFFFFFE6);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 308);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 309);  // PC = 02A4h
+    changes(0, 0x0000003F);
+    changes(1, 0xFFFFFF9F);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 310);  // PC = 02A8h
+    changes(0, 0x0000007F);
+    newstep(0x07E2EB40, 311);  // PC = 02ACh
+    newstep(0x213000AE, 312);  // PC = 02B0h
+    changes(5, 0x000002B8);
+    newstep(0x4C0000B1, 313);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 314);  // PC = 02C4h
+    changes(0, 0xFFFFFFE7);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 315);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 316);  // PC = 02A4h
+    changes(0, 0x0000007F);
+    changes(1, 0xFFFFFF3F);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 317);  // PC = 02A8h
+    changes(0, 0x000000FF);
+    newstep(0x07E2EB40, 318);  // PC = 02ACh
+    newstep(0x213000AE, 319);  // PC = 02B0h
+    changes(5, 0x000002B8);
+    newstep(0x4C0000B1, 320);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 321);  // PC = 02C4h
+    changes(0, 0xFFFFFFE8);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 322);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 323);  // PC = 02A4h
+    changes(0, 0x000000FF);
+    changes(1, 0xFFFFFE7F);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 324);  // PC = 02A8h
+    changes(0, 0x000001FF);
+    newstep(0x07E2EB40, 325);  // PC = 02ACh
+    newstep(0x213000AE, 326);  // PC = 02B0h
+    changes(5, 0x000002B8);
+    newstep(0x4C0000B1, 327);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 328);  // PC = 02C4h
+    changes(0, 0xFFFFFFE9);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 329);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 330);  // PC = 02A4h
+    changes(0, 0x000001FF);
+    changes(1, 0xFFFFFCFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 331);  // PC = 02A8h
+    changes(0, 0x000003FF);
+    newstep(0x07E2EB40, 332);  // PC = 02ACh
+    newstep(0x213000AE, 333);  // PC = 02B0h
+    changes(5, 0x000002B8);
+    newstep(0x4C0000B1, 334);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 335);  // PC = 02C4h
+    changes(0, 0xFFFFFFEA);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 336);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 337);  // PC = 02A4h
+    changes(0, 0x000003FF);
+    changes(1, 0xFFFFF9FF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 338);  // PC = 02A8h
+    changes(0, 0x000007FF);
+    newstep(0x07E2EB40, 339);  // PC = 02ACh
+    newstep(0x213000AE, 340);  // PC = 02B0h
+    changes(5, 0x000002B8);
+    newstep(0x4C0000B1, 341);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 342);  // PC = 02C4h
+    changes(0, 0xFFFFFFEB);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 343);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 344);  // PC = 02A4h
+    changes(0, 0x000007FF);
+    changes(1, 0xFFFFF3FF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 345);  // PC = 02A8h
+    changes(0, 0x00000FFF);
+    newstep(0x07E2EB40, 346);  // PC = 02ACh
+    newstep(0x213000AE, 347);  // PC = 02B0h
+    changes(5, 0x000002B8);
+    newstep(0x4C0000B1, 348);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 349);  // PC = 02C4h
+    changes(0, 0xFFFFFFEC);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 350);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 351);  // PC = 02A4h
+    changes(0, 0x00000FFF);
+    changes(1, 0xFFFFE7FF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 352);  // PC = 02A8h
+    changes(0, 0x00001FFF);
+    newstep(0x07E2EB40, 353);  // PC = 02ACh
+    newstep(0x213000AE, 354);  // PC = 02B0h
+    changes(5, 0x000002B8);
+    newstep(0x4C0000B1, 355);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 356);  // PC = 02C4h
+    changes(0, 0xFFFFFFED);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 357);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 358);  // PC = 02A4h
+    changes(0, 0x00001FFF);
+    changes(1, 0xFFFFCFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 359);  // PC = 02A8h
+    changes(0, 0x00003FFF);
+    newstep(0x07E2EB40, 360);  // PC = 02ACh
+    newstep(0x213000AE, 361);  // PC = 02B0h
+    changes(5, 0x000002B8);
+    newstep(0x4C0000B1, 362);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 363);  // PC = 02C4h
+    changes(0, 0xFFFFFFEE);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 364);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 365);  // PC = 02A4h
+    changes(0, 0x00003FFF);
+    changes(1, 0xFFFF9FFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 366);  // PC = 02A8h
+    changes(0, 0x00007FFF);
+    newstep(0x07E2EB40, 367);  // PC = 02ACh
+    newstep(0x213000AE, 368);  // PC = 02B0h
+    changes(5, 0x000002B8);
+    newstep(0x4C0000B1, 369);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 370);  // PC = 02C4h
+    changes(0, 0xFFFFFFEF);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 371);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 372);  // PC = 02A4h
+    changes(0, 0x00007FFF);
+    changes(1, 0xFFFF3FFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 373);  // PC = 02A8h
+    changes(0, 0x0000FFFF);
+    newstep(0x07E2EB40, 374);  // PC = 02ACh
+    newstep(0x213000AE, 375);  // PC = 02B0h
+    changes(5, 0x000002B8);
+    newstep(0x4C0000B1, 376);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 377);  // PC = 02C4h
+    changes(0, 0xFFFFFFF0);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 378);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 379);  // PC = 02A4h
+    changes(0, 0x0000FFFF);
+    changes(1, 0xFFFE7FFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 380);  // PC = 02A8h
+    changes(0, 0x0001FFFF);
+    newstep(0x07E2EB40, 381);  // PC = 02ACh
+    newstep(0x213000AE, 382);  // PC = 02B0h
+    changes(5, 0x000002B8);
+    newstep(0x4C0000B1, 383);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 384);  // PC = 02C4h
+    changes(0, 0xFFFFFFF1);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 385);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 386);  // PC = 02A4h
+    changes(0, 0x0001FFFF);
+    changes(1, 0xFFFCFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 387);  // PC = 02A8h
+    changes(0, 0x0003FFFF);
+    newstep(0x07E2EB40, 388);  // PC = 02ACh
+    newstep(0x213000AE, 389);  // PC = 02B0h
+    changes(5, 0x000002B8);
+    newstep(0x4C0000B1, 390);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 391);  // PC = 02C4h
+    changes(0, 0xFFFFFFF2);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 392);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 393);  // PC = 02A4h
+    changes(0, 0x0003FFFF);
+    changes(1, 0xFFF9FFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 394);  // PC = 02A8h
+    changes(0, 0x0007FFFF);
+    newstep(0x07E2EB40, 395);  // PC = 02ACh
+    newstep(0x213000AE, 396);  // PC = 02B0h
+    changes(5, 0x000002B8);
+    newstep(0x4C0000B1, 397);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 398);  // PC = 02C4h
+    changes(0, 0xFFFFFFF3);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 399);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 400);  // PC = 02A4h
+    changes(0, 0x0007FFFF);
+    changes(1, 0xFFF3FFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 401);  // PC = 02A8h
+    changes(0, 0x000FFFFF);
+    newstep(0x07E2EB40, 402);  // PC = 02ACh
+    newstep(0x213000AE, 403);  // PC = 02B0h
+    changes(5, 0x000002B8);
+    newstep(0x4C0000B1, 404);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 405);  // PC = 02C4h
+    changes(0, 0xFFFFFFF4);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 406);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 407);  // PC = 02A4h
+    changes(0, 0x000FFFFF);
+    changes(1, 0xFFE7FFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 408);  // PC = 02A8h
+    changes(0, 0x001FFFFF);
+    newstep(0x07E2EB40, 409);  // PC = 02ACh
+    newstep(0x213000AE, 410);  // PC = 02B0h
+    changes(5, 0x000002B8);
+    newstep(0x4C0000B1, 411);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 412);  // PC = 02C4h
+    changes(0, 0xFFFFFFF5);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 413);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 414);  // PC = 02A4h
+    changes(0, 0x001FFFFF);
+    changes(1, 0xFFCFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 415);  // PC = 02A8h
+    changes(0, 0x003FFFFF);
+    newstep(0x07E2EB40, 416);  // PC = 02ACh
+    newstep(0x213000AE, 417);  // PC = 02B0h
+    changes(5, 0x000002B8);
+    newstep(0x4C0000B1, 418);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 419);  // PC = 02C4h
+    changes(0, 0xFFFFFFF6);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 420);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 421);  // PC = 02A4h
+    changes(0, 0x003FFFFF);
+    changes(1, 0xFF9FFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 422);  // PC = 02A8h
+    changes(0, 0x007FFFFF);
+    newstep(0x07E2EB40, 423);  // PC = 02ACh
+    newstep(0x213000AE, 424);  // PC = 02B0h
+    changes(5, 0x000002B8);
+    newstep(0x4C0000B1, 425);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 426);  // PC = 02C4h
+    changes(0, 0xFFFFFFF7);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 427);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 428);  // PC = 02A4h
+    changes(0, 0x007FFFFF);
+    changes(1, 0xFF3FFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 429);  // PC = 02A8h
+    changes(0, 0x00FFFFFF);
+    newstep(0x07E2EB40, 430);  // PC = 02ACh
+    newstep(0x213000AE, 431);  // PC = 02B0h
+    changes(5, 0x000002B8);
+    newstep(0x4C0000B1, 432);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 433);  // PC = 02C4h
+    changes(0, 0xFFFFFFF8);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 434);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 435);  // PC = 02A4h
+    changes(0, 0x00FFFFFF);
+    changes(1, 0xFE7FFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 436);  // PC = 02A8h
+    changes(0, 0x01FFFFFF);
+    newstep(0x07E2EB40, 437);  // PC = 02ACh
+    newstep(0x213000AE, 438);  // PC = 02B0h
+    changes(5, 0x000002B8);
+    newstep(0x4C0000B1, 439);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 440);  // PC = 02C4h
+    changes(0, 0xFFFFFFF9);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 441);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 442);  // PC = 02A4h
+    changes(0, 0x01FFFFFF);
+    changes(1, 0xFCFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 443);  // PC = 02A8h
+    changes(0, 0x03FFFFFF);
+    newstep(0x07E2EB40, 444);  // PC = 02ACh
+    newstep(0x213000AE, 445);  // PC = 02B0h
+    changes(5, 0x000002B8);
+    newstep(0x4C0000B1, 446);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 447);  // PC = 02C4h
+    changes(0, 0xFFFFFFFA);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 448);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 449);  // PC = 02A4h
+    changes(0, 0x03FFFFFF);
+    changes(1, 0xF9FFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 450);  // PC = 02A8h
+    changes(0, 0x07FFFFFF);
+    newstep(0x07E2EB40, 451);  // PC = 02ACh
+    newstep(0x213000AE, 452);  // PC = 02B0h
+    changes(5, 0x000002B8);
+    newstep(0x4C0000B1, 453);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 454);  // PC = 02C4h
+    changes(0, 0xFFFFFFFB);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 455);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 456);  // PC = 02A4h
+    changes(0, 0x07FFFFFF);
+    changes(1, 0xF3FFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 457);  // PC = 02A8h
+    changes(0, 0x0FFFFFFF);
+    newstep(0x07E2EB40, 458);  // PC = 02ACh
+    newstep(0x213000AE, 459);  // PC = 02B0h
+    changes(5, 0x000002B8);
+    newstep(0x4C0000B1, 460);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 461);  // PC = 02C4h
+    changes(0, 0xFFFFFFFC);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 462);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 463);  // PC = 02A4h
+    changes(0, 0x0FFFFFFF);
+    changes(1, 0xE7FFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 464);  // PC = 02A8h
+    changes(0, 0x1FFFFFFF);
+    newstep(0x07E2EB40, 465);  // PC = 02ACh
+    newstep(0x213000AE, 466);  // PC = 02B0h
+    changes(5, 0x000002B8);
+    newstep(0x4C0000B1, 467);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 468);  // PC = 02C4h
+    changes(0, 0xFFFFFFFD);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 469);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 470);  // PC = 02A4h
+    changes(0, 0x1FFFFFFF);
+    changes(1, 0xCFFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 471);  // PC = 02A8h
+    changes(0, 0x3FFFFFFF);
+    newstep(0x07E2EB40, 472);  // PC = 02ACh
+    newstep(0x213000AE, 473);  // PC = 02B0h
+    changes(5, 0x000002B8);
+    newstep(0x4C0000B1, 474);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 475);  // PC = 02C4h
+    changes(0, 0xFFFFFFFE);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 476);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 477);  // PC = 02A4h
+    changes(0, 0x3FFFFFFF);
+    changes(1, 0x9FFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 478);  // PC = 02A8h
+    changes(0, 0x7FFFFFFF);
+    newstep(0x07E2EB40, 479);  // PC = 02ACh
+    newstep(0x213000AE, 480);  // PC = 02B0h
+    changes(5, 0x000002B8);
+    newstep(0x4C0000B1, 481);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 482);  // PC = 02C4h
+    changes(0, 0xFFFFFFFF);
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 483);  // PC = 02C8h
+    changes(5, 0x000002A4);
+    newstep(0x69A6AF18, 484);  // PC = 02A4h
+    changes(0, 0x7FFFFFFF);
+    changes(1, 0x3FFFFFFF);
+    changes(2, 0x000080F0);
+    changes(3, 0x00008074);
+    newstep(0xBC84C0AF, 485);  // PC = 02A8h
+    changes(0, 0xFFFFFFFF);
+    newstep(0x07E2EB40, 486);  // PC = 02ACh
+    newstep(0x213000AE, 487);  // PC = 02B0h
+    newstep(0xF8B40000, 488);  // PC = 02B4h
+    changes(0, 0x00000002);
+    newstep(0x4C0000B1, 489);  // PC = 02B8h
+    changes(5, 0x000002C4);
+    newstep(0x18625000, 490);  // PC = 02C4h
     changes(0, 0x00000000);
-    changes(1, 0x00000007);
-    changes(3, 0x000020F4);
-    newstep(0xFD24C11E, 126);  // PC = 0468h
-    changes(0, 0x00000007);
-    changes(1, 0x00000751);
-    changes(3, 0x000020F8);
-    newstep(0x6C000103, 127);  // PC = 046Ch
-    changes(2, 0x000021E4);
-    changes(5, 0x0000040C);
-    newstep(0x6C0000FC, 128);  // PC = 040Ch
-    changes(2, 0x000021E0);
-    changes(5, 0x000003F0);
-    newstep(0x89AFC9FC, 129);  // PC = 03F0h
-    changes(0, 0x00000006);
-    changes(2, 0x000021DC);
-    newstep(0x289286DA, 130);  // PC = 03F4h
-    changes(0, 0x0000006F);
-    changes(1, 0x00000006);
-    changes(2, 0x000021E4);
-    changes(3, 0x000020F4);
-    changes(5, 0x00000410);
-    newstep(0x079000C0, 131);  // PC = 0410h
-    changes(0, 0x000000C0);
-    changes(1, 0x0000006F);
-    changes(3, 0x000020EC);
-    newstep(0x5F900080, 132);  // PC = 0414h
-    changes(0, 0x00000080);
-    changes(1, 0x00000040);
-    newstep(0x7DD40000, 133);  // PC = 0418h
-    changes(0, 0x00000000);
-    changes(1, 0x0000006F);
-    changes(3, 0x000020F0);
-    newstep(0x49300109, 134);  // PC = 041Ch
-    changes(0, 0x0000006F);
-    changes(1, 0x00000006);
-    changes(3, 0x000020F4);
-    changes(5, 0x00000424);
-    newstep(0x07900080, 135);  // PC = 0424h
-    changes(0, 0x00000080);
-    changes(1, 0x0000006F);
-    changes(3, 0x000020EC);
-    newstep(0x5D24C118, 136);  // PC = 0428h
-    changes(0, 0x0000006F);
-    changes(1, 0x00000006);
-    changes(3, 0x000020F4);
-    changes(5, 0x00000460);
-    newstep(0x09000000, 137);  // PC = 0460h
-    changes(2, 0x000021E8);
-    changes(5, 0x00000470);
-    newstep(0x6C0000F2, 138);  // PC = 0470h
-    changes(2, 0x000021E4);
-    changes(5, 0x000003C8);
-    newstep(0xE4000000, 139);  // PC = 03C8h
-    changes(0, 0x00000000);
-    changes(1, 0x0000006F);
-    changes(3, 0x000020F0);
-    newstep(0x4C0000F0, 140);  // PC = 03CCh
-    changes(5, 0x000003C0);
-    newstep(0x9E7E6234, 141);  // PC = 03C0h
-    changes(0, 0x00002234);
-    changes(1, 0x00000000);
-    changes(3, 0x000020EC);
-    newstep(0xB83B9A08, 142);  // PC = 03C4h
-    changes(0, 0x0000006F);
-    changes(1, 0x00000006);
-    changes(3, 0x000020F4);
-    changes(5, 0x00000358);
-    newstep(0x6C0000C9, 143);  // PC = 0358h
-    changes(2, 0x000021E0);
-    changes(5, 0x00000324);
-    newstep(0x09000000, 144);  // PC = 0324h
-    changes(2, 0x000021E4);
-    changes(5, 0x0000035C);
-    newstep(0x04400003, 145);  // PC = 035Ch
+    changes(1, 0xFFFFFFFD);
+    changes(2, 0x000080F8);
+    changes(3, 0x0000806C);
+    newstep(0xC13000A9, 491);  // PC = 02C8h
+    newstep(0xAEB2AFFE, 492);  // PC = 02CCh
+    changes(0, 0x80000001);
+    changes(1, 0x00000002);
+    changes(2, 0x000080FC);
+    changes(3, 0x00008074);
+    changes(5, 0x00000594);
+    newstep(0xAEB09000, 493);  // PC = 0594h
     changes(0, 0x00000001);
-    changes(1, 0x0000006F);
-    changes(3, 0x000020F0);
-    newstep(0x493000D6, 146);  // PC = 0360h
-    changes(0, 0x0000006F);
-    changes(1, 0x00000006);
-    changes(3, 0x000020F4);
-    newstep(0x10000002, 147);  // PC = 0364h
-    changes(0, 0x00000000);
-    newstep(0xAC240000, 148);  // PC = 0368h
-    changes(0, 0x00000006);
-    changes(1, 0x00000752);
-    changes(2, 0x000021E8);
-    changes(3, 0x000020F8);
-    changes(5, 0x00000474);
-    newstep(0x4C000119, 149);  // PC = 0474h
-    changes(5, 0x00000464);
-    newstep(0x07F27F14, 150);  // PC = 0464h
-    changes(0, 0x00000000);
-    changes(1, 0x00000006);
-    changes(3, 0x000020F4);
-    newstep(0xFD24C11E, 151);  // PC = 0468h
-    changes(0, 0x00000006);
-    changes(1, 0x00000752);
-    changes(3, 0x000020F8);
-    newstep(0x6C000103, 152);  // PC = 046Ch
-    changes(2, 0x000021E4);
-    changes(5, 0x0000040C);
-    newstep(0x6C0000FC, 153);  // PC = 040Ch
-    changes(2, 0x000021E0);
-    changes(5, 0x000003F0);
-    newstep(0x89AFC9FC, 154);  // PC = 03F0h
-    changes(0, 0x00000005);
-    changes(2, 0x000021DC);
-    newstep(0x289286DA, 155);  // PC = 03F4h
-    changes(0, 0x00000020);
-    changes(1, 0x00000005);
-    changes(2, 0x000021E4);
-    changes(3, 0x000020F4);
-    changes(5, 0x00000410);
-    newstep(0x079000C0, 156);  // PC = 0410h
-    changes(0, 0x000000C0);
-    changes(1, 0x00000020);
-    changes(3, 0x000020EC);
-    newstep(0x5F900080, 157);  // PC = 0414h
-    changes(0, 0x00000080);
     changes(1, 0x00000000);
-    newstep(0x7DD40000, 158);  // PC = 0418h
-    changes(0, 0x00000000);
-    changes(1, 0x00000020);
-    changes(3, 0x000020F0);
-    newstep(0x49300109, 159);  // PC = 041Ch
-    changes(0, 0x00000020);
-    changes(1, 0x00000005);
-    changes(3, 0x000020F4);
+    changes(2, 0x00008100);
+    changes(3, 0x0000807C);
+    changes(5, 0x000005CC);
+    newstep(0xE4000598, 494);  // PC = 05CCh
+    changes(0, 0x00000598);
+    changes(1, 0x00000001);
+    changes(3, 0x00008078);
+    newstep(0x6C000109, 495);  // PC = 05D0h
+    changes(2, 0x000080FC);
     changes(5, 0x00000424);
-    newstep(0x07900080, 160);  // PC = 0424h
-    changes(0, 0x00000080);
-    changes(1, 0x00000020);
-    changes(3, 0x000020EC);
-    newstep(0x5D24C118, 161);  // PC = 0428h
-    changes(0, 0x00000020);
-    changes(1, 0x00000005);
-    changes(3, 0x000020F4);
-    changes(5, 0x00000460);
-    newstep(0x09000000, 162);  // PC = 0460h
-    changes(2, 0x000021E8);
-    changes(5, 0x00000470);
-    newstep(0x6C0000F2, 163);  // PC = 0470h
-    changes(2, 0x000021E4);
-    changes(5, 0x000003C8);
-    newstep(0xE4000000, 164);  // PC = 03C8h
-    changes(0, 0x00000000);
-    changes(1, 0x00000020);
-    changes(3, 0x000020F0);
-    newstep(0x4C0000F0, 165);  // PC = 03CCh
-    changes(5, 0x000003C0);
-    newstep(0x9E7E6234, 166);  // PC = 03C0h
-    changes(0, 0x00002234);
-    changes(1, 0x00000000);
-    changes(3, 0x000020EC);
-    newstep(0xB83B9A08, 167);  // PC = 03C4h
-    changes(0, 0x00000020);
-    changes(1, 0x00000005);
-    changes(3, 0x000020F4);
-    changes(5, 0x00000358);
-    newstep(0x6C0000C9, 168);  // PC = 0358h
-    changes(2, 0x000021E0);
-    changes(5, 0x00000324);
-    newstep(0x09000000, 169);  // PC = 0324h
-    changes(2, 0x000021E4);
-    changes(5, 0x0000035C);
-    newstep(0x04400003, 170);  // PC = 035Ch
-    changes(0, 0x00000001);
-    changes(1, 0x00000020);
-    changes(3, 0x000020F0);
-    newstep(0x493000D6, 171);  // PC = 0360h
-    changes(0, 0x00000020);
-    changes(1, 0x00000005);
-    changes(3, 0x000020F4);
-    newstep(0x10000002, 172);  // PC = 0364h
-    changes(0, 0x00000000);
-    newstep(0xAC240000, 173);  // PC = 0368h
-    changes(0, 0x00000005);
-    changes(1, 0x00000753);
-    changes(2, 0x000021E8);
-    changes(3, 0x000020F8);
-    changes(5, 0x00000474);
-    newstep(0x4C000119, 174);  // PC = 0474h
-    changes(5, 0x00000464);
-    newstep(0x07F27F14, 175);  // PC = 0464h
-    changes(0, 0x00000000);
-    changes(1, 0x00000005);
-    changes(3, 0x000020F4);
-    newstep(0xFD24C11E, 176);  // PC = 0468h
-    changes(0, 0x00000005);
-    changes(1, 0x00000753);
-    changes(3, 0x000020F8);
-    newstep(0x6C000103, 177);  // PC = 046Ch
-    changes(2, 0x000021E4);
-    changes(5, 0x0000040C);
-    newstep(0x6C0000FC, 178);  // PC = 040Ch
-    changes(2, 0x000021E0);
-    changes(5, 0x000003F0);
-    newstep(0x89AFC9FC, 179);  // PC = 03F0h
+    newstep(0x89AE4004, 496);  // PC = 0424h
     changes(0, 0x00000004);
-    changes(2, 0x000021DC);
-    newstep(0x289286DA, 180);  // PC = 03F4h
-    changes(0, 0x00000057);
-    changes(1, 0x00000004);
-    changes(2, 0x000021E4);
-    changes(3, 0x000020F4);
-    changes(5, 0x00000410);
-    newstep(0x079000C0, 181);  // PC = 0410h
-    changes(0, 0x000000C0);
-    changes(1, 0x00000057);
-    changes(3, 0x000020EC);
-    newstep(0x5F900080, 182);  // PC = 0414h
-    changes(0, 0x00000080);
-    changes(1, 0x00000040);
-    newstep(0x7DD40000, 183);  // PC = 0418h
+    changes(1, 0x00000598);
+    changes(2, 0x000080F8);
+    changes(3, 0x00008074);
+    newstep(0xC9A40000, 497);  // PC = 0428h
+    changes(0, 0x00000598);
+    changes(1, 0x00000001);
+    changes(2, 0x000080F4);
+    changes(3, 0x00008078);
+    newstep(0xE4008214, 498);  // PC = 042Ch
+    changes(0, 0x00008214);
+    changes(1, 0x00000598);
+    changes(3, 0x00008074);
+    newstep(0xB9AE4000, 499);  // PC = 0430h
     changes(0, 0x00000000);
-    changes(1, 0x00000057);
-    changes(3, 0x000020F0);
-    newstep(0x49300109, 184);  // PC = 041Ch
-    changes(0, 0x00000057);
-    changes(1, 0x00000004);
-    changes(3, 0x000020F4);
-    changes(5, 0x00000424);
-    newstep(0x07900080, 185);  // PC = 0424h
-    changes(0, 0x00000080);
-    changes(1, 0x00000057);
-    changes(3, 0x000020EC);
-    newstep(0x5D24C118, 186);  // PC = 0428h
-    changes(0, 0x00000057);
-    changes(1, 0x00000004);
-    changes(3, 0x000020F4);
-    changes(5, 0x00000460);
-    newstep(0x09000000, 187);  // PC = 0460h
-    changes(2, 0x000021E8);
-    changes(5, 0x00000470);
-    newstep(0x6C0000F2, 188);  // PC = 0470h
-    changes(2, 0x000021E4);
-    changes(5, 0x000003C8);
-    newstep(0xE4000000, 189);  // PC = 03C8h
-    changes(0, 0x00000000);
-    changes(1, 0x00000057);
-    changes(3, 0x000020F0);
-    newstep(0x4C0000F0, 190);  // PC = 03CCh
-    changes(5, 0x000003C0);
-    newstep(0x9E7E6234, 191);  // PC = 03C0h
-    changes(0, 0x00002234);
-    changes(1, 0x00000000);
-    changes(3, 0x000020EC);
-    newstep(0xB83B9A08, 192);  // PC = 03C4h
-    changes(0, 0x00000057);
-    changes(1, 0x00000004);
-    changes(3, 0x000020F4);
-    changes(5, 0x00000358);
-    newstep(0x6C0000C9, 193);  // PC = 0358h
-    changes(2, 0x000021E0);
-    changes(5, 0x00000324);
-    newstep(0x09000000, 194);  // PC = 0324h
-    changes(2, 0x000021E4);
-    changes(5, 0x0000035C);
-    newstep(0x04400003, 195);  // PC = 035Ch
-    changes(0, 0x00000001);
-    changes(1, 0x00000057);
-    changes(3, 0x000020F0);
-    newstep(0x493000D6, 196);  // PC = 0360h
-    changes(0, 0x00000057);
-    changes(1, 0x00000004);
-    changes(3, 0x000020F4);
-    newstep(0x10000002, 197);  // PC = 0364h
-    changes(0, 0x00000000);
-    newstep(0xAC240000, 198);  // PC = 0368h
-    changes(0, 0x00000004);
-    changes(1, 0x00000754);
-    changes(2, 0x000021E8);
-    changes(3, 0x000020F8);
-    changes(5, 0x00000474);
-    newstep(0x4C000119, 199);  // PC = 0474h
-    changes(5, 0x00000464);
+    changes(2, 0x000080F0);
     newstep(0, -1);  // make sure last group has all changes listed.
 
-    printf("\n %d tests, %d errors\n", tests-1, errors);
+    printf("\n%d tests, %d errors\n", tests-1, errors);
 return 0;
 }

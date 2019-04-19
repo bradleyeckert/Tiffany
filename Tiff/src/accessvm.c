@@ -537,6 +537,7 @@ the end of the list. This is the cell to resolve when a wordlist is added.
 // Initialize ALL variables in the terminal task
 void InitializeTermTCB (void) {
     VMpor();                            // clear VM and RAM
+    memset(ROM, -1, SPIflashSize*sizeof(uint32_t));  // clear ROM
     initFilelist();                     // clear list of filenames used by LOCATE
     StoreCell(HeadPointerOrigin+8, HP); // leave 2 cells for filelist, widlist
     StoreCell(0, CP);
@@ -611,6 +612,10 @@ void RegChanges (FILE *fp, int format) {
 }
 
 void MakeTestVectors(FILE *ofp, int length, int format) {
+    uint32_t * temp = (uint32_t*) malloc(RAMsize * sizeof(uint32_t));
+    for (int i=0; i<RAMsize; i++) {     // stash RAM in temporary location
+        temp[i] = FetchCell((ROMsize+i)*4);
+    }
     VMpor();
     RegChangeInit();                    // start at PC = 0
     for (int i=0; i<length; i++) {
@@ -627,7 +632,12 @@ void MakeTestVectors(FILE *ofp, int length, int format) {
         Tracing=0;
         RegChanges(ofp, 1);             // display changes in C format
     }
+    tiffIOR = 0;
     VMpor();
+    for (int i=0; i<RAMsize; i++) {     // restore RAM
+        StoreCell(temp[i], (ROMsize+i)*4);
+    }
+    free(temp);
 }
 
 

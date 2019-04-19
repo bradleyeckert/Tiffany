@@ -154,7 +154,7 @@ case 6:                                 // 6: Assembler syntax internal ROM dump
 case 7:                                 // 7: Assembler syntax for 8051
     length = ROMwords(ROMsize);
     directive = "DW";
-    format = "0%04XH,0%04XH";             // no support for 32-bit words
+    format = "0%04XH,0%04XH";           // no Keil support for 32-bit words
     C_Columns = 6;
     for (int i=0; i<length; i++) {
         int col = i % C_Columns;

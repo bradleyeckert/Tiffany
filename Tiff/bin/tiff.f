@@ -143,7 +143,8 @@ cp @ equ s2
  222 mynum z2
 
 0 [if]
-\ : ENVIRONMENT? ( c-addr u -- false ) 2drop 0 ;
+
+: ENVIRONMENT? ( c-addr u -- false ) 2drop 0 ;
 
 cr .( Test suite: ) cr
 include ../forth/test/ttester.fs

@@ -16,6 +16,7 @@ int main(int argc, char *argv[]) {
     CreateTrace();                      // reset the trace buffer
 #endif
     InitializeTermTCB();                // by default, ROM and SPI flash are blank (all '1's)
+nextarg:
     while (argc>Arg) {                  // spin through the 2-character arguments
         if (strlen(argv[Arg]) == 2) {
             if (argv[Arg][0] == '-'){   // starts with a "-?" command
@@ -31,10 +32,11 @@ int main(int argc, char *argv[]) {
                         if (argc>Arg) {
                             if (BinaryLoad(argv[Arg++])) {
                                 printf("Invalid or missing filename");
+                                goto bye;
                             } else {    // successful binary load clears the load filename
                                 DefaultFile = NULL;
                             }
-                            break;
+                            goto nextarg;
                         } else {
                             printf("Use \"-b filename\"");
                             goto bye;
@@ -42,7 +44,7 @@ int main(int argc, char *argv[]) {
                     case 'f':           // change the load filename from the default `tiff.f`
                         if (argc>Arg) {
                             DefaultFile = argv[Arg++];
-                            break;
+                            goto nextarg;
                         }
 						printf("Use \"-f filename\"");
                         goto bye;

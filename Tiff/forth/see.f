@@ -113,9 +113,22 @@ decimal
 ;
 
 : see  \ "name" --                      \ 15.6.1.2194
-   h' dup cell- link>  swap 12 - w@
+   h' dup >r  cell- link>  dup
+   r@ 12 - w@
    1000 min  dasm
+   r> 10 - c@
+   1 = if                               \ CREATEd word
+      cell+ @+ swap @                   ( addr xt/-1 )
+      ."      value = "  ColorImm swap dup @ .  ColorNone
+      ." at " ColorImmA .   ColorNone cr
+      +if
+         ."      which is processed by:" cr
+         dup 10 dasm
+      then
+   then  drop
 ;
+
+create nothing
 
 : loc  \ "name"                 LOCATE
    h' dup >r 1- c@ 8 lshift

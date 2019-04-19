@@ -132,10 +132,11 @@ decimal
 ; immediate
 
 \ CREATE DOES>
+
 hex
 : _create  \ "name" --
    cp @  ['] get-compile  header[
-   1 pad w!                             \ count byte = 1
+   1 dup  pad w!+  c!                   \ count byte = 1, tag byte = 1
    0C0 flags!                           \ flags: jumpable, anon
    ]header   NewGroup
 ;
@@ -153,18 +154,22 @@ decimal
    |-if drop exit |                     \ missing does>
    >r                                   \ do does>
 ;
+
 : create  \ -- | -- addr                \ 6.1.1000
    _create
-   postpone (create)
+   postpone (create)                    \ data: addr, xt/-1
    here  c_scope c@ 1 = 8 and +  ,c     \ skip forward if in ROM
    -1 ,c
 ;
+
 : >body  \ xt -- body                   \ 6.1.0550
    cell+ @
 ;
+
 : (does)  \ RA --
    r>  -4 last link> cell+ cell+  ROM!  \ resolve the does> field
 ; call-only
+
 : does>                                 \ 6.1.1250
    postpone (does) \ patches created fields, pointed to by CURRENT
 ; immediate
