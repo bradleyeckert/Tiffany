@@ -17,6 +17,7 @@ XRAMsize    EQU 1000H                  ;XRAM size of MCU in bytes
 ;XRAMsize is used to place the VM's RAM at the top of XRAM. The linker will see it.
 
 ROMsize     EQU `2`*4 ;bytes in ROM (at end of this file)
+RAMbase     EQU (`3` >> 6) ;base address of RAM / 256
 
 ;-------------------------------------------------------------------------------
 ;The Keil C51/A51 compiler (assembled code/data) is big endian.
@@ -29,6 +30,7 @@ ROMsize     EQU `2`*4 ;bytes in ROM (at end of this file)
             PUBLIC VMpor                ;void VMpor(void);
             PUBLIC SetDbgReg            ;void SetDbgReg(uint32_t n);
             PUBLIC _GetDbgReg           ;uint32_t GetDbgReg(void);
+            PUBLIC _vmRegRead           ;uint32_t vmRegRead(int id);
 
 ExtFnTable  EQU 0x00A0
 
@@ -1102,6 +1104,66 @@ opRfetch:   LCALL SDUP
             MOV B, #Scratch
             LCALL RDROP
             LJMP ScratchToTOS
+
+; INDICES:
+
+vmRegTable: DB T, 4, N, 4, RP, 2, VSP, 2, UP, 2, VPC, 4
+;index         0     1     2      3       4      5
+
+_vmRegRead: ;T,N,RP,SP,UP,PC    ;uint32_t vmRegRead(int id);
+            MOV R0, #Scratch
+            CLR A
+            MOV R3, #4
+clearscr:       MOV @R0, A              ;clear Scratch
+                DJNZ R3, clearscr
+            MOV DPTR, #vmRegTable
+            MOV A, R7
+            CLR C
+            RLC A
+            MOVC A, @A+DPTR             ;register IRAM address
+            MOV R1, A                   ;source
+            MOV A, R7
+            CLR C
+            RLC A
+            INC A
+            MOVC A, @A+DPTR             ;bytes to read
+            MOV R3, A                   ;length
+            CPL A
+            INC A
+            ADD A, #Scratch+4
+            MOV R0, A                   ;destination
+readreg:        MOV A, @R1
+                INC R1
+                MOV @R0, A
+                INC R0
+                DJNZ R3, readreg        ;copy reg to scratch
+            MOV A, R7
+            ADD A, #-2
+            JNC vmRegPlain
+            MOV R2, #2
+shiftsreg:  MOV R3, #4                  ;if ID>2, multiply by 4
+                MOV R0, #Scratch+4
+                CLR C
+shiftreg:           DEC R0
+                    MOV A, @R0
+                    RLC A
+                    MOV @R0, A
+                    DJNZ R3, shiftreg
+                DJNZ R2, shiftsreg
+                MOV A, R7
+                ADD A, #-5
+                JC vmRegPlain           ;RP, SP, UP need offset
+                MOV A, Scratch+2
+                ADD A, #LOW(RAMbase);
+                MOV Scratch+2, A
+                MOV A, Scratch+1
+                ADDC A, #HIGH(RAMbase);
+                MOV Scratch+1, A
+vmRegPlain: MOV R4, Scratch+0
+            MOV R5, Scratch+1
+            MOV R6, Scratch+2
+            MOV R7, Scratch+3
+            RET
 
 ROM:`7`
 
