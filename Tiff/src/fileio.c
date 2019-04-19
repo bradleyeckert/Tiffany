@@ -175,6 +175,8 @@ case 8:                                 // 8: VHDL syntax internal ROM dump
     }
     fprintf(ofp, "when others => ROMdata <= x""FFFFFFFF"";\n");
     break;
+case 9: fprintf(ofp, "%d", SPIflashSize);  // 9: words in SPI flash space
+    break;
 case 10:                                // 10: C syntax stepping
     MakeTestVectors(ofp, PopNum(), 1);
     break;

@@ -2,6 +2,14 @@
 #include <stdlib.h>
 #include "config.h"
 #include "vm.h"
+
+/* Imports: ROM[]
+   Exports: SPIflashXfer
+*/
+
+//`0`#define SPIflashSize `9`
+//`0`extern uint32_t ROM[SPIflashSize];
+
 /*
 | Name   | Hex | Command                           |
 |:-------|-----|----------------------------------:|
@@ -28,10 +36,10 @@ static int Erase4K(uint32_t address) {
 // Use SPI transfer (user function 5) to write to the ROM space.
 // This simulates SPI flash.
 
-uint8_t state = 0;						// FSM state
-uint8_t command = 0;					// current command
-uint8_t wen;							// write enable
-uint32_t addr;
+static uint8_t state = 0;				// FSM state
+static uint8_t command = 0;				// current command
+static uint8_t wen;						// write enable
+static uint32_t addr;
 
 // n bits: 11:10 = bus width (ignored, assumed 0)
 // 9 = falling starts a command if it's not yet started
@@ -39,34 +47,36 @@ uint32_t addr;
 // 7:0 = SPI data to transmit
 // Return value if the SPI return byte
 
+// RDJDID (9F command) is custom: 0xAA, 0xHH, 0xFF number of 4K blocks
+
 uint32_t SPIflashXfer (uint32_t n, uint32_t dummy) {    /*EXPORT*/
 	uint8_t cin = (uint8_t)(n & 0xFF);
 	uint8_t cout = 0xFF;
 	int shift;
 	uint32_t word, data, mask;
 //	printf("%02X ", n);
-	if (n & 0x200) {                 	// inactive bus
+	if (n & 0x200) {                 					// inactive bus
 		state = 0;
-		return cout;                    // is floating hi
+		return cout;                    				// is floating hi
 	} else {
-		if (state) {                    // continue previous command
+		if (state) {                    				// continue previous command
 			shift = 8*(addr&3);
 			switch (state) {
 				case 1: break;							// wait for trailing CS
 				case 2: cout = wen;   state=1;  break;  // status = WEN, never busy
 				case 3: cout = 0xAA;  state++;  break;	// 3-byte RDJDID
-				case 4: cout = 0x55;  state++;  break;
-				case 5: cout = SPIflashCapacity;  state=1;  break;
-				case 6: addr = cin<<16;  state++;  break;
-				case 7: addr += cin<<8;  state++;  break;
+				case 4: cout = 0xFF & (SPIflashSize >> 18); state++;  break;
+				case 5: cout = 0xFF & (SPIflashSize >> 10); state=1;  break;
+				case 6: addr = cin<<16;  					state++;  break;
+				case 7: addr += cin<<8;  					state++;  break;
 				case 8: addr += cin;
                     if (addr < SPIflashSize*4) {
                         switch (command) {
-                            case 0x20: if (wen) tiffIOR = Erase4K(addr);	// erase sector
-                                wen=0;  state=1;  break;
-                            case 0x0B:  state++;  break;
-                            case 0x02:  state=11;  break;
-                            default: state = 0;
+                            case 0x20: if (wen) tiffIOR = Erase4K(addr); // erase sector
+                                wen=0; /* 4K erase */		state=1;  break;
+                            case 0x0B: /* fast read */		state++;  break;
+                            case 0x02: /* page write */		state=11; break;
+                            default: 					    state = 0;
                         } break;
                     } else {                            // invalid address, ignore
                         state = 0;
@@ -82,7 +92,9 @@ uint32_t SPIflashXfer (uint32_t n, uint32_t dummy) {    /*EXPORT*/
 					data = mask | (cin << shift);
 					if (~(word|data)) {
 						tiffIOR = -60;              	// not erased
-						printf("\nOops: Addr=%X, old=%X, new=%X ", addr, word, data);
+#ifdef ERRORMESSAGES
+						printf("\nFlash not erased: Addr=%X, old=%X, new=%X ", addr, word, data);
+#endif // ERRORMESSAGES
 						state=0;
 						break;
 					}
@@ -90,7 +102,9 @@ uint32_t SPIflashXfer (uint32_t n, uint32_t dummy) {    /*EXPORT*/
 					addr++;
 					if (((addr & 0xFF) == 0) && ((n & 0x100) == 0)) {
 						tiffIOR = -60;              	// page overflow
-						printf("\nPage Overflow: Addr=%X, old=%X, new=%X ", addr, word, data);
+#ifdef ERRORMESSAGES
+						printf("\nFlash Page Overflow: Addr=%X ", addr);
+#endif // ERRORMESSAGES
 						state=0;
 					}
 					break;

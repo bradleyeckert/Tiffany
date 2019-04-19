@@ -289,14 +289,14 @@ void StoreROM (uint32_t data, uint32_t address) {
     if (address&3) {
         ior = -23;
     }
-    if (address < (ROMsize*4)){
+    if ((address < (ROMsize*4)) || (address >= ((ROMsize+RAMsize)*4))) {
         uint32_t rom = FetchCell(address);
         ior = WriteROM(rom & data, address);
         if (~(rom|data)) ior = -60; // non-blank bits
     }
-    if (address >= ((ROMsize+RAMsize)*4)){
+/*    if (address >= ((ROMsize+RAMsize)*4)){
         StoreCell(data, address);
-    }
+    } */
     if (!tiffIOR) tiffIOR = ior;
 }
 
@@ -497,26 +497,8 @@ void InitializeTIB (void) {
     StoreByte(0, COLONDEF);             // clear this byte
     InitIR();
 }
-/*
-| Cell | Usage                          |
-| ---- | ------------------------------:|
-| 0    | Link                           |
-| 1    | WID                            |
-| 2    | Optional name (counted string) |
-*/
-uint32_t WordlistHead (void) {          // find the first blank link
-    int32_t link = HeadPointerOrigin+4;
-    int32_t result;
-    do {
-        result = link;
-        link = FetchCell(link);         // -1 if end of list
-    } while (link != -1);
-    return result;
-}
+
 void AddWordlistHead (uint32_t wid, char *name) {
-    uint32_t hp = FetchCell(HP);
-    StoreROM(hp, WordlistHead());       // resolve forward link
-    CommaH(-1);                         // forward link for WIDLIST
     CommaH(0x12345678);                 // name tag
     if (name) {
         CommaH(wid + 0xFF000000);       // include "named" tag
@@ -539,7 +521,7 @@ void InitializeTermTCB (void) {
     VMpor();                            // clear VM and RAM
     memset(ROM, -1, SPIflashSize*sizeof(uint32_t));  // clear ROM
     initFilelist();                     // clear list of filenames used by LOCATE
-    StoreCell(HeadPointerOrigin+8, HP); // leave 2 cells for filelist, widlist
+    StoreCell(HeadPointerOrigin+4, HP); // leave cell for filelist
     StoreCell(0, CP);
     StoreCell(DataPointerOrigin, DP);
     StoreCell(10, BASE);                // decimal

@@ -4,10 +4,6 @@ hex
 : _wordlist  \ addr u -- wid            \ optional string for vocabularies
    dp dup >r @ dup cell+ r> !  >r       \ get a wid ( addr u wid )
    0 r@ !                               \ clear the wid
-   [ hp0 cell+ ] literal  dup
-   begin  swap @ dup -1 = until  drop
-   hp @ swap ROM!                       \ resolve previous wordlist's forward link
-   -1 ,h                                \ next forward link
    12345678 ,h                          \ name tag
    dup if  r@ 1000000 - ,h              \ set upper byte to FFh
       dup c,h  negate                   \ compile name: count
@@ -30,12 +26,6 @@ hex
    10 -                                 \ point to first possible marker
    begin  dup @ 12345678 <>  while  cell-  repeat  \ back up to marker
    cell+ @+  (.wid)
-;
-: .wids  \ --                           \ list wids and/or vocs in the system
-   [ hp0 cell+ ] literal
-   begin @ dup -1 <> while
-      dup cell+ cell+ @+ (.wid)
-   repeat  drop
 ;
 decimal
 

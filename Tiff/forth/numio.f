@@ -116,8 +116,10 @@ cp @ equ term_personality               \ terminal personality
       dup 13 = if  drop		            \ terminator
          r> drop swap - exit
       then
-      dup 8 = if  drop 1-               \ backspace
-         ." \e[D"                       \ VT52 left one place
+      dup 8 = if  drop                  \ backspace
+         r@ over xor if  1-             \ back up if not empty
+            .\" \e[D \e[D"              \ VT52 left one place
+         then                           \ {left,space,left} deletes char on screen
       else
          dup bl - +if  drop             \ valid char
             c_noecho c@ 0= if

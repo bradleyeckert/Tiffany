@@ -5,16 +5,15 @@
 #define __CONFIG_H__
 
 // Sizes of internal memories in 32-bit cells
-#define StackSpace 128                 /* combined stack space at bottom of RAM */
-#define RAMsize    0x200                       /* should be an exact power of 2 */
-#define ROMsize    0x2000                      /* should be an exact power of 2 */
+#define StackSpace 128                /* combined stack space at bottom of RAM */
+#define RAMsize    0x200                      /* should be an exact power of 2 */
+#define ROMsize    0x2000                     /* should be an exact power of 2 */
 
-#define SPIflashCapacity   18    /* Log2 of flash size in bytes, minimum is 12 */
-#define SPIflashSize (1<<(SPIflashCapacity-2))  /* Must be a multiple of 0x400 */
+#define SPIflashSize  1024                                  /* # of 4K sectors */
 #define AXIRAMsize 0x100                                 /* RAM on the AXI bus */
 
 // Instruments the VM to allow Undo and Redo
- #define TRACEABLE
+// #define TRACEABLE
 #define TraceDepth 12           /* Log2 of the trace buffer size, 13*2^N bytes */
 
 // number of rows in the CPU register dump, minimum 9, maximum 12
@@ -28,7 +27,7 @@
 #define LocateLines  10
 
 // put headers in IROM
-#define HeadPointerOrigin  ((ROMsize-4096)*4)    /* Lowest SPI code address */
+#define HeadPointerOrigin  0x3000    /* leave 12K for code */
 //#define HeadPointerOrigin  ((ROMsize+RAMsize)*4)    /* Lowest SPI code address */
 
 //===============================================================================
@@ -44,10 +43,6 @@
 
 #if (ROMsize & (RAMsize-1))
 #error ROMsize must be a multiple of RAMsize
-#endif
-
-#if (SPIflashSize & 0x3FF) // To match SPI flash sectors
-#error SPIflashSize must be a multiple of 1024 (0x400)
 #endif
 
 #endif

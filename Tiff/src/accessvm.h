@@ -47,7 +47,6 @@ void DumpRegs(void);            // clear screen and dump register and stack data
 void Disassemble(uint32_t addr, uint32_t length);
 void MakeTestVectors(FILE *ofp, int length, int format);
 void WipeTIB (void);                                         // clear TIB memory
-uint32_t WordlistHead (void);
 
 
 #define DataStackCol     1

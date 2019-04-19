@@ -11,6 +11,7 @@
 //`0`#define EmbeddedROM
 //`0`#define ROMsize `3`
 //`0`#define RAMsize `4`
+//`0`#define SPIflashSize `9`
 
 int tiffIOR; // global errorcode
 
@@ -202,7 +203,8 @@ void StoreCell (uint32_t x, uint32_t addr) {
     }
 #ifdef EmbeddedROM
     if (addr < ROMsize*4) {
-        exception = -9;
+        exception = -20;
+        printf("\n StoreROM writing to ROM[%X] ", addr);
         return;
     }
 #else
@@ -210,7 +212,10 @@ void StoreCell (uint32_t x, uint32_t addr) {
     if (addr < ROMsize*4) {
         uint32_t old = FetchCell(addr);
         exception = WriteROM(old & x, addr);
-        if ((old|x) != 0xFFFFFFFF) exception = -60;
+        if ((old|x) != 0xFFFFFFFF) {
+            exception = -60;
+            printf("\nStoreCell: addr=%X, old=%X, new=%X, PC=%X ", addr, old, x, PC*4);
+        }
         return;
     }
 #endif // EmbeddedROM

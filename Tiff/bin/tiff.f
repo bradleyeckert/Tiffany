@@ -45,6 +45,7 @@ include ../forth/flash.f                \ SPI flash programming
 [then]
 
 include ../forth/compile.f              \ compile opcodes, macros, calls, etc.
+
 include ../forth/tools.f                \ dump, .s
 include ../forth/interpret.f            \ parse, interpret, convert to number
 include ../forth/wean.f                 \ replace most C fns in existing headers
@@ -73,15 +74,18 @@ cp @  dup    16 !                       \ resolve internal ROM length
 HP @ . .( bytes in ROM, of which ) CP @ . .( is code and ) HP @ hp0 - . .( is head. )
 .( RAM = ) DP @ ROMsize - . .( of ) RAMsize .  cr
 
-make ../src/vm.c ../demo/vm.c           \ C version, vm.c is usable as a template
-make ../templates/app.A51 ../8051/vm.A51   \ 8051 version
+\ Make C demo files
+make ../src/vm.c ../demo/vm.c           \ vm.c is usable as a template
+make ../src/flash.c ../demo/flash.c     \ flash.c is usable as a template
+
+\ make ../templates/app.A51 ../8051/vm.A51   \ 8051 version
 
 \ make ../templates/app.c ../testbench/vm.c  \ C version for testbench
 \ 100 make ../templates/test_main.c ../testbench/test.c
 
 \ Include the rest of Forth for testing, etc.
 
-\ 65536 cp !  \ uncomment to compile code to flash region (not internal ROM)
+romsize ramsize + cp !  \ uncomment to compile code to flash region (not internal ROM)
 
 \ ------------------------------------------------------------------------------
 \ TEST STUFF: The demo doesn't use anything after this...
@@ -114,25 +118,6 @@ cp @ ," DataCodeHead" 1+
 : 平方  dup * ;                          \ use a UTF8 word name
 : dist  \ x y -- dist^2
    平方 swap 平方 +
-;
-
-cp @ equ s1
-   ," 123456"
-
-: str1 s1 count ;
-
-cp @ equ s2
-	," +你~好~，~世~界+"
-: str2 s2 count ;
-
-: spell  \ n --
-   case
-   0 of ." zero"  endof
-   1 of ." one"   endof
-   2 of ." two"   endof
-   3 of ." three" endof
-   dup .
-   endcase
 ;
 
 : mynum  ( n "name" -- )

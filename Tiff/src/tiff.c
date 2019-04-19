@@ -678,10 +678,6 @@ void ListKeywords(void) {
     }   printed = 1;
 }
 
-void tiffWordlistHead(void) {
-    PushNum(WordlistHead());
-}
-
 void LoadKeywords(void) {               // populate the list of gator brain functions
     keywords = 0;                       // start empty
     AddKeyword("bye",     tiffBYE);
@@ -765,8 +761,6 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("loop",    CompLoop);
     AddKeyword("i",       CompI);
     AddKeyword("leave",   CompLeave);
-    AddKeyword("widlist", tiffWordlistHead);
-    AddKeyword("wordlist", tiffWordList);
 
 //    AddKeyword("rom!",    tiffROMstore);
     AddKeyword("h'",      tiffHTICK);
@@ -1085,7 +1079,6 @@ void tiffQUIT (char *cmdline) {
     int NoHi = 0;                       // suppress extra "ok"s
     LoadKeywords();
     StoreCell(STATUS, FOLLOWER);  	    // only terminal task
-    WordlistHead();
     while (1){
         tiffIOR = 0;
         InitializeTIB();
