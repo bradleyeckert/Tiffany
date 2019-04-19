@@ -4,6 +4,7 @@
 -1 equ true                             \ 6.2.2298
 32 equ bl                               \ 6.1.0770
 
+: -             invert 1+ + ; macro     \ replace - opcode
 : !                 !+ drop ; macro     \ 6.1.0010  x addr --
 : c!               c!+ drop ; macro     \ 6.1.0850  c addr --
 : w!               w!+ drop ; macro     \           w addr --
@@ -172,22 +173,26 @@
    >r >r drop r> r> swap
 ;
 : um/mod \ ud u -- ur uq                \ 6.1.2370
-   2dup - drop
-   ifnc
-      drop drop drop  -1 dup  exit      \ overflow
-   then
-   -32  u2/ 2*                          \ clear carry
-   begin  >r >r  >r 2*c r> 2*c          \ dividend64 | count divisor32
-      ifnc
-         dup r@  - drop                 \ test subtraction
-         ifnc r@ - then                 \ keep it
-      else                              \ carry out of dividend, so subtract
-         r@ -  0 2* drop                \ clear carry
-      then
-      r> r> 1+                          \ L' H' divisor count
-   +until
-   drop drop swap 2*c invert            \ finish quotient
+    2dup - drop
+    ifnc
+        -32  u2/ 2*                     \ clear carry
+        begin
+            >r >r  >r 2*c r> 2*c        \ dividend64 | count divisor32
+            ifnc
+                dup r@  - drop          \ test subtraction
+                |ifc r@ - |             \ keep it  (carry is inverted)
+                dup 2*c invert 2/ drop
+            else                        \ carry out of dividend, so subtract
+                r@ -   0 2* drop        \ clear carry
+            then
+            r> r> 1+                    \ L' H' divisor count
+        +until
+        drop drop swap 2*c invert       \ finish quotient
+        exit
+    then
+    drop drop drop  -1 dup              \ overflow
 ;
+
 : sm/rem  \ d n -- rem quot             \ 6.1.2214
    2dup xor >r  over >r  abs >r dabs r> um/mod
    swap r> 0< if  negate  then

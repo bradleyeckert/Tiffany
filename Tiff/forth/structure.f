@@ -134,45 +134,37 @@ decimal
 \ CREATE DOES>
 
 hex
-: _create  \ "name" --
+: _create  \ n "name" --
    cp @  ['] get-compile  header[
-   1 dup  pad w!+  c!                   \ count byte = 1, tag byte = 1
+   dup  pad w!+  c!                 \ group count = n, tag byte = n
    0C0 flags!                           \ flags: jumpable, anon
    ]header   NewGroup
 ;
 : defer  \ <name> --
-   _create
+   1 _create
    3FFFFFF op_jmp Explicit
 ;
 : is  \ xt --
    2/ 2/  4000000 -  '  ROM!            \ resolve forward jump
 ;
-decimal
-
-: (create)  \ -- xt | R: UA RA -- UA
-   r> @+ swap @                         \ xt does>
-   |-if drop exit |                     \ missing does>
-   >r                                   \ do does>
-;
-
 : create  \ -- | -- addr                \ 6.1.1000
-   _create
-   postpone (create)                    \ data: addr, xt/-1
-   here  c_scope c@ 1 = 8 and +  ,c     \ skip forward if in ROM
-   -1 ,c
+   2 _create
+   here  c_scope c@ 1 = 8 and +  literal,  \ skip forward if in ROM
+   NewGroup
+   op_exit invert 1A lshift invert ,c   \ exit <blank>
 ;
 
 : >body  \ xt -- body                   \ 6.1.0550
-   cell+ @
+   @ FFFFF and                          \ lit:addr --> addr
 ;
+decimal
 
-: (does)  \ RA --
-   r>  -4 last link> cell+ cell+  ROM!  \ resolve the does> field
-; call-only
-
-: does>                                 \ 6.1.1250
-   postpone (does) \ patches created fields, pointed to by CURRENT
-; immediate
+: does>  \ RA --                        \ 6.1.1250
+   r> 2/ 2/                             \ jump here
+   \ <blank> to jmp:RA   exit to nop
+   [ op_jmp 20 lshift    op_exit invert 26 lshift  + ] literal +
+   -4 last link> cell+   ROM!           \ resolve the does> field
+;
 
 \ Eaker CASE statement
 \ Note: Number of cases is limited by the stack headspace.

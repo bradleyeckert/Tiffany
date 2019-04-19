@@ -5,13 +5,13 @@
 
 cp @ equ opnames
    ," ."     ," dup"  ," exit"  ," +"    ," user" ," 0<"   ," r>"  ," 2/"
-   ," ifc:"  ," 1+"   ," swap"  ," -"    ," ?"    ," c!+"  ," c@+" ," u2/"
+   ," ifc:"  ," 1+"   ," swap"  ," ?"    ," ?"    ," c!+"  ," c@+" ," u2/"
    ," _"     ," 2+"   ," ifz:"  ," jmp"  ," ?"    ," w!+"  ," w@+" ," and"
    ," ?"     ," litx" ," >r"    ," call" ," ?"    ," 0="   ," w@"  ," xor"
    ," rept"  ," 4+"   ," over"  ," c+"   ," ?"    ," !+"   ," @+"  ," 2*"
    ," -rept" ," ?"    ," rp"    ," drop" ," ?"    ," rp!"  ," @"   ," 2*c"
    ," -if:"  ," ?"    ," sp"    ," @as"  ," ?"    ," sp!"  ," c@"  ," port"
-   ," +if"   ," lit"  ," up"    ," !as"  ," ?"    ," up!"  ," r@"  ," com"
+   ," ?"     ," lit"  ," up"    ," !as"  ," ?"    ," up!"  ," r@"  ," com"
    cp @ aligned cp !
 
 : opname  \ opcode -- c-addr u			\ type opcode name string
@@ -112,23 +112,24 @@ decimal
    drop drop
 ;
 
+hex
 : see  \ "name" --                      \ 15.6.1.2194
    h' dup >r  cell- link>  dup
-   r@ 12 - w@
-   1000 min  dasm
-   r> 10 - c@
-   1 = if                               \ CREATEd word
-      cell+ @+ swap @                   ( addr xt/-1 )
-      ."      value = "  ColorImm swap dup @ .  ColorNone
-      ." at " ColorImmA .   ColorNone cr
-      +if
-         ."      which is processed by:" cr
-         dup 10 dasm
+   r@ 0C - w@
+   200 min  dasm
+   r> 0A - c@
+   2 = if                               \ CREATEd word
+      @+ swap @                         ( <literal> <exit> )
+      FFFFF over invert over and  if    ( <literal> <exit> mask )
+         and swap  3FFFFFF and          ( xt addr )
+         ."      CREATE value is "  ColorImm  @ .  ColorNone cr
+         ."      DOES> action is:" cr
+         cells 0A dasm exit
+      else  2drop
       then
    then  drop
 ;
-
-create nothing
+decimal
 
 : loc  \ "name"                 LOCATE
    h' dup >r 1- c@ 8 lshift

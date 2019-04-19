@@ -616,6 +616,22 @@ void tiffForthWID (void) {
     PushNum(p);
 }
 
+void tiffCOLD(void) {
+    VMpor();
+    uint32_t PC = 0;
+    while (1) {
+        PC = VMstep(FetchCell(PC), 0) << 2;
+    }
+}
+void tiffSAFE(void) {
+    VMpor();
+    uint32_t PC = 4;
+    VMstep(0, 0);   // skip 1st instruction
+    while (1) {
+        PC = VMstep(FetchCell(PC), 0) << 2;
+    }
+}
+
 
 int keywords = 0;                       // # of keywords added at startup
 typedef void (*VoidFn)();
@@ -686,6 +702,8 @@ void LoadKeywords(void) {               // populate the list of gator brain func
     AddKeyword("theme=color", TiffColorTheme);
 
     AddKeyword("stats",   tiffSTATS);
+    AddKeyword("cold",    tiffCOLD);
+    AddKeyword("safe",    tiffSAFE);
     AddKeyword(".opcodes", ListOpcodeCounts);
     AddKeyword(".profile", ListProfile);
     AddKeyword("+cpu",    tiffCPUon);

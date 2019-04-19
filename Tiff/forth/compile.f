@@ -12,7 +12,7 @@
 \ programming procedures rather than go into the physics of over-programming.
 
 : ROM!  \ n addr --
-   dup ROMsize - -if: drop ! exit |     \ internal ROM: host stores, target throws -20
+   dup ROMsize - |-if drop ! exit |     \ internal ROM: host stores, target throws -20
    drop SPI!                            \ external ROM
 ;
 : ROMC!  \ c addr --
@@ -124,9 +124,9 @@ defer NewGroup
 
 hex
 : HardLit  \ n --                       \ compile a hard literal
-   dup >r -if: negate |                 \ u
-   1FFFFFF invert 2* over and if        \ too wide
-      r> drop   dup 18 rshift  op_lit Explicit   \ upper part
+   dup >r -if: negate |                 \ |n| | n
+   1FFFFFF invert 2* over and  if       \ compile unsigned long
+      drop r>  dup 18 rshift  op_lit Explicit   \ upper part
       FFFFFF and  op_litx Explicit      \ lower part
       exit
    then
@@ -148,7 +148,7 @@ hex
 :noname \ NewGroup  \ --                \ finish the group and start a new one
    FlushLit                             \ if a literal is pending, compile it
    c_slot c@
-   15 over - -if: 2drop exit |          \ already at first slot
+   15 over - |-if 2drop exit |          \ already at first slot
    drop if
       op_no: Implicit                   \ skip unused slots
    then

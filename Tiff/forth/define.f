@@ -92,6 +92,7 @@ decimal
    alignc  NewGroup  cp @  ]
 ;
 
+
 \ Now that Tiff's : and ; are hidden, only Forth XTs will be used.
 \ Replace Tiff XTs with equivalent Forth XTs.
 

@@ -20,13 +20,13 @@ uint32_t OpcodeCount[64];               // static instruction count
 
 static char names[64][6] = {
     ".",     "dup",  "exit",  "+",    "user", "0<",   "r>",  "2/",
-    "ifc:",  "1+",   "swap",  "-",    "?",    "c!+",  "c@+", "u2/",
+    "ifc:",  "1+",   "swap",  "?",    "?",    "c!+",  "c@+", "u2/",
     "_",     "2+",   "ifz:",  "jmp",  "?",    "w!+",  "w@+", "and",
     "?",     "litx", ">r",    "call", "?",    "0=",   "w@",  "xor",
     "rept",  "4+",   "over",  "c+",   "?",    "!+",   "@+",  "2*",
     "-rept", "?",    "rp",    "drop", "?",    "rp!",  "@",   "2*c",
     "-if:",  "?",    "sp",    "@as",  "?",    "sp!",  "c@",  "port",
-    "+if",   "lit",  "up",    "!as",  "?",    "up!",  "r@",  "com"
+    "?",     "lit",  "up",    "!as",  "?",    "up!",  "r@",  "com"
 };
 
 char * OpName(unsigned int opcode) {
@@ -681,7 +681,6 @@ void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     AddImplicit(opNOP       , "nop");
     AddImplicit(opDUP       , "dup");
     AddImplicit(opADD       , "+");
-    AddImplicit(opSUB       , "-");
     AddImplicit(opADDC      , "c+");
     AddImplicit(opRfetch    , "r@");
     AddImplicit(opAND       , "and");
