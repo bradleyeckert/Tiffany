@@ -27,8 +27,9 @@
   }
 #elif _WIN32
 #include <sys/time.h>
+#include <windows.h>
 #include <conio.h>
-static int tiffKEYQ (void) { return kbhit(); }
+static int tiffKEYQ (void) { Sleep(1); return kbhit(); }
 static int tiffEKEY (void) { return getch(); }
 #else
 #error Unknown OS for console I/O

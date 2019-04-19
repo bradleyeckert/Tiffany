@@ -9,6 +9,7 @@
 #include <sys/select.h>
 #include <termios.h>
 #elif _WIN32
+#include <windows.h>
 #include <conio.h>
 #endif // __linux__
 
@@ -35,52 +36,57 @@ Built-in functions:
 // Apparently, Windows getch does this switchover for us.
 // Thanks to ncurses for providing a way to switch modes.
 
+// However: When in RAW mode, EMIT doesn't output anything until cooked mode resumes.
+
 struct termios orig_termios;
 int isRawMode=0;
 
 void CookedMode() {
     if (isRawMode) {
-        tcsetattr(0, TCSANOW, &orig_termios);
-        isRawMode = 0;
+        termios term;
+        tcgetattr(0, &term);
+        term.c_lflag |= ICANON | ECHO;
+        tcsetattr(0, TCSANOW, &term);
     }
 }
 
 void RawMode() {
-    struct termios new_termios;
-
     if (!isRawMode) {
         isRawMode = 1;
-        /* take two copies - one for now, one for later */
-        tcgetattr(0, &orig_termios);
-        memcpy(&new_termios, &orig_termios, sizeof(new_termios));
-
-        /* register cleanup handler, and set the new terminal mode */
-        atexit(CookedMode); // in case BYE executes while in raw mode
-        cfmakeraw(&new_termios);
-        tcsetattr(0, TCSANOW, &new_termios);
+        termios term;
+        tcgetattr(0, &term);
+        term.c_lflag &= ~(ICANON | ECHO); // Disable echo as well
+        tcsetattr(0, TCSANOW, &term);
     }
 }
 
 uint32_t tiffKEYQ(uint32_t dummy)
 {
     RawMode();
-    struct timeval tv = { 0L, 0L };
-    fd_set fds;
-    FD_ZERO(&fds);
-    FD_SET(0, &fds);
-    return select(1, &fds, NULL, NULL, &tv);
+    int byteswaiting;
+    ioctl(0, FIONREAD, &byteswaiting);
+    return byteswaiting;
 }
 
 uint32_t tiffEKEY(uint32_t dummy)
-{
-    RawMode();
-    int r;
-    unsigned char c;
-    if ((r = read(0, &c, sizeof(c))) < 0) {
-        return r;
-    } else {
-        return c;
-    }
+{ // https://stackoverflow.com/questions/421860/capture-characters-from-standard-input-without-waiting-for-enter-to-be-pressed/912796#912796
+    char buf = 0;
+    struct termios old = {0};
+    if (tcgetattr(0, &old) < 0)
+            perror("tcsetattr()");
+    old.c_lflag &= ~ICANON;
+    old.c_lflag &= ~ECHO;
+    old.c_cc[VMIN] = 1;
+    old.c_cc[VTIME] = 0;
+    if (tcsetattr(0, TCSANOW, &old) < 0)
+            perror("tcsetattr ICANON");
+    if (read(0, &buf, 1) < 0)
+            perror ("read()");
+    old.c_lflag |= ICANON;
+    old.c_lflag |= ECHO;
+    if (tcsetattr(0, TCSADRAIN, &old) < 0)
+            perror ("tcsetattr ~ICANON");
+    return (buf);
 }
 
 #elif _WIN32
@@ -147,6 +153,7 @@ static int winFill (void) {
                 break;
         }
     }
+    Sleep(1); // 1ms delay to avoid excess CPU utilization
     return size();
 }
 

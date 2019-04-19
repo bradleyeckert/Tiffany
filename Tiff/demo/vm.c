@@ -1592,7 +1592,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 #endif // TRACEABLE
 			    T = T + 1;                              break;	// 1+
 			case opPUSH:  RDUP(T);  SDROP();            break;  // >r
-			case opSUB:
+/*			case opSUB:
 			    DX = (uint64_t)N - (uint64_t)T;
 #ifdef TRACEABLE
                 Trace(New, RidT, T, (uint32_t)DX);  New=0;
@@ -1601,6 +1601,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
                 T = (uint32_t)DX;
                 CARRY = (uint32_t)(DX>>32);
                 SNIP();	                                break;	// -
+*/
 			case opCstorePlus:    /* ( n a -- a' ) */
 			    StoreByte(N, T);
 #ifdef TRACEABLE
@@ -1617,10 +1618,10 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
                 N += 1;                                 break;  // c@+
 			case opUtwoDiv:
 #ifdef TRACEABLE
-                Trace(New, RidT, T, (unsigned) T / 2);  New=0;
                 Trace(0, RidCY, CARRY, T&1);
+                Trace(New, RidT, T, (unsigned) T / 2);  New=0;
 #endif // TRACEABLE
-			    T = T / 2;   CARRY = T&1;               break;	// u2/
+			    CARRY = T&1;  T = T / 2;                break;	// u2/
 			case opTwoPlus:
 #ifdef TRACEABLE
                 Trace(New, RidT, T, T + 2);  New=0;
@@ -1772,11 +1773,10 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 #endif // TRACEABLE
                 T = M;                                  break;  // @
             case opTwoStarC:
-                M = (T*2) | (CARRY&1);
+                M = (T << 1) | (CARRY&1);
 #ifdef TRACEABLE
-                Trace(0, RidT, T, M);
                 Trace(0, RidCY, CARRY, T>>31);
-
+                Trace(0, RidT, T, M);
 #endif // TRACEABLE
                 CARRY = T>>31;   T = M;                 break;  // 2*c
 			case opSKIPGE: if ((signed)T < 0) break;            // -if:
