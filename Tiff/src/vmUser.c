@@ -36,57 +36,52 @@ Built-in functions:
 // Apparently, Windows getch does this switchover for us.
 // Thanks to ncurses for providing a way to switch modes.
 
-// However: When in RAW mode, EMIT doesn't output anything until cooked mode resumes.
-
 struct termios orig_termios;
 int isRawMode=0;
 
 void CookedMode() {
     if (isRawMode) {
-        termios term;
-        tcgetattr(0, &term);
-        term.c_lflag |= ICANON | ECHO;
-        tcsetattr(0, TCSANOW, &term);
+        tcsetattr(0, TCSANOW, &orig_termios);
+        isRawMode = 0;
     }
 }
 
 void RawMode() {
+    struct termios new_termios;
+
     if (!isRawMode) {
         isRawMode = 1;
-        termios term;
-        tcgetattr(0, &term);
-        term.c_lflag &= ~(ICANON | ECHO); // Disable echo as well
-        tcsetattr(0, TCSANOW, &term);
+        /* take two copies - one for now, one for later */
+        tcgetattr(0, &orig_termios);
+        memcpy(&new_termios, &orig_termios, sizeof(new_termios));
+
+        /* register cleanup handler, and set the new terminal mode */
+        atexit(CookedMode); // in case BYE executes while in raw mode
+        cfmakeraw(&new_termios);
+        tcsetattr(0, TCSANOW, &new_termios);
     }
 }
 
 uint32_t tiffKEYQ(uint32_t dummy)
 {
     RawMode();
-    int byteswaiting;
-    ioctl(0, FIONREAD, &byteswaiting);
-    return byteswaiting;
+    struct timeval tv = { 0L, 0L };
+    fd_set fds;
+    FD_ZERO(&fds);
+    FD_SET(0, &fds);
+    return select(1, &fds, NULL, NULL, &tv);
 }
 
 uint32_t tiffEKEY(uint32_t dummy)
-{ // https://stackoverflow.com/questions/421860/capture-characters-from-standard-input-without-waiting-for-enter-to-be-pressed/912796#912796
-    char buf = 0;
-    struct termios old = {0};
-    if (tcgetattr(0, &old) < 0)
-            perror("tcsetattr()");
-    old.c_lflag &= ~ICANON;
-    old.c_lflag &= ~ECHO;
-    old.c_cc[VMIN] = 1;
-    old.c_cc[VTIME] = 0;
-    if (tcsetattr(0, TCSANOW, &old) < 0)
-            perror("tcsetattr ICANON");
-    if (read(0, &buf, 1) < 0)
-            perror ("read()");
-    old.c_lflag |= ICANON;
-    old.c_lflag |= ECHO;
-    if (tcsetattr(0, TCSADRAIN, &old) < 0)
-            perror ("tcsetattr ~ICANON");
-    return (buf);
+{
+    RawMode();
+    int r;
+    unsigned char c;
+    if ((r = read(0, &c, sizeof(c))) < 0) {
+        return r;
+    } else {
+        return c;
+    }
 }
 
 #elif _WIN32
@@ -223,6 +218,10 @@ uint32_t tiffEMIT(uint32_t xchar) {
     while ((b = *s++)) {
         putchar(b);     // avoid printf dependency
     }                   // else use printf("%s",c);
+#ifdef __linux__
+    fflush(stdout);
+    usleep(1000);
+#endif
     return 0;
 }
 static uint32_t tiffQEMIT(uint32_t dummy) {
