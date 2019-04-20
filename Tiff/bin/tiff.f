@@ -4,8 +4,6 @@
 \ System variables are already defined in Tiff because it uses them internally.
 \ See `config.h`.
 
-.( Tiff.f: )
-
 4 equ DumpColumns                       \ Output chars ~ Columns * 13 + 5
 
 defer coldboot
@@ -18,6 +16,9 @@ include ../forth/core.f
 include ../forth/timing.f
 include ../forth/numio.f                \ numeric I/O
 include ../forth/flash.f                \ SPI flash programming
+
+.( Internal ROM minimum bytes = ) cp ? cr
+.( Tiff.f: )
 
 0 [if] \ not using QUIT yet
 
