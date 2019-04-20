@@ -38,7 +38,7 @@ extern uint32_t ProfileCounts[ROMsize];     // profiler data
 extern uint32_t OpCounter[64];              // dynamic instruction count
 
 // used by flash.c to simulate SPI flash
-extern uint32_t ROM[SPIflashSize];
+extern uint32_t ROM[(SPIflashBlocks<<10)];
 
 // Defined in vmUser.c, used by the debugger in accessvm.c.
 uint32_t UserFunction (uint32_t T, uint32_t N, int fn );

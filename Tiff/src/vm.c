@@ -11,14 +11,14 @@
 //`0`#define EmbeddedROM
 //`0`#define ROMsize `3`
 //`0`#define RAMsize `4`
-//`0`#define SPIflashSize `9`
+//`0`#define SPIflashBlocks `9`
 
 int tiffIOR; // global errorcode
 
 static int exception = 0;  // local errorcode
 
 //`0`static const uint32_t IROM[`2`] = {`5`};
-//`0`uint32_t FetchROM(uint32_t addr) {
+//`0`static uint32_t FetchROM(uint32_t addr) {
 //`0`  if (addr < `2`) {
 //`0`    return IROM[addr];
 //`0`  }
@@ -62,7 +62,7 @@ static int exception = 0;  // local errorcode
 
     static int New; // New trace type, used to mark new sections of trace
     static uint32_t RAM[RAMsize];
-    uint32_t ROM[SPIflashSize];
+    uint32_t ROM[(SPIflashBlocks<<10)];
     uint32_t AXI[AXIRAMsize];
 
     static void SDUP(void)  {
@@ -101,7 +101,7 @@ static int exception = 0;  // local errorcode
     static uint32_t CARRY;  static uint32_t DebugReg;
 
     static uint32_t RAM[RAMsize];
-    uint32_t ROM[SPIflashSize];
+    uint32_t ROM[(SPIflashBlocks<<10)];
     uint32_t AXI[AXIRAMsize];
 
     static void SDUP(void)  { RAM[--SP & (RAMsize-1)] = N;  N = T; }
@@ -114,19 +114,21 @@ static int exception = 0;  // local errorcode
 
 // Generic fetch from ROM or RAM: ROM is at the bottom, RAM is in middle, ROM is at top
 static uint32_t FetchX (uint32_t addr, int shift, int mask) {
-    if (addr >= (SPIflashSize+AXIRAMsize)) {
+    if (addr >= ((SPIflashBlocks<<10)+AXIRAMsize)) {
         return 0;
     }
     if (addr < ROMsize) {
 #ifdef EmbeddedROM
-        return (IROM[addr] >> shift) & mask;
+        return (FetchROM(addr) >> shift) & mask;
 #else
+//      printf("@c[%X]=%X ", addr, ROM[addr]);
         return (ROM[addr] >> shift) & mask;
 #endif // EmbeddedROM
     } else {
         if (addr < (ROMsize + RAMsize)) {
+//          printf("@[%X]=%X ", addr, ROM[addr]);
             return (RAM[addr-ROMsize] >> shift) & mask;
-        } else if (addr <= SPIflashSize) {
+        } else if (addr <= (SPIflashBlocks<<10)) {
             return (ROM[addr] >> shift) & mask;
         } else {
             return 0;
@@ -148,6 +150,7 @@ static void StoreX (uint32_t addr, uint32_t data, int shift, int mask) {
 #else
     RAM[addr] = ((data & mask) << shift) | temp;
 #endif // TRACEABLE
+//  printf("![%X]=%X ", addr, RAM[addr]);
 }
 
 /// EXPORTS ////////////////////////////////////////////////////////////////////
@@ -157,7 +160,7 @@ static void StoreX (uint32_t addr, uint32_t data, int shift, int mask) {
 int WriteROM(uint32_t data, uint32_t address) {
     uint32_t addr = address / 4;
     if (address & 3) return -23;        // alignment problem
-    if (addr < SPIflashSize) {          // always write ROM data
+    if (addr < (SPIflashBlocks<<10)) {          // always write ROM data
 // An embedded system may want to protect certain ranges
         ROM[addr] = data;
     } else {
@@ -172,7 +175,7 @@ int WriteROM(uint32_t data, uint32_t address) {
 int WriteROM(uint32_t data, uint32_t address) {
     uint32_t addr = address / 4;
     if (address & 3) return -23;        // alignment problem
-    if (addr < SPIflashSize) {          // always write ROM data
+    if (addr < (SPIflashBlocks<<10)) {          // always write ROM data
         ROM[addr] = data;
     } else {
         return -9;                      // Address out of range
@@ -298,7 +301,7 @@ void VMpor(void) {  // EXPORTED
     T=0;  N=0;  DebugReg = 0;
     memset(RAM,  0, RAMsize*sizeof(uint32_t));       // clear RAM
 #ifdef EmbeddedROM
-    memset(ROM, -1, SPIflashSize*sizeof(uint32_t));  // clear ROM
+    memset(ROM, -1, (SPIflashBlocks<<10)*sizeof(uint32_t));  // clear ROM
 #endif // EmbeddedROM
 }
 
@@ -642,11 +645,11 @@ GetPointer:     M = T + (M + ROMsize)*4;
 	} while (slot>=0);
 ex:
 #ifdef EmbeddedROM
-    if (PC >= SPIflashSize) {
+    if (PC >= (SPIflashBlocks<<10)) {
         exception = -9;                 // Invalid memory address
     }
 #else                                   // ignore PC=DEADC0DC
-    if ((PC >= SPIflashSize) && (PC != 0x37AB7037)) {
+    if ((PC >= (SPIflashBlocks<<10)) && (PC != 0x37AB7037)) {
         exception = -9;                 // Invalid memory address
     }
 #endif // EmbeddedROM

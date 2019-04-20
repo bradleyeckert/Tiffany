@@ -57,7 +57,7 @@ void ReloadFile (void) {                // Reload known ROM image file
 // rom image may include all of memory space: ROM, RAM, and SPI flash
 // When output, it's read into the rom image, then processed.
 
-uint32_t rom[SPIflashSize*sizeof(uint32_t)];
+uint32_t rom[(SPIflashBlocks<<10)*sizeof(uint32_t)];
 
 int32_t ROMwords (uint32_t size) {     // read ROM image to local memory
     uint32_t i;
@@ -175,7 +175,7 @@ case 8:                                 // 8: VHDL syntax internal ROM dump
     }
     fprintf(ofp, "when others => ROMdata <= x""FFFFFFFF"";\n");
     break;
-case 9: fprintf(ofp, "%d", SPIflashSize);  // 9: words in SPI flash space
+case 9: fprintf(ofp, "%d", SPIflashBlocks);  // 9: 4K sectors in SPI flash space
     break;
 case 10:                                // 10: C syntax stepping
     MakeTestVectors(ofp, PopNum(), 1);
@@ -213,7 +213,7 @@ Use the -b directive to load it instead of (or before) a Forth file.
 
 void SaveImage (char *filename) {
     WipeTIB();                          // don't need to see TIB contents
-    int32_t length = ROMwords(SPIflashSize); // end of ROM data
+    int32_t length = ROMwords(SPIflashBlocks<<10); // end of ROM data
     FILE *ofp;
     ofp = fopen(filename, "wb");
     if (ofp == NULL) {

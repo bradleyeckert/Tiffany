@@ -66,6 +66,25 @@ include ../forth/double.f		        \ double math
    quit
 ;
 
+\ http://home.iae.nl/users/mhx/monsterbench.html
+\ A blast from the past, about as fast as the PCs of the time.
+\ The VM on a Core-i7 simulates 100-200 MHz PCs of the 1997 era.
+\ 2019 computers have single-thread performance 20x of those.
+
+: FIB ( x -- y )
+	DUP 2 > IF DUP  1- RECURSE
+		   SWAP 2 - RECURSE +  EXIT
+	     THEN
+	DROP 1 ;
+
+: bench  \ --                           \ benchmark
+   counter >r
+   ( 40 ) 30  fib drop \ note run-time limit in Tiff. Use cold.
+   ." 30 fib executes in "
+   counter r> - 0 <# # [char] . hold #s #> type ."  msec "
+;
+
+
 include ../forth/end.f                  \ finish the app
 
 cp @  dup    16 !                       \ resolve internal ROM length
@@ -82,18 +101,11 @@ make ../src/flash.c ../demo/flash.c     \ flash.c is usable as a template
 
 \ make ../templates/app.c ../testbench/vm.c  \ C version for testbench
 \ 100 make ../templates/test_main.c ../testbench/test.c
-
-\ Include the rest of Forth for testing, etc.
-
-romsize ramsize + cp !  \ uncomment to compile code to flash region (not internal ROM)
-
 \ ------------------------------------------------------------------------------
+
 \ TEST STUFF: The demo doesn't use anything after this...
 
-\ Here's where we reposition CP to run code out of SPI flash.
-\ Put the less time-critical parts of your application here.
-\ Omitting the SPI flash should break the interpreter but nothing else.
-\ This is also necessary because the Forth can't modify internal ROM at run time.
+romsize ramsize + cp !  \ uncomment to compile code to flash region (not internal ROM)
 
 
 cp @ ," DataCodeHead" 1+
@@ -102,10 +114,9 @@ cp @ ," DataCodeHead" 1+
    3 0 do                               \ even it's not ANS
       i c_scope c!
       dup i cells + 4 type
-      ." : " unused . cr
+      ." : " unused . cr                \ unused is a weird, depends on memory usage
    loop  drop  ram
 ;
-
 
 \ Some test words
 

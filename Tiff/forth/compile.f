@@ -82,7 +82,7 @@ tib             equ tib
 pad             equ pad                 \ 6.2.2000
 RAMsize         equ RAMsize
 ROMsize         equ ROMsize
-SPIflashSize    equ SPIflashSize
+SPIflashBlocks  equ SPIflashBlocks
 
 \ Define a compiler
 \ char params:  c_colondef c_litpend c_slot c_called

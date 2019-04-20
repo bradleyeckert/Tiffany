@@ -509,17 +509,10 @@ void AddWordlistHead (uint32_t wid, char *name) {
 
 }
 
-/*
-The WIDLIST is a forward linked list that figures out the end of its list at
-run time. It traverses forward from fixed address HeadPointerOrigin+8 to find
-the end of the list. This is the cell to resolve when a wordlist is added.
-
-*/
-
 // Initialize ALL variables in the terminal task
 void InitializeTermTCB (void) {
     VMpor();                            // clear VM and RAM
-    memset(ROM, -1, SPIflashSize*sizeof(uint32_t));  // clear ROM
+    memset(ROM, -1, (SPIflashBlocks<<10)*sizeof(uint32_t));  // clear ROM
     initFilelist();                     // clear list of filenames used by LOCATE
     StoreCell(HeadPointerOrigin+4, HP); // leave cell for filelist
     StoreCell(0, CP);

@@ -606,7 +606,7 @@ void tiffSTATS (void) {
     uint32_t cp = FetchCell(CP);
     uint32_t dp = FetchCell(DP);
     uint32_t hp = FetchCell(HP);
-    printf("\nMem Sizes: ROM=%X, RAM=%X, SPI=%X", ROMsize*4, RAMsize*4, SPIflashSize*4);
+    printf("\nMem Sizes: ROM=%X, RAM=%X, SPI=%X", ROMsize*4, RAMsize*4, SPIflashBlocks*4096);
     printf("\nCP=%X, DP=%X/%X, HP=%X/%X", cp, dp, ROMsize*4, hp, (ROMsize+RAMsize)*4);
     printed = 1;
 }
@@ -783,7 +783,7 @@ void LoadKeywords(void) {               // populate the list of gator brain func
 
     AddEquate ("RAMsize", RAMsize*4);
     AddEquate ("ROMsize", ROMsize*4);
-    AddEquate ("SPIflashSize", SPIflashSize*4);
+    AddEquate ("SPIflashBlocks", SPIflashBlocks);
 
     // CPU opcode names
     AddEquate ("op_dup",   opDUP);

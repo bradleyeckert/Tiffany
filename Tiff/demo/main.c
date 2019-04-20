@@ -4,8 +4,8 @@
 int main() {
     uint32_t PC = 0;
     VMpor();
-    while (PC < 32768) {
-        uint32_t IR = FetchROM(PC);
-        PC = VMstep(IR, 0);
+    while (1) {
+        uint32_t IR = FetchCell(PC);
+        PC = VMstep(IR, 0) << 2;
     }
 }

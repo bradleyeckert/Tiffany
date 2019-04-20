@@ -15,15 +15,15 @@
 //
 #define RAMsize 512
 //
-#define SPIflashSize 65536
+#define SPIflashBlocks 256
 
 int tiffIOR; // global errorcode
 
 static int exception = 0;  // local errorcode
 
 //
-static const uint32_t IROM[6137] = {
-/*0000*/ 0x4C0009AD, 0x4C0009B0, 0x4C000247, 0x284C22BC, 0x000026CC, 0xFC90C240,
+static const uint32_t IROM[6148] = {
+/*0000*/ 0x4C0009D3, 0x4C0009D6, 0x4C000247, 0x8AC644CE, 0x00002764, 0xFC90C240,
 /*0006*/ 0x96B09000, 0x36B09000, 0x56B09000, 0x05AB8318, 0x96B09000, 0x05AD8318,
 /*000C*/ 0x36B09000, 0xFC909000, 0xFC9FC240, 0xFE1FC240, 0x9E709000, 0x68A18A08,
 /*0012*/ 0x29A28608, 0x2A209000, 0x2AB09000, 0x28629A28, 0x69A09000, 0x18628628,
@@ -426,24 +426,24 @@ static const uint32_t IROM[6137] = {
 /*0960*/ 0x28628640, 0x6C0000A7, 0x2AB28614, 0x49300965, 0x6C000035, 0x09000000,
 /*0966*/ 0x69B0094E, 0x1930095B, 0x6C000067, 0x79614D1A, 0x65687420, 0x726F4620,
 /*096C*/ 0x62206874, 0x69772065, 0x79206874, 0xFF21756F, 0x39B00132, 0x6C00014B,
-/*0972*/ 0x4C0006EE, 0x00000004, 0x00008204, 0x00008200, 0x000081F0, 0x00008100,
-/*0978*/ 0x00000000, 0x00000005, 0x00008218, 0x0000000A, 0x00005FC8, 0x000025CC,
-/*097E*/ 0x00008354, 0x00000000, 0x00000004, 0x0000822C, 0x00008284, 0x000004F8,
-/*0984*/ 0x00000001, 0x00000000, 0x00000002, 0x0000823C, 0x0000828C, 0x00000000,
-/*098A*/ 0x00000002, 0x00008248, 0x001A0001, 0x00000000, 0x00000004, 0x0000825C,
-/*0990*/ 0x00005008, 0x00130003, 0x00008284, 0x00000000, 0x00000002, 0x00008284,
-/*0996*/ 0x00005FB8, 0x00000000, 0x00000000, 0xE40025CC, 0x9A28899C, 0x9C329A28,
-/*099C*/ 0x18140000, 0x493009A0, 0x6A619B72, 0x4C00099A, 0x1B908288, 0x96B40000,
-/*09A2*/ 0xE4008200, 0xF7908100, 0xD79081EC, 0xB7908288, 0xB9A40000, 0xE4010000,
-/*09A8*/ 0xE4008220, 0x96B40000, 0xE4018000, 0xE400821C, 0x96B09000, 0x6C000999,
-/*09AE*/ 0x6C000968, 0x4C000101, 0x6C000999, 0x6C000968, 0x4C000101, 0xFFFFFFFF,
-/*09B4*/ 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
-/*09BA*/ 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
-/*09C0*/ 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
-/*09C6*/ 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
-/*09CC*/ 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
-/*09D2*/ 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
-/*09D8*/ 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
+/*0972*/ 0x4C0006EE, 0x07900002, 0x6C000071, 0x4930097C, 0x07F27F40, 0x6C000973,
+/*0978*/ 0x2B900002, 0xFC90D000, 0x6C000973, 0x0C240000, 0xAF900001, 0x09000000,
+/*097E*/ 0x6C000122, 0x6B90001E, 0x6C000973, 0xADB00067, 0x20303313, 0x20626966,
+/*0984*/ 0x63657865, 0x73657475, 0x206E6920, 0x39B00132, 0x6C000122, 0x1BF243E4,
+/*098A*/ 0x6C000182, 0x6C000189, 0xE400002E, 0x6C000185, 0x6C000191, 0x6C000199,
+/*0990*/ 0x6C000132, 0x6C000067, 0x736D2006, 0xFF206365, 0x39300132, 0x00000004,
+/*0996*/ 0x00008204, 0x00008200, 0x000081F0, 0x00008100, 0x00000000, 0x00000005,
+/*099C*/ 0x00008218, 0x0000000A, 0x00005FF4, 0x00002654, 0x00008354, 0x00000000,
+/*09A2*/ 0x00000004, 0x0000822C, 0x00008284, 0x000004F8, 0x00000001, 0x00000000,
+/*09A8*/ 0x00000002, 0x0000823C, 0x0000828C, 0x00000000, 0x00000002, 0x00008248,
+/*09AE*/ 0x001A0001, 0x00000000, 0x00000002, 0x00008254, 0x0000002E, 0x00000000,
+/*09B4*/ 0x00000004, 0x0000825C, 0x00005008, 0x00130003, 0x00008284, 0x00000000,
+/*09BA*/ 0x00000002, 0x00008284, 0x00005FE4, 0x00000000, 0x00000000, 0xE4002654,
+/*09C0*/ 0x9A28899C, 0x9C329A28, 0x18140000, 0x493009C6, 0x6A619B72, 0x4C0009C0,
+/*09C6*/ 0x1B908288, 0x96B40000, 0xE4008200, 0xF7908100, 0xD79081EC, 0xB7908288,
+/*09CC*/ 0xB9A40000, 0xE4010000, 0xE4008220, 0x96B40000, 0xE4018000, 0xE400821C,
+/*09D2*/ 0x96B09000, 0x6C0009BF, 0x6C000968, 0x4C000101, 0x6C0009BF, 0x6C000968,
+/*09D8*/ 0x4C000101, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
 /*09DE*/ 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
 /*09E4*/ 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
 /*09EA*/ 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
@@ -793,8 +793,8 @@ static const uint32_t IROM[6137] = {
 /*11FA*/ 0x5200123C, 0x00001238, 0xFF0047D4, 0x64617003, 0x00000800, 0x05FF0000,
 /*1200*/ 0x5300123C, 0x00001238, 0xFF0047F0, 0x4D415207, 0x657A6973, 0x00008000,
 /*1206*/ 0x05FF0000, 0x5400123C, 0x00001238, 0xFF004808, 0x4D4F5207, 0x657A6973,
-/*120C*/ 0x00040000, 0x05FF0000, 0x5500123C, 0x00001238, 0xFF004824, 0x4950530C,
-/*1212*/ 0x73616C66, 0x7A695368, 0xFFFFFF65, 0x05FF0001, 0x5A00122C, 0x00000A40,
+/*120C*/ 0x00000100, 0x05FF0000, 0x5500123C, 0x00001238, 0xFF004824, 0x4950530E,
+/*1212*/ 0x73616C66, 0x6F6C4268, 0xFF736B63, 0x05FF0001, 0x5A00122C, 0x00000A40,
 /*1218*/ 0xFF004840, 0x756C46C8, 0x694C6873, 0xFFFFFF74, 0x05FF0001, 0x5B00122C,
 /*121E*/ 0x00000A44, 0xFF004860, 0x77654EC8, 0x756F7247, 0xFFFFFF70, 0x05FF0007,
 /*1224*/ 0x5D00122C, 0x00000A48, 0xFF00487C, 0x656C43C7, 0x52497261, 0x05FF0006,
@@ -1017,7 +1017,7 @@ static const uint32_t IROM[6137] = {
 /*173A*/ 0x6D6F63C7, 0x65726170, 0x11FF0002, 0x1500122C, 0x00002380, 0x00005CE4,
 /*1740*/ 0x616C62C5, 0xFFFF6B6E, 0x11FF0007, 0x1700122C, 0x00002388, 0x00005CFC,
 /*1746*/ 0x72742DC9, 0x696C6961, 0xFFFF676E, 0x11FF0016, 0x2100122C, 0x000023A4,
-/*174C*/ 0x00005D14, 0x616573C6, 0xFF686372, 0x00005F94, 0x2F2E2E11, 0x74726F66,
+/*174C*/ 0x00005D14, 0x616573C6, 0xFF686372, 0x00005FC0, 0x2F2E2E11, 0x74726F66,
 /*1752*/ 0x6F642F68, 0x656C6275, 0xFFFF662E, 0x12FF0001, 0x03001228, 0x000023FC,
 /*1758*/ 0x00005D30, 0x733E64C3, 0x12FF0004, 0x0400122C, 0x00002400, 0x00005D60,
 /*175E*/ 0x6F7232C4, 0xFFFFFF74, 0x12FF0002, 0x0500122C, 0x00002410, 0x00005D74,
@@ -1042,14 +1042,16 @@ static const uint32_t IROM[6137] = {
 /*17D0*/ 0x12FF000D, 0x3E00122C, 0x00002538, 0x00005F34, 0xFF2A74C2, 0x12FF000B,
 /*17D6*/ 0x4800122C, 0x0000256C, 0x00005F4C, 0xFF2F74C2, 0x12FF0002, 0x5200122C,
 /*17DC*/ 0x00002598, 0x00005F60, 0x2F2A6DC3, 0x00FF000B, 0x4000122C, 0x000025A0,
-/*17E2*/ 0x00005F74, 0x69616DC4, 0xFFFFFF6E, 0xFFFFFFFF, 0x2F2E2E0E, 0x74726F66,
-/*17E8*/ 0x6E652F68, 0xFF662E64, 0x000025CC, 0x13FFFFFF, 0x0300123C, 0x00001238,
-/*17EE*/ 0x00005F88, 0x6164490A, 0x61546174, 0xFF656C62, 0x13FF0014, 0x0600122C,
-/*17F4*/ 0x00002664, 0x00005FB8, 0x696E694A, 0x6C616974, 0xFF657A69};
+/*17E2*/ 0x00005F74, 0x69616DC4, 0xFFFFFF6E, 0x00FF000B, 0x4A00122C, 0x000025CC,
+/*17E8*/ 0x00005F88, 0x424946C3, 0x00FF0017, 0x5000122C, 0x000025F8, 0x00005FA0,
+/*17EE*/ 0x6E6562C5, 0xFFFF6863, 0xFFFFFFFF, 0x2F2E2E0E, 0x74726F66, 0x6E652F68,
+/*17F4*/ 0xFF662E64, 0x00002654, 0x13FFFFFF, 0x0300123C, 0x00001238, 0x00005FB4,
+/*17FA*/ 0x6164490A, 0x61546174, 0xFF656C62, 0x13FF0014, 0x0600122C, 0x000026FC,
+/*1800*/ 0x00005FE4, 0x696E694A, 0x6C616974, 0xFF657A69};
 //
-uint32_t FetchROM(uint32_t addr) {
+static uint32_t FetchROM(uint32_t addr) {
 //
-  if (addr < 6137) {
+  if (addr < 6148) {
 //
     return IROM[addr];
 //
@@ -1096,7 +1098,7 @@ uint32_t FetchROM(uint32_t addr) {
 
     static int New; // New trace type, used to mark new sections of trace
     static uint32_t RAM[RAMsize];
-    uint32_t ROM[SPIflashSize];
+    uint32_t ROM[(SPIflashBlocks<<10)];
     uint32_t AXI[AXIRAMsize];
 
     static void SDUP(void)  {
@@ -1135,7 +1137,7 @@ uint32_t FetchROM(uint32_t addr) {
     static uint32_t CARRY;  static uint32_t DebugReg;
 
     static uint32_t RAM[RAMsize];
-    uint32_t ROM[SPIflashSize];
+    uint32_t ROM[(SPIflashBlocks<<10)];
     uint32_t AXI[AXIRAMsize];
 
     static void SDUP(void)  { RAM[--SP & (RAMsize-1)] = N;  N = T; }
@@ -1148,19 +1150,21 @@ uint32_t FetchROM(uint32_t addr) {
 
 // Generic fetch from ROM or RAM: ROM is at the bottom, RAM is in middle, ROM is at top
 static uint32_t FetchX (uint32_t addr, int shift, int mask) {
-    if (addr >= (SPIflashSize+AXIRAMsize)) {
+    if (addr >= ((SPIflashBlocks<<10)+AXIRAMsize)) {
         return 0;
     }
     if (addr < ROMsize) {
 #ifdef EmbeddedROM
-        return (IROM[addr] >> shift) & mask;
+        return (FetchROM(addr) >> shift) & mask;
 #else
+//      printf("@c[%X]=%X ", addr, ROM[addr]);
         return (ROM[addr] >> shift) & mask;
 #endif // EmbeddedROM
     } else {
         if (addr < (ROMsize + RAMsize)) {
+//          printf("@[%X]=%X ", addr, ROM[addr]);
             return (RAM[addr-ROMsize] >> shift) & mask;
-        } else if (addr <= SPIflashSize) {
+        } else if (addr <= (SPIflashBlocks<<10)) {
             return (ROM[addr] >> shift) & mask;
         } else {
             return 0;
@@ -1182,6 +1186,7 @@ static void StoreX (uint32_t addr, uint32_t data, int shift, int mask) {
 #else
     RAM[addr] = ((data & mask) << shift) | temp;
 #endif // TRACEABLE
+//  printf("![%X]=%X ", addr, RAM[addr]);
 }
 
 /// EXPORTS ////////////////////////////////////////////////////////////////////
@@ -1191,7 +1196,7 @@ static void StoreX (uint32_t addr, uint32_t data, int shift, int mask) {
 int WriteROM(uint32_t data, uint32_t address) {
     uint32_t addr = address / 4;
     if (address & 3) return -23;        // alignment problem
-    if (addr < SPIflashSize) {          // always write ROM data
+    if (addr < (SPIflashBlocks<<10)) {          // always write ROM data
 // An embedded system may want to protect certain ranges
         ROM[addr] = data;
     } else {
@@ -1206,7 +1211,7 @@ int WriteROM(uint32_t data, uint32_t address) {
 int WriteROM(uint32_t data, uint32_t address) {
     uint32_t addr = address / 4;
     if (address & 3) return -23;        // alignment problem
-    if (addr < SPIflashSize) {          // always write ROM data
+    if (addr < (SPIflashBlocks<<10)) {          // always write ROM data
         ROM[addr] = data;
     } else {
         return -9;                      // Address out of range
@@ -1332,7 +1337,7 @@ void VMpor(void) {  // EXPORTED
     T=0;  N=0;  DebugReg = 0;
     memset(RAM,  0, RAMsize*sizeof(uint32_t));       // clear RAM
 #ifdef EmbeddedROM
-    memset(ROM, -1, SPIflashSize*sizeof(uint32_t));  // clear ROM
+    memset(ROM, -1, (SPIflashBlocks<<10)*sizeof(uint32_t));  // clear ROM
 #endif // EmbeddedROM
 }
 
@@ -1676,11 +1681,11 @@ GetPointer:     M = T + (M + ROMsize)*4;
 	} while (slot>=0);
 ex:
 #ifdef EmbeddedROM
-    if (PC >= SPIflashSize) {
+    if (PC >= (SPIflashBlocks<<10)) {
         exception = -9;                 // Invalid memory address
     }
 #else                                   // ignore PC=DEADC0DC
-    if ((PC >= SPIflashSize) && (PC != 0x37AB7037)) {
+    if ((PC >= (SPIflashBlocks<<10)) && (PC != 0x37AB7037)) {
         exception = -9;                 // Invalid memory address
     }
 #endif // EmbeddedROM

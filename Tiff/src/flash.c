@@ -7,8 +7,8 @@
    Exports: SPIflashXfer
 */
 
-//`0`#define SPIflashSize `9`
-//`0`extern uint32_t ROM[SPIflashSize];
+//`0`#define SPIflashBlocks `9`
+//`0`extern uint32_t ROM[SPIflashBlocks<<10];
 
 /*
 | Name   | Hex | Command                           |
@@ -26,7 +26,7 @@ static int Erase4K(uint32_t address) {
 	uint32_t addr = address / 4;
 	int i;
 	if (address & 3) return -23;        // alignment problem
-	if (addr > (SPIflashSize-1024)) return -9;   // out of range
+	if (addr > ((SPIflashBlocks<<10)-1024)) return -9;   // out of range
 	for (i=0; i<1024; i++) {            // erase 4KB sector
 		ROM[addr+i] = 0xFFFFFFFF;
 	}
@@ -65,12 +65,12 @@ uint32_t SPIflashXfer (uint32_t n, uint32_t dummy) {    /*EXPORT*/
 				case 1: break;							// wait for trailing CS
 				case 2: cout = wen;   state=1;  break;  // status = WEN, never busy
 				case 3: cout = 0xAA;  state++;  break;	// 3-byte RDJDID
-				case 4: cout = 0xFF & (SPIflashSize >> 18); state++;  break;
-				case 5: cout = 0xFF & (SPIflashSize >> 10); state=1;  break;
+				case 4: cout = 0xFF & (SPIflashBlocks>>8);    state++;  break;
+				case 5: cout = 0xFF & SPIflashBlocks;         state=1;  break;
 				case 6: addr = cin<<16;  					state++;  break;
 				case 7: addr += cin<<8;  					state++;  break;
 				case 8: addr += cin;
-                    if (addr < SPIflashSize*4) {
+                    if (addr < (SPIflashBlocks<<12)) {
                         switch (command) {
                             case 0x20: if (wen) tiffIOR = Erase4K(addr); // erase sector
                                 wen=0; /* 4K erase */		state=1;  break;
