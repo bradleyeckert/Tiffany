@@ -1,9 +1,0 @@
-
-Add a simple version of tiff.f (maybe testbench.f) that has some test code.
-   Compile to ROM location 0 instructions that exercise one opcode at a time until
-   all of them have been hit at least once. 
-
-Add a QUIT loop.
-
-Tiff's version of literal uses long literals for IMM>1FFFFFF, should be 3FFFFFF.
-
