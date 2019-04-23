@@ -147,6 +147,7 @@
       r> 3drop exit
    then  3drop
 ;
+: erase     0 fill ;                    \ 6.2.1350  --
 
 \ Software versions of math functions
 \ May be replaced by user functions.

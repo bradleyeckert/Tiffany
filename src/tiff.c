@@ -24,7 +24,7 @@ char name[MaxTIBsize+1];                // generic scratchpad (maybe not such a 
 char name2[MaxTIBsize+1];
 
 int tiffIOR = 0;                        // Interpret error detection when not 0
-int ShowCPU = 0;                        // Enable CPU status display
+static int ShowCPU = 0;                 // Enable CPU status display
 
 // Version of getline that converts tabs to spaces upon reading is defined here.
 // Well, not really getline. getline is a nice use case for malloc, but let's not.
@@ -500,7 +500,7 @@ static void iword_ESString (void) {     // S\"
     }
 }
 
-static uint32_t iword_Htick (void) {          // ( -- )
+static uint32_t Htick (void) {    // ( -- )
     iword_PARSENAME();   // ( addr len )
     uint32_t ht = iword_FIND();         // search for keyword in the dictionary
     if (ht) {
@@ -517,14 +517,27 @@ static uint32_t iword_Htick (void) {          // ( -- )
 }
 
 static void iword_HTICK (void) {        // h' = header tick, a primitive of '
-    PushNum(iword_Htick());
+    PushNum(Htick());
 }
 static void iword_TICK (void) {         // '
-    uint32_t ht = iword_Htick();
+    uint32_t ht = Htick();
     PushNum(FetchCell(ht-4) & 0xFFFFFF);
 }
+static void iword_DEFINED (void) {      // [DEFINED]
+    iword_PARSENAME();                  // ( addr len )
+    uint32_t ht = iword_FIND();         // search for keyword in the dictionary
+    PopNum();
+    PopNum();
+    if (ht) ht = -1;
+    PushNum(ht);
+}
+static void iword_UNDEFINED (void) {    // [UNDEFINED]
+    iword_DEFINED();
+    uint32_t flag = PopNum();
+    PushNum(~flag);
+}
 void xte_is (void) {                    // ( xt -- ) replace xte
-    uint32_t ht = iword_Htick();
+    uint32_t ht = Htick();
     uint32_t xte = FetchCell(ht-4) & ~0xFFFFFF;
     WriteROM(xte | PopNum(), ht-4);     // host gets to overwrite ROM
 }
@@ -534,7 +547,7 @@ static void iword_IS (void) {                    // patch ROM defer
     StoreROM(0xFC000000 + (PopNum() >> 2), dest);
 }
 static void iword_BracketTICK (void) {  // [']
-    uint32_t ht = iword_Htick();
+    uint32_t ht = Htick();
     Literal(FetchCell(ht-4) & 0xFFFFFF);// xte
 }
 /*
@@ -575,7 +588,7 @@ static char *LocateFilename (int id) {  // get filename from FileID
     return name+1;
 }
 static void iword_LOCATE (void) {                // locate source text
-    uint32_t ht = iword_Htick();
+    uint32_t ht = Htick();
     uint8_t fileid = FetchByte(ht-9);
     uint8_t lineLo = FetchByte(ht-5);
     uint8_t lineHi = FetchByte(ht-1);
@@ -613,7 +626,7 @@ static void iword_DASM (void) {         // disassemble range ( addr len )
     Disassemble(addr, length);
 }
 static void iword_SEE (void) {          // disassemble word
-    uint32_t ht = iword_Htick();
+    uint32_t ht = Htick();
     uint32_t addr =  FetchCell(ht-4) & 0xFFFFFF;
     uint8_t length = FetchHalf(ht-12);
     if (ht) Disassemble(addr, length);
@@ -715,107 +728,102 @@ static void ListKeywords(void) {
 
 static void LoadKeywords(void) {        // populate the list of gator brain functions
     keywords = 0;                       // start empty
-    AddKeyword("bye",     iword_BYE);
-    AddKeyword("[",       iword_STATEoff);
-    AddKeyword("]",       iword_STATEon);
-    AddKeyword("[if]",    iword__IF);
-    AddKeyword("[then]",  iword_NOOP);
-    AddKeyword("[else]",  iword__ELSE);
+    AddKeyword("bye",           iword_BYE);
+    AddKeyword("[",             iword_STATEoff);
+    AddKeyword("]",             iword_STATEon);
+    AddKeyword("[if]",          iword__IF);
+    AddKeyword("[then]",        iword_NOOP);
+    AddKeyword("[else]",        iword__ELSE);
+    AddKeyword("[undefined]",   iword_UNDEFINED);
+    AddKeyword("[defined]",     iword_DEFINED);
 
-    AddKeyword("\\",      iword_COMMENT);
-//    AddKeyword("//",      iword_COMMENT); // too much cog dis switching between C and Forth
-    AddKeyword(".",       iword_DOT);
-    AddKeyword("(",       iword_Paren);
-    AddKeyword("{",       iword_Brace);
-    AddKeyword(".(",      iword_DotParen);
-    AddKeyword("cr",      iword_CR);
-    AddKeyword("theme=mono",  iword_MonoTheme);
-    AddKeyword("theme=color", iword_ColorTheme);
+    AddKeyword("\\",            iword_COMMENT);
+    AddKeyword(".",             iword_DOT);
+    AddKeyword("(",             iword_Paren);
+    AddKeyword("{",             iword_Brace);
+    AddKeyword(".(",            iword_DotParen);
+    AddKeyword("cr",            iword_CR);
+    AddKeyword("theme=mono",    iword_MonoTheme);
+    AddKeyword("theme=color",   iword_ColorTheme);
 
-    AddKeyword("stats",   iword_STATS);
-    AddKeyword("cold",    iword_COLD);
-    AddKeyword("safe",    iword_SAFE);
-    AddKeyword(".opcodes", ListOpcodeCounts);
-    AddKeyword(".profile", ListProfile);
-    AddKeyword("+cpu",    iword_CPUon);
-    AddKeyword("-cpu",    iword_CPUoff);
-    AddKeyword("cpu",     iword_CPUgo);
-    AddKeyword("dbg",     iword_RunBrk);  // set and run to breakpoint(s)
-    AddKeyword("-dbg",    iword_NoDbg);
-    AddKeyword("cls",     iword_CLS);
-    AddKeyword("CaseSensitive",   iword_CaseSensitive);
+    AddKeyword("stats",         iword_STATS);
+    AddKeyword("cold",          iword_COLD);
+    AddKeyword("safe",          iword_SAFE);
+    AddKeyword(".opcodes",      ListOpcodeCounts);
+    AddKeyword(".profile",      ListProfile);
+    AddKeyword("+cpu",          iword_CPUon);
+    AddKeyword("-cpu",          iword_CPUoff);
+    AddKeyword("cpu",           iword_CPUgo);
+    AddKeyword("dbg",           iword_RunBrk);  // set and run to breakpoint(s)
+    AddKeyword("-dbg",          iword_NoDbg);
+    AddKeyword("cls",           iword_CLS);
+    AddKeyword("CaseSensitive", iword_CaseSensitive);
     AddKeyword("CaseInsensitive", iword_CaseIns);
-    AddKeyword("include", iword_INCLUDE);
-    AddKeyword("equ",     iword_EQU);
-    AddKeyword("constant",iword_EQU);     // non-tickable constant
-    AddKeyword("variable",iword_VAR);     // non-tickable variable
+    AddKeyword("include",       iword_INCLUDE);
+    AddKeyword("equ",           iword_EQU);
+    AddKeyword("constant",      iword_EQU);     // non-tickable constant
+    AddKeyword("variable",      iword_VAR);     // non-tickable variable
 
-/*    AddKeyword("create",  tiffCREATE);
-    AddKeyword("ram",     tiffRAM);
-    AddKeyword("rom",     tiffROM);
-    AddKeyword("here",    tiffHERE);
-    AddKeyword("allot",   tiffALLOT); */
+    AddKeyword("words",         iword_WORDS);
+    AddKeyword("xwords",        iword_XWORDS);
+    AddKeyword("buffer:",       iword_BUFFER);
+    AddKeyword(":noname",       iword_NONAME);
+    AddKeyword(":",             iword_COLON);
+    AddKeyword(";",             CompSemi);
+    AddKeyword(",",             CompComma);
+    AddKeyword("c,",            CompCommaC);
+    AddKeyword("literal",       CompLiteral);
+    AddKeyword(",\"",           iword_CommaString);
+    AddKeyword(",\\\"",         iword_CommaEString);
+    AddKeyword(".\"",           iword_MsgString);
+    AddKeyword(".\\\"",         iword_EMsgString);
+    AddKeyword("s\"",           iword_SString);
+    AddKeyword("s\\\"",         iword_ESString);
+    AddKeyword("c\"",           iword_CString);
+    AddKeyword("c\\\"",         iword_ECString);
 
-    AddKeyword("words",   iword_WORDS);
-    AddKeyword("xwords",  iword_XWORDS);
-    AddKeyword("buffer:", iword_BUFFER);
-    AddKeyword(":noname", iword_NONAME);
-    AddKeyword(":",       iword_COLON);
-    AddKeyword(";",       CompSemi);
-    AddKeyword(",",       CompComma);
-    AddKeyword("c,",      CompCommaC);
-    AddKeyword("literal", CompLiteral);
-    AddKeyword(",\"",     iword_CommaString);
-    AddKeyword(",\\\"",   iword_CommaEString);
-    AddKeyword(".\"",     iword_MsgString);
-    AddKeyword(".\\\"",   iword_EMsgString);
-    AddKeyword("s\"",     iword_SString);
-    AddKeyword("s\\\"",   iword_ESString);
-    AddKeyword("c\"",     iword_CString);
-    AddKeyword("c\\\"",   iword_ECString);
+    AddKeyword("[char]",        iword_LitChar);
+    AddKeyword("char",          iword_Char);
+    AddKeyword("exit",          CompExit);
+    AddKeyword("defer",         iword_DEFER);
+    AddKeyword("is",            iword_IS);
+    AddKeyword("+if",           CompPlusIf);
+    AddKeyword("ifnc",          CompIfNC);
+    AddKeyword("if",            CompIf);
+    AddKeyword("else",          CompElse);
+    AddKeyword("then",          CompThen);
+    AddKeyword("begin",         CompBegin);
+    AddKeyword("again",         CompAgain);
+    AddKeyword("until",         CompUntil);
+    AddKeyword("+until",        CompPlusUntil);
+    AddKeyword("while",         CompWhile);
+    AddKeyword("+while",        CompPlusWhile);
+    AddKeyword("repeat",        CompRepeat);
+    AddKeyword("?do",           CompQDo);
+    AddKeyword("do",            CompDo);
+    AddKeyword("loop",          CompLoop);
+    AddKeyword("i",             CompI);
+    AddKeyword("leave",         CompLeave);
 
-    AddKeyword("[char]",  iword_LitChar);
-    AddKeyword("char",    iword_Char);
-    AddKeyword("exit",    CompExit);
-    AddKeyword("defer",   iword_DEFER);
-    AddKeyword("is",      iword_IS);
-    AddKeyword("+if",     CompPlusIf);
-    AddKeyword("ifnc",    CompIfNC);
-    AddKeyword("if",      CompIf);
-    AddKeyword("else",    CompElse);
-    AddKeyword("then",    CompThen);
-    AddKeyword("begin",   CompBegin);
-    AddKeyword("again",   CompAgain);
-    AddKeyword("until",   CompUntil);
-    AddKeyword("+until",  CompPlusUntil);
-    AddKeyword("while",   CompWhile);
-    AddKeyword("+while",  CompPlusWhile);
-    AddKeyword("repeat",  CompRepeat);
-    AddKeyword("?do",     CompQDo);
-    AddKeyword("do",      CompDo);
-    AddKeyword("loop",    CompLoop);
-    AddKeyword("i",       CompI);
-    AddKeyword("leave",   CompLeave);
+    AddKeyword("h'",            iword_HTICK);
+    AddKeyword("'",             iword_TICK);
+    AddKeyword("[']",           iword_BracketTICK);
 
-    AddKeyword("h'",      iword_HTICK);
-    AddKeyword("'",       iword_TICK);
-    AddKeyword("[']",     iword_BracketTICK);
+    AddKeyword("macro",         iword_MACRO);
+    AddKeyword("call-only",     iword_CALLONLY);
+    AddKeyword("anonymous",     iword_ANON);
+    AddKeyword("see",           iword_SEE);
+    AddKeyword("dasm",          iword_DASM);
+    AddKeyword("locate",        iword_LOCATE);
+    AddKeyword("replace-xt",    ReplaceXTs);    // Replace XTs  ( NewXT OldXT -- )
+    AddKeyword("xte-is",        xte_is);        // Replace a word's xte  ( NewXT -- )
+    AddKeyword("make",          iword_MAKE);
+    AddKeyword("save-image",    iword_SaveImg); // save binary image
 
-    AddKeyword("macro",   iword_MACRO);
-    AddKeyword("call-only", iword_CALLONLY);
-    AddKeyword("anonymous", iword_ANON);
-    AddKeyword("see",     iword_SEE);
-    AddKeyword("dasm",    iword_DASM);
-    AddKeyword("locate",    iword_LOCATE);
-    AddKeyword("replace-xt", ReplaceXTs);   // Replace XTs  ( NewXT OldXT -- )
-    AddKeyword("xte-is",  xte_is);          // Replace a word's xte  ( NewXT -- )
-    AddKeyword("make",      iword_MAKE);
-    AddKeyword("save-image", iword_SaveImg);  // save binary image
+    AddKeyword("iwords",        ListKeywords);  // internal words, after the dictionary
 
-    AddKeyword("iwords",    ListKeywords);    // internal words, after the dictionary
-
-    AddEquate ("RAMsize",   RAMsize*4);
-    AddEquate ("ROMsize",   ROMsize*4);
+    AddEquate ("RAMsize",       RAMsize*4);
+    AddEquate ("ROMsize",       ROMsize*4);
     AddEquate ("SPIflashBlocks", SPIflashBlocks);
 
     // CPU opcode names

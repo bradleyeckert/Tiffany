@@ -12,7 +12,7 @@ defer exception
 
 \ Include core words that test a lot of primitives
 
-include ../forth/core.f
+include ../../forth/core.f
 
 : test0 ;                               \ call and return
 
@@ -107,7 +107,7 @@ include ../forth/core.f
     begin again
 ; is coldboot
 
-make ../src/vm.c ../examples/testbench/vm.c  \ C version for testbench
-200 make ../templates/test_main.c ../examples/testbench/main.c
+make ../../src/vm.c vm.c                \ Using the know-good one
+200 make ../../templates/test_main.c main.c
 \ stack is changed after testbench due to SP register moved, but harmless.
 bye

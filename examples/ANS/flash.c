@@ -12,6 +12,8 @@
 #define SPIflashBlocks 256
 //
 #define NOERRORMESSAGES
+//
+#define InhibitFlashSave 0
 #define BASEADDR   (RAMsize+ROMsize)
 #define FLASHCELLS ((SPIflashBlocks<<10) - BASEADDR)
 #define FILENAME   "flash.bin"

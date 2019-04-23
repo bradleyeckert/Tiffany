@@ -77,7 +77,7 @@ int main()
 	RegChangeInit();
 
 //           INS_GROUP  Test#
-`10`    newstep(0, -1);  // make sure last group has all changes listed.
+`20`    newstep(0, -1);  // make sure last group has all changes listed.
 
     printf("\n%d tests, %d errors\n", tests-1, errors);
 return 0;

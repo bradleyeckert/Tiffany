@@ -15,8 +15,8 @@ defer errorISR
 include ../../forth/core.f
 : pause ;  \ include ../../forth/tasker.f \ no multitasker
 include ../../forth/timing.f
-include ../../forth/numio.f                \ numeric I/O
-include ../../forth/flash.f                \ SPI flash programming
+include ../../forth/numio.f             \ numeric I/O
+include ../../forth/flash.f             \ SPI flash programming
 
 .( Internal ROM minimum bytes = ) cp ? cr
 .( Tiff.f: )
@@ -46,22 +46,22 @@ include ../../forth/flash.f                \ SPI flash programming
 
 [then]
 
-include ../../forth/compile.f              \ compile opcodes, macros, calls, etc.
-
-include ../../forth/tools.f                \ dump, .s
-include ../../forth/interpret.f            \ parse, interpret, convert to number
-include ../../forth/wean.f                 \ replace most C fns in existing headers
-include ../../forth/define.f               \ defining words
+include ../../forth/comma.f             \ smart comma
+include ../../forth/compile.f           \ compile opcodes, macros, calls, etc.
+include ../../forth/tools.f             \ dump, .s
+include ../../forth/interpret.f         \ parse, interpret, convert to number
+include ../../forth/wean.f              \ replace most C fns in existing headers
+include ../../forth/define.f            \ defining words
 include ../../forth/structure.f			\ control structures
-include ../../forth/evaluate.f		        \ evaluate
-include ../../forth/quit.f                 \ the quit loop
+include ../../forth/evaluate.f		    \ evaluate
+include ../../forth/quit.f              \ the quit loop
 
 include ../../forth/order.f
 include ../../forth/see.f
-include ../../forth/coreext.f		        \ oddball CORE EXT words
-include ../../forth/toolsext.f		        \ oddball TOOLS EXT words
+include ../../forth/coreext.f		    \ oddball CORE EXT words
+include ../../forth/toolsext.f		    \ oddball TOOLS EXT words
 include ../../forth/string.f
-include ../../forth/double.f		        \ double math
+include ../../forth/double.f		    \ double math
 
 : main
 	." May the Forth be with you!" cr
@@ -82,7 +82,7 @@ include ../../forth/double.f		        \ double math
 	counter r> - 0 <# # [char] . hold #s #> type ."  msec "
 ;
 
-include ../../forth/end.f                  \ finish the app
+include ../../forth/end.f               \ finish the app
 
 cp @  dup    16 !                       \ resolve internal ROM length
 0 swap crc32 12 !                       \ store CRC, which includes length
@@ -93,8 +93,6 @@ HP @ . .( bytes in ROM, of which ) CP @ . .( is code and ) HP @ hp0 - . .( is he
 \ Make C demo files
 make ../../src/vm.c vm.c                \ vm.c is used as a template
 make ../../src/flash.c flash.c          \ flash.c is used as a template
-
-\ make ../../templates/app.A51 ../examples/8051/vm.A51   \ 8051 version
 
 \ ------------------------------------------------------------------------------
 

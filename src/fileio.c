@@ -57,7 +57,7 @@ void ReloadFile (void) {                // Reload known ROM image file
 // rom image may include all of memory space: ROM, RAM, and SPI flash
 // When output, it's read into the rom image, then processed.
 
-uint32_t rom[(SPIflashBlocks<<10)*sizeof(uint32_t)];
+uint32_t rom[ROMsize+RAMsize+(SPIflashBlocks<<10)*sizeof(uint32_t)];
 
 int32_t ROMwords (uint32_t size) {     // read ROM image to local memory
     uint32_t i;
@@ -106,7 +106,7 @@ void MakeFromTemplate(char *infile, char *outfile) {
                 } else {
                     seek = 0;
                     if (c == '`') {     // found terminator
-                        switch (n) {        // execute the macro function
+                        switch (n) {    // execute the macro function
 case 0: fprintf(ofp, "\n");             // 0: newline
     break;
 case 1: fprintf(ofp, "%s", GetTime());  // 1: time and date
@@ -118,7 +118,9 @@ case 3: fprintf(ofp, "%d", ROMsize);    // 3: words in ROM space
     break;
 case 4: fprintf(ofp, "%d", RAMsize);    // 4: words in RAM space
     break;
-case 5:                                 // 5: C syntax internal ROM dump
+case 5: fprintf(ofp, "%d", SPIflashBlocks);  // 5: 4K sectors in SPI flash space
+    break;
+case 10:                                // 10: C syntax internal ROM dump
     C_Columns = 6;
     length = ROMwords(ROMsize);
     for (int i=0; i<length; i++) {
@@ -133,7 +135,7 @@ case 5:                                 // 5: C syntax internal ROM dump
         }
     }
     break;
-case 6:                                 // 6: Assembler syntax internal ROM dump
+case 11:                                // 11: Assembler syntax internal ROM dump
     length = ROMwords(ROMsize);
     char * directive = ".word";
     char * format = "0x%08X";
@@ -151,7 +153,7 @@ case 6:                                 // 6: Assembler syntax internal ROM dump
     }
     fprintf(ofp, "\n");
     break;
-case 7:                                 // 7: Assembler syntax for 8051
+case 12:                                // 12: Assembler syntax for 8051
     length = ROMwords(ROMsize);
     directive = "DW";
     format = "0%04XH,0%04XH";           // no Keil support for 32-bit words
@@ -168,19 +170,17 @@ case 7:                                 // 7: Assembler syntax for 8051
     }
     fprintf(ofp, "\n");
     break;
-case 8:                                 // 8: VHDL syntax internal ROM dump
+case 13:                                // 13: VHDL syntax internal ROM dump
     length = ROMwords(ROMsize);
     for (int i=0; i<length; i++) {
         fprintf(ofp, "when %d => ROMdata <= x""%08X"";\n", i, rom[i]);
     }
     fprintf(ofp, "when others => ROMdata <= x""FFFFFFFF"";\n");
     break;
-case 9: fprintf(ofp, "%d", SPIflashBlocks);  // 9: 4K sectors in SPI flash space
-    break;
-case 10:                                // 10: C syntax stepping
+case 20:                                // 20: C syntax stepping
     MakeTestVectors(ofp, PopNum(), 1);
     break;
-case 11:                                // 10: VHDL syntax stepping
+case 21:                                // 21: VHDL syntax stepping
     MakeTestVectors(ofp, PopNum(), 2);
     break;
 

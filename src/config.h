@@ -26,10 +26,6 @@
 // Number of lines in `locate`
 #define LocateLines  10
 
-// put headers in IROM
-//#define HeadPointerOrigin  0x3000    /* leave 12K for code */
-//#define HeadPointerOrigin  ((ROMsize+RAMsize)*4)    /* Lowest SPI code address */
-
 //===============================================================================
 // Sanity checks
 

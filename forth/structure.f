@@ -262,25 +262,3 @@ decimal
 :noname _x" op_c@+ Implicit ;           \ compilation action of S"
 +: S"   transient" c@+ ;                \ 6.1.2165  -- a u
 ' _x" +: C"   transient" ;              \ 6.2.0855  -- a
-
-: cont  \ a flag -- flag'				\ stop scan if addr is at the end
-	over dp @ xor and					\ "dp @" is first free byte in data space
-;
-: _idata,  \ a -- mark a0 a'			\ compile a nonzero run
-	cp @ swap -1 ,c						\ length to be resolved
-	begin dup @ 0=  cont  while  cell+  repeat  \ skip zeros
-	dup dup ,c							\ start address of non-zero run
-	begin dup @ 0<>  cont  while  @+ ,c  repeat  \ compile run
-;
-: idata,	\ <ignored...> -- 			\ compile a new IDATA table
-	postpone \
-	hld [ |tib| cell+  |pad| + ] literal erase	\ wipe unneeded data
-	\ HLD, TIB, PAD
-	status begin
-	    _idata,  ( mark a0 a' -- a' )
-	    >r negate r@ +  2/ 2/ 			\ run length  ( mark len | 'a )
-	    swap over swap ROM!  r> 		\ resolve length  ( length a' )
-	    swap 0=
-	until  drop
-;
-

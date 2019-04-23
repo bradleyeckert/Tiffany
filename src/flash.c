@@ -6,8 +6,9 @@
 #include "flash.h"
 //`0`#define ROMsize `3`
 //`0`#define RAMsize `4`
-//`0`#define SPIflashBlocks `9`
+//`0`#define SPIflashBlocks `5`
 //`0`#define NOERRORMESSAGES
+//`0`#define InhibitFlashSave 0
 #define BASEADDR   (RAMsize+ROMsize)
 #define FLASHCELLS ((SPIflashBlocks<<10) - BASEADDR)
 #define FILENAME   "flash.bin"

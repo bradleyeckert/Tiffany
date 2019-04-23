@@ -105,7 +105,6 @@ decimal
 
 : here      h @ ;                       \ 6.1.1650  -- a
 : allot     h +! ;                      \ 6.1.0710  n --
-: erase     0 fill ;                    \ 6.2.1350  --
 : /allot    h @ swap dup allot erase ;  \           n --
 : buffer:   h @ equ  allot ;            \ 6.2.0825  u <name> --
 : constant  equ ;                       \ 6.1.0950  x <name> --
