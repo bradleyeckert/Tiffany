@@ -90,7 +90,7 @@ I find myself using tokens I know are opcodes or short opcode sequences.
 They are often free (in terms of code size) if used before literals and calls,
 which affects how I code.
 
-Mforth as presented by Tiff is like a cut-down ANS Forth. You can write an application in it.
+Mforth is basically a cut-down ANS Forth. You can write an application in it.
 ANS Forth is one such application. It's a rather large beast, but fun to ride.
 To make a standalone app, you would generate C source suitable for embedding,
 then compile that with a C compiler.
