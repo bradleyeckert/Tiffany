@@ -35,7 +35,6 @@
                                         \ 35, 45 = Magenta
                                         \ 36, 46 = Cyan
                                         \ 37, 47 = White
-
 rom cp @
     36 c, 45 c, \ call-only + anonymous
     36 c, 40 c, \ call-only

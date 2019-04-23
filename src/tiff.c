@@ -20,6 +20,8 @@ Tiff is a straight C console application that implements a "minimal" Forth.
 The C code is a slasher horror show.
 */
 
+int StackSpace = StackSpaceDefault;
+
 char name[MaxTIBsize+1];                // generic scratchpad (maybe not such a great idea making it global)
 char name2[MaxTIBsize+1];
 
@@ -1036,7 +1038,7 @@ static int Refill(void) {
 
 // Keyboard input uses the default terminal cooked mode.
 
-char *DefaultFile = "tiff.f";           // Default file to load from
+char *DefaultFile = "mf.f";             // Default file to load from
 
 void tiffQUIT (char *cmdline) {
     int loaded = 0;

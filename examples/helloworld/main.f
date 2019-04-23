@@ -1,8 +1,5 @@
 ﻿\ Hello World example
 
-hp @  ROMsize RAMsize +  invert +
-0< [if] .( HP is too low ) HP @ . .( / ) ROMsize . [then]
-
 defer coldboot
 defer safemode
 defer errorISR

@@ -1,11 +1,10 @@
-﻿\ Forth kernel for Tiff
+﻿\ ANS Forth kernel for Mforth
 
 \ CP, HP, and DP point to the first free bytes in code, header, and data space.
-\ System variables are already defined in Tiff because it uses them internally.
+\ System variables are already defined in Mforth because it uses them internally.
 \ See `config.h`.
 
 4 equ DumpColumns                       \ Output chars ~ Columns * 13 + 5
-.( HP = ) HP @ .
 
 defer coldboot
 defer safemode
@@ -16,12 +15,8 @@ include ../../forth/core.f
 : pause ;  \ include ../../forth/tasker.f \ no multitasker
 include ../../forth/timing.f
 include ../../forth/numio.f             \ numeric I/O
-include ../../forth/flash.f             \ SPI flash programming
 
-.( Internal ROM minimum bytes = ) cp ? cr
-.( Tiff.f: )
-
-0 [if] \ not using QUIT yet
+1 [if] \ Using Mforth's internal QUIT, comment out for COLD (standalone Forth).
 
 	: throw  \ n --  				    \ for testing, remove later
 	?dup if  port drop  			    \ save n in dbg register, like error interrupt
@@ -31,7 +26,7 @@ include ../../forth/flash.f             \ SPI flash programming
 
 	\ The error ISR has the last known good PC on the return stack and the ior in port.
 	\ Usually, you would just throw an error.
-	\ Since the Tiff interpreter is being used, use a test THROW.
+	\ Since the Mforth interpreter is being used, use a test THROW.
 
 	:noname
 	cr ." Error " dup port . ." at PC=" r> .
@@ -46,6 +41,11 @@ include ../../forth/flash.f             \ SPI flash programming
 
 [then]
 
+include ../../forth/flash.f             \ SPI flash programming
+
+.( Internal ROM minimum bytes ~ ) cp ? cr
+.( ANS Forth: )
+
 include ../../forth/comma.f             \ smart comma
 include ../../forth/compile.f           \ compile opcodes, macros, calls, etc.
 include ../../forth/tools.f             \ dump, .s
@@ -56,11 +56,11 @@ include ../../forth/structure.f			\ control structures
 include ../../forth/evaluate.f		    \ evaluate
 include ../../forth/quit.f              \ the quit loop
 
-include ../../forth/order.f
-include ../../forth/see.f
+include ../../forth/order.f             \ search order and `words`
+include ../../forth/see.f               \ disassembler
 include ../../forth/coreext.f		    \ oddball CORE EXT words
 include ../../forth/toolsext.f		    \ oddball TOOLS EXT words
-include ../../forth/string.f
+include ../../forth/string.f            \ string words
 include ../../forth/double.f		    \ double math
 
 : main
@@ -68,8 +68,7 @@ include ../../forth/double.f		    \ double math
 	quit
 ;
 
-
-: FIB ( x -- y )
+: FIB ( x -- y )    \ a bit of a stack hog, so "mf" needs the "-s 128" directive
 	DUP 2 > IF DUP  1- RECURSE
 		   SWAP 2 - RECURSE +  EXIT
 		 THEN
@@ -77,7 +76,7 @@ include ../../forth/double.f		    \ double math
 
 : bench  \ --                           \ benchmark
 	counter >r
-	30  fib drop \ note run-time limit in Tiff. Use cold.
+	30  fib drop \ note run-time limit in Mforth. Use cold.
 	." 30 fib executes in "
 	counter r> - 0 <# # [char] . hold #s #> type ."  msec "
 ;
@@ -106,9 +105,6 @@ cp @ @ -1 = [if]		\ flash is not blank, try deleting "flash.bin" file.
 \ Some ideas: A forward linked list of IDATA structures.
 \ Traverse to the last IDATA structure and initialize RAM from that.
 \ Then any WIDs point to the latest wordlists.
-
-\ Also, ROM! and friends should check for blank bits before writing.
-\ You can't rely on SPI hardware to throw an error.
 
 cp @ ," DataCodeHead" 1+
 : .unused  \ --
@@ -140,7 +136,7 @@ cp @ ," DataCodeHead" 1+
  111 mynum z1
  222 mynum z2
 
-1 [if]
+0 [if]
 
 : ENVIRONMENT? ( c-addr u -- false ) 2drop 0 ;
 
@@ -152,4 +148,4 @@ bye
 [then]
 [then]
 
-theme=color
+\ theme=color

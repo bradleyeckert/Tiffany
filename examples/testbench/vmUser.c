@@ -16,7 +16,7 @@ static long getMicrotime(){
     return currentTime.tv_sec * (int)1e6 + currentTime.tv_usec;
 }
 
-static uint32_t tiffBye(uint32_t dummy) {
+static uint32_t Bye(uint32_t dummy) {
     exit(10);  return 0;
 }
 
@@ -28,7 +28,7 @@ uint32_t UserFunction (uint32_t T, uint32_t N, int fn ) {
     vmUserParm = N;
     static uint32_t (* const pf[])(uint32_t) = {
         vmQkey, vmKey, vmEmit, vmQemit,
-        Counter, SPIflashXfer, tiffBye, vmKeyFormat
+        Counter, SPIflashXfer, Bye, vmKeyFormat
 // add your own here...
     };
     if (fn < sizeof(pf) / sizeof(*pf)) {

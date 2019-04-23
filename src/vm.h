@@ -9,7 +9,8 @@
 //================================================================================
 
 // Defined in vm.c, the basic debug and simulation interface.
-void ROMinit(void);                         // Clear all memory
+void vmMEMinit(void);                         // Clear all memory
+void ROMbye(void);                          // free memory
 uint32_t VMstep(uint32_t IR, int Paused);   // Execute an instruction group
 void VMpor(void);                           // Reset the VM
 void SetDbgReg(uint32_t n);                 // write to the debug mailbox
@@ -33,9 +34,12 @@ int WriteROM(uint32_t data, uint32_t address);
 void Trace(unsigned int Type, int32_t ID, uint32_t Old, uint32_t New);
 void UnTrace(int32_t ID, uint32_t old);
 extern int tiffIOR;                         // error detected when not 0
+extern uint32_t ROMsize;
+extern uint32_t RAMsize;
+extern uint32_t SPIflashBlocks;
 extern uint32_t cyclecount;                 // elapsed clock cycles in hardware
 extern uint32_t maxRPtime;                  // max cycles between RP! occurrences
-extern uint32_t ProfileCounts[ROMsize];     // profiler data
+extern uint32_t * ProfileCounts;            // profiler data
 extern uint32_t OpCounter[64];              // dynamic instruction count
 
 //================================================================================

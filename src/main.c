@@ -1,13 +1,42 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 #include "vm.h"
+#include "flash.h"
 #include "tiff.h"
 #include "accessvm.h"
 #include "fileio.h"
 #include <string.h>
+#define HP0max  (MaxROMsize - 0x1000)
 
-/*global*/ int HeadPointerOrigin = (ROMsize+RAMsize)*4;
+/*global*/ int HeadPointerOrigin = (ROMsizeDefault + RAMsizeDefault)*4;
 /*global*/ int InhibitFlashSave = 0;
+
+void TidyUp (void) {                    // stuff to do at exit
+    ROMbye();
+    FlashBye();
+#ifdef TRACEABLE
+    DestroyTrace();                     // free the trace buffer
+#endif
+}
+
+int error = 0;
+
+uint32_t Number (char * s, uint32_t limit, char cmd) {
+    char *eptr;
+    long long int x = strtoll(s, &eptr, 0);
+    if ((x == 0) && ((errno == EINVAL) || (errno == ERANGE))) {
+nan:    fprintf(stderr,"Malformed number for -%c\n", cmd);
+        exit(1);
+    } else {
+        if (*eptr) goto nan;
+    }
+    if (x < limit) {
+        return x;
+    }
+    fprintf(stderr,"Argument out of range for -%c, max is 0x%X\n", cmd, limit);
+    exit(2);
+}
 
 int main(int argc, char *argv[]) {
     int Arg = 1;
@@ -19,67 +48,64 @@ int main(int argc, char *argv[]) {
 #ifdef TRACEABLE
     CreateTrace();                      // reset the trace buffer
 #endif
-    InitializeTermTCB();                // by default, ROM and SPI flash are blank (all '1's)
+    vmMEMinit();
+    atexit(TidyUp);
 nextarg:
     while (argc>Arg) {                  // spin through the 2-character arguments
-        if (strlen(argv[Arg]) == 2) {
-            if (argv[Arg][0] == '-'){   // starts with a "-?" command
-                char c = argv[Arg][1];  // get the command
-                Arg++;
-                switch (c) {
-                    case 'h':
-                        HeadPointerOrigin = atoi(argv[Arg++]);
-                        InitializeTermTCB(); // rebuild lizard brain with new hp0
+        if ((strlen(argv[Arg]) == 2) && (argv[Arg][0] == '-')) {   // starts with a "-?" command
+            char c = argv[Arg][1];  // get the command
+            Arg++;
+            switch (c) {
+                case 'h':
+                    HeadPointerOrigin = Number(argv[Arg++], HP0max, 'h');
+                    goto nextarg;
+                case 'r':
+                    RAMsize = Number(argv[Arg++], MaxRAMsize, 'r');
+                    if (RAMsize & (RAMsize-1)) {
+                        printf("RAM size must be an exact power of 2.\n");
+                        goto bye;
+                    }
+                    goto nextarg;
+                case 's':
+                    StackSpace = Number(argv[Arg++], RAMsize/2, 'r');
+                    goto nextarg;
+                case 'm':
+                    ROMsize = Number(argv[Arg++], MaxROMsize, 'm');
+                    goto nextarg;
+                case 'b':
+                    SPIflashBlocks = Number(argv[Arg++], MaxFlashCells >> 10, 's');
+                    goto nextarg;
+                case 'n':
+                    InhibitFlashSave = 1;
+                    goto nextarg;
+                case 'f':           // change the load filename from the default `mf.f`
+                    if (argc>Arg) {
+                        DefaultFile = argv[Arg++];
                         goto nextarg;
-                    case 'n':
-                        InhibitFlashSave = 1;
-                        goto nextarg;
-                    case 't':           // low level debugger with default blank memory
-                        if (argc>Arg) { // attempt binary load into ROM
-                            BinaryLoad(argv[Arg++]);
-                        }
-                        vmTEST();  goto bye;
-                    case 'b':           // load ROM and (optionally) SPI flash image from file
-                        if (argc>Arg) {
-                            if (BinaryLoad(argv[Arg++])) {
-                                printf("Invalid or missing filename\n");
-                                goto bye;
-                            } else {    // successful binary load clears the load filename
-                                DefaultFile = NULL;
-                            }
-                            goto nextarg;
-                        } else {
-                            printf("Use \"-b filename\"\n");
-                            goto bye;
-                        } break;
-                    case 'f':           // change the load filename from the default `tiff.f`
-                        if (argc>Arg) {
-                            DefaultFile = argv[Arg++];
-                            goto nextarg;
-                        }
-						printf("Use \"-f filename\"");
-                        goto bye;
-                    case '?':
-                        printf("-f  Change startup INCLUDE filename from its default %s\n", DefaultFile);
-                        printf("-h  Change header start address from its default 0x%X\n", HeadPointerOrigin);
-                        printf("-b  Load image from binary file\n");
-                        goto bye;
-                    default:
-                        printf("Unknown native command -%c\n", c);
-                        goto bye;
-                }
-            } else goto go;
-        } else goto go;
+                    }
+                    printf("Use \"-f filename\"");
+                    goto bye;
+                default:
+                    printf("Format: [cmds] [\"Forth Command Line\"]\n");
+                    printf("cmds are optional 2-char commands starting with '-':\n");
+                    printf("-f <filename>  Change startup INCLUDE filename from {%s}\n", DefaultFile);
+                    printf("-h <addr>      Change header start address from {0x%X}\n",   HeadPointerOrigin);
+                    printf("-r <n>         Change RAM size from {0x%X} cells\n",         RAMsizeDefault);
+                    printf("-m <n>         Change ROM size from {0x%X} cells\n",         ROMsizeDefault);
+                    printf("-s <n>         Change stack region from {0x%X} cells\n",     StackSpace);
+                    printf("-b <n>         Change SPI flash 4k block count from {%d}\n", FlashBlksDefault);
+                    printf("-n             No flash save upon BYE\n");
+                    goto bye;
+            }
+        } else goto go; // exhausted options, there could be a Forth command line remaining
     }
 go:
+    InitializeTermTCB();                // by default, ROM and SPI flash are blank (all '1's)
     if (argc>Arg) {
         tiffQUIT(argv[Arg]);            // command line is next argument
     } else {
         tiffQUIT(NULL);                 // empty command line
     }
 bye:
-#ifdef TRACEABLE
-    DestroyTrace();                     // free the trace buffer
-#endif
     return 0;
 }

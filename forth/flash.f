@@ -2,7 +2,9 @@
 
 \ In Tiff, a SPI flash chip is simulated in tiffUser.c.
 \ Real hardware will have an actual SPI flash chip that uses the same commands.
-\ This code must run in internal ROM:
+\ This code must run in internal ROM:.
+\ It also trashes HLD, so you don't want to compile or write to flash in the
+\ middle of numeric output. But that would be weird.
 
 : SPIxfer     \ command -- result
    5 user                               \ Flash, a-ah, king of the impossible
@@ -45,8 +47,13 @@ hex
    106 SPIxfer drop                     \ WREN
    20 100 SPIaddress
    104 SPIxfer drop                     \ WRDI
-   SPIwait
+   SPIwait                              \ wait for erase to complete
 ;
+: SPIbyte  \ a -- a+1                   \ read next byte from flash into RAM
+   0FF SPIxfer swap c!+
+;
+
+\ _SPImove is the workhorse of flash programming.
 : _SPImove  \ asrc adest len -- asrc'   \ write byte array to flash
    106 SPIxfer drop                     \ WREN
    swap 2 0 SPIaddress                  \ start page write command
@@ -55,14 +62,34 @@ hex
       r@ 0= if                          \ finished
          100 + SPIxfer drop
          104 SPIxfer drop               \ WRDI
-         SPIwait
+         SPIwait                        \ wait for write to complete
          r> drop exit
       then
       SPIxfer drop r>
    again
 ;
+
+\ Test the range to be programmed to catch non-blank bits.
+\ Real SPI flash won't throw an error for you. SPItest will.
+
+: SPItest  \ asrc adest len -- asrc adest len
+   hld @ >r                             \ don't trash hld
+   over 0B 0 dup >r  SPIaddress         \ start SPI read from adest
+   r> SPIxfer drop                      \ dummy transfer
+   third over negate begin  >r          ( ... asrc | -len )
+      count                             \ src byte
+      hld dup >r SPIbyte drop r> c@     \ dest byte
+      or 0FF xor if                     \ trying to write '0' to existing '0'
+         -3C throw
+      then
+   r> 1+ +until  2drop
+   1FF SPIxfer drop                     \ end the read sequence
+   r> hld !
+;
+
 \ Break up page writes, if necessary, to avoid crossing 256-byte page boundaries
 : SPImove  \ asrc adest len --          \ byte array to flash
+   SPItest
    begin
       dup ifz: 3drop exit |             \ nothing left to move
       over invert 0FF and 1+            \ bytes to end of destination page
@@ -76,15 +103,11 @@ hex
    hld swap 4 SPImove
 ;
 
-: SPIbyte  \ a -- a+1
-   0FF SPIxfer swap c!+
-;
-
 \ @ should already do this, but SPI@ operates the SPI to test the interface.
 : SPI@  \ addr -- x                     \ 32-bit fetch
    0B 0 SPIaddress  dup SPIxfer drop    \ command and dummy byte
    hld  SPIbyte SPIbyte SPIbyte SPIbyte drop
-   1FF SPIxfer drop                     \ end the command
+   1FF SPIxfer drop                     \ end the read sequence
    hld @
 ;
 decimal

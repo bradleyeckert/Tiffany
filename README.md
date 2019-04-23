@@ -1,9 +1,15 @@
 # Mforth
 
-An embeddable model Forth for small MCUs and FPGAs. The VM forms a sandbox in a C system, relying on C libraries for middleware and other wheels that you don't want to reinvent.
+An embeddable model Forth for small MCUs and FPGAs.
+The VM forms a sandbox for a C system,
+relying on C libraries for middleware and other wheels that you don't want to reinvent.
 
 Try `bin/mf.exe` to play. If you're a Linux user, compile from source using the Makefile.
 Kids, never trust a downloaded executable. Unless it's your parents' computer...
+
+Windows users would do well to run this console app under Conemu.
+Color looks so much better. `theme=color` turns it on.
+You can also enable UTF-8 in Conemu, since Mforth supports that too.
 
 ## Why Forth?
 
@@ -32,7 +38,7 @@ The problem with the Forth world is insularity.
 You can have all the libraries you want as long as they're Forth.
 Fortunately, the raw speed of Forth is mostly irrelavant if C libraries can be leveraged.
 That means you can write your app in Forth, but execute it in a sandbox in your C application.
-Lua does that too. But how much fun is Lua? Try teaching Lua to a 5-year-old.
+Lua does that too. But how much fun is Lua? Try teaching Lua to a 10-year-old.
 
 ## Small Instruction Stack Machines
 

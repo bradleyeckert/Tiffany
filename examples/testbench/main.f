@@ -107,7 +107,10 @@ include ../../forth/core.f
     begin again
 ; is coldboot
 
-make ../../src/vm.c vm.c                \ Using the know-good one
-200 make ../../templates/test_main.c main.c
+\ There is actually a difference in VMs.
+\ The bench operates on the non-tracing version using function macros.
+
+make ../../src/vm.c vm.c                \ Using the known-good one
+500 make ../../templates/test_main.c main.c
 \ stack is changed after testbench due to SP register moved, but harmless.
 bye

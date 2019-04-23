@@ -1,13 +1,8 @@
-\ Compiling to known-blank flash memory.
+\ Compiling to virtual ROM or flash memory.
 
-\ Non-blank cells are assumed safe to write as long as the new data doesn't
-\ write '0's to existing '0' bits. The host will detect this and throw an error.
-\ Physically, programming '0' to a flash memory bit twice may over-charge its
-\ gate. That can cause reliability problems such as incomplete erasure and bad
-\ reads of adjacent bits. Programming the same memory word twice, with '0's not
-\ in the same location, should be okay. The flash manufacturers are rightly
-\ paranoid about over-programming so they may recommend overly cautious
-\ programming procedures rather than go into the physics of over-programming.
+\ Mforth's ROM image is writable, but there are rules. Write to ROM space
+\ simulates flash memory: Blank bits are '1'. Any '0' bits program a memory bit.
+\ You can't change a '0' to a '1'. Write '1's to fields you don't want to change.
 
 [undefined] SPI! [if]                   \ There is no flash memory defined
 
@@ -27,6 +22,15 @@
 
 [else]
 
+\ Non-blank cells are assumed safe to write as long as the new data doesn't
+\ write '0's to existing '0' bits. The host will detect this and throw an error.
+\ Physically, programming '0' to a flash memory bit twice may over-charge its
+\ gate. That can cause reliability problems such as incomplete erasure and bad
+\ reads of adjacent bits. Programming the same memory word twice, with '0's not
+\ in the same location, should be okay. The flash manufacturers are rightly
+\ paranoid about over-programming so they may recommend overly cautious
+\ programming procedures rather than go into the physics of over-programming.
+
 : ROM!  \ n addr --
 	dup ROMsize - |-if drop ! exit |    \ internal ROM: host stores, target throws -20
 	drop SPI!                           \ external ROM
@@ -38,7 +42,7 @@
 	then  drop                          \ internal ROM
 	>r  invert 255 and   				\ ~c addr
 	r@ 3 and 2* 2* 2* lshift       		\ c' | addr
-	invert  r> -4 and ROM!				\ write aligned c into blank slot
+	invert  r> -4 and !				    \ write aligned c into blank slot
 ;
 : ROMmove  ( as ad n -- )
 	dup ROMsize - +if  drop             \ external ROM

@@ -9,31 +9,46 @@
 // This file serves as the official specification for the Mforth VM.
 // It is usable as a template for generating a C testbench or embedding in an app.
 
-#define IMM    (IR & ~(-1<<slot))
 //
 #define ROMsize 8192
 //
-#define RAMsize 512
+#define RAMsize 1024
 //
 #define SPIflashBlocks 256
 //
 #define EmbeddedROM
+
+#define IMM     (IR & ~(-1<<slot))
+
+#ifndef TRACEABLE
+// Useful macro substitutions if not tracing
+#define SDUP()  RAM[--SP & (RAMsize-1)] = N;  N = T
+#define SDROP() T = N;  N = RAM[SP++ & (RAMsize-1)]
+#define SNIP()  N = RAM[SP++ & (RAMsize-1)]
+#define RDUP(x) RAM[--RP & (RAMsize-1)] = x
+#define RDROP() RAM[RP++ & (RAMsize-1)]
+#endif // TRACEABLE
 
 /* -----------------------------------------------------------------------------
     Globals:
         tiffIOR
         If TRACEABLE: VMreg[], OpCounter[], ProfileCounts[], cyclecount, maxRPtime, maxReturnPC
     Exports:
-        VMpor, VMstep, ROMinit, SetDbgReg, GetDbgReg, vmRegRead,
+        VMpor, VMstep, vmMEMinit, SetDbgReg, GetDbgReg, vmRegRead,
         FetchCell, FetchHalf, FetchByte, StoreCell, StoreHalf, StoreByte,
         In not embedded: WriteROM
 
     Addresses are VM byte addresses
 */
 
-int tiffIOR; // global errorcode
+/*global*/ int tiffIOR;                 // error code for the C-based QUIT loop
+#ifndef EmbeddedROM
+/*global*/ uint32_t RAMsize = RAMsizeDefault;
+/*global*/ uint32_t ROMsize = ROMsizeDefault;
+/*global*/ uint32_t SPIflashBlocks = FlashBlksDefault;
+#endif
 
-static int exception = 0;  // local errorcode
+static int exception = 0;               // local error code
 
 //
 static const uint32_t InternalROM[384] = {
@@ -102,7 +117,7 @@ static const uint32_t InternalROM[384] = {
 /*0174*/ 0xE400005B, 0x6C000157, 0x6C000159, 0xE400002D, 0x6C000157, 0x6C00015E,
 /*017A*/ 0xE40005B4, 0x6C000110, 0xAF90002D, 0x6C000157, 0x4C00017E, 0x09000000};
 //
-static uint32_t FetchROM(uint32_t addr) {
+uint32_t FetchROM(uint32_t addr) {
 //
   if (addr < 384) {
 //
@@ -121,6 +136,14 @@ static uint32_t FetchROM(uint32_t addr) {
 /// Register ID: Complement of register number if register, memory if other;
 /// Old value: 32-bit.
 /// New value: 32-bit.
+
+#ifdef EmbeddedROM
+    static uint32_t RAM[RAMsize];
+#else
+    static uint32_t * ROM;
+    static uint32_t * RAM;
+#endif // EmbeddedROM
+    static uint32_t AXI[AXIRAMsize];
 
 #ifdef TRACEABLE
     #define T  VMreg[0]
@@ -143,16 +166,13 @@ static uint32_t FetchROM(uint32_t addr) {
 
     uint32_t VMreg[VMregs];     // registers with undo capability
     uint32_t OpCounter[64];     // opcode counter
-    uint32_t ProfileCounts[ROMsize];
+    uint32_t * ProfileCounts;
     uint32_t cyclecount;
     uint32_t maxRPtime;   // max cycles between RETs
     uint32_t maxReturnPC = 0;   // PC where it occurred
     static uint32_t RPmark;
 
     static int New; // New trace type, used to mark new sections of trace
-    static uint32_t RAM[RAMsize];
-    static uint32_t ROM[ROMsize];
-    static uint32_t AXI[AXIRAMsize];
 
     static void SDUP(void)  {
         Trace(New,RidSP,SP,SP-1); New=0;
@@ -189,18 +209,6 @@ static uint32_t FetchROM(uint32_t addr) {
     static uint32_t PC;     static uint32_t UP = 64;
     static uint32_t CARRY;  static uint32_t DebugReg;
 
-    static uint32_t RAM[RAMsize];
-#ifndef EmbeddedROM
-    static uint32_t ROM[ROMsize];
-#endif // EmbeddedROM
-    static uint32_t AXI[AXIRAMsize];
-
-    static void SDUP(void)  { RAM[--SP & (RAMsize-1)] = N;  N = T; }
-    static void SDROP(void) { T = N;  N = RAM[SP++ & (RAMsize-1)]; }
-    static void SNIP(void)  { N = RAM[SP++ & (RAMsize-1)]; }
-    static void RDUP(uint32_t x)  { RAM[--RP & (RAMsize-1)] = x; }
-    static uint32_t RDROP(void) { return RAM[RP++ & (RAMsize-1)]; }
-
 #endif // TRACEABLE
 
 // Generic fetch from ROM or RAM: ROM is at the bottom, RAM is in middle, ROM is at top
@@ -209,12 +217,10 @@ static uint32_t FetchX (uint32_t addr, int shift, int mask) {
 #ifdef EmbeddedROM
         return (FetchROM(addr) >> shift) & mask;
 #else
-//      printf("@c[%X]=%X ", addr, ROM[addr]);
         return (ROM[addr] >> shift) & mask;
 #endif // EmbeddedROM
     }
     if (addr < (ROMsize + RAMsize)) {
-//      printf("@[%X]=%X ", addr, ROM[addr]);
         return (RAM[addr-ROMsize] >> shift) & mask;
     }
     return (FlashRead(addr*4) >> shift) & mask;
@@ -239,6 +245,33 @@ static void StoreX (uint32_t addr, uint32_t data, int shift, int mask) {
 
 /// EXPORTS ////////////////////////////////////////////////////////////////////
 
+void vmMEMinit(void){     				// erase all ROM and flash,
+#ifndef EmbeddedROM						// allocate memory if not allocated yet.
+    if (NULL == ROM) {
+        ROM = (uint32_t*) malloc(MaxROMsize * sizeof(uint32_t));
+    }
+    if (NULL == RAM) {
+        RAM = (uint32_t*) malloc(MaxRAMsize * sizeof(uint32_t));
+    }
+#ifdef TRACEABLE
+    if (NULL == ProfileCounts) {
+        ProfileCounts = (uint32_t*) malloc(MaxROMsize * sizeof(uint32_t));
+    }
+#endif
+    for (int i=0; i<ROMsize; i++) {
+        WriteROM(-1, i*4);
+    }
+#endif // EmbeddedROM
+    FlashInit();
+};
+
+#ifndef EmbeddedROM
+void ROMbye (void) {					// free VM memory if it used malloc
+    free(ROM);
+    free(RAM);
+}
+#endif // EmbeddedROM
+
 // Unprotected write: Doesn't care what's already there.
 // This is a sharp knife, make sure target app doesn't try to use it.
 #ifdef EmbeddedROM
@@ -255,19 +288,38 @@ int WriteROM(uint32_t data, uint32_t address) {
         return 0;
     }
     tiffIOR = FlashWrite(data, address);
-    printf("FlashWrite to %X", address);  // writing above ROM space
- //           tiffIOR = -20;
+    printf("FlashWrite to %X, you should be using SPI flash write (ROM! etc) instead\n", address);  // writing above ROM space
+           tiffIOR = -20;
     return tiffIOR;
 }
 #endif // EmbeddedROM
 
-
+uint32_t FetchCell(uint32_t addr) {
+    if (addr & 3) {
+        exception = -23;
+    }
+	uint32_t ca = addr >> 2;
+    if (ca < ROMsize) {
+#ifdef EmbeddedROM
+        return (FetchROM(ca));
+#else
+        return (ROM[ca]);
+#endif // EmbeddedROM
+    }
+	ca -= ROMsize;
+    if (ca < RAMsize) {
+        return (RAM[ca]);
+    }
+    return (FlashRead(addr));
+}
+/*
 uint32_t FetchCell(uint32_t addr) {
     if (addr & 3) {
         exception = -23;
     }
     return FetchX(addr>>2, 0, 0xFFFFFFFF);
 }
+*/
 uint16_t FetchHalf(uint32_t addr) {
     if (addr & 1) {
         exception = -23;
@@ -314,15 +366,6 @@ void StoreHalf (uint16_t x, uint32_t addr) {
 void StoreByte (uint8_t x, uint32_t addr) {
     StoreX(addr>>2, x, (addr&3)*8, 0xFF);
 }
-
-void ROMinit(void){
-#ifndef EmbeddedROM
-    for (int i=0; i<ROMsize; i++) {
-        WriteROM(-1, i*4);
-    }
-#endif // EmbeddedROM
-    FlashInit();
-};
 
 
 // Send a stream of RAM words to the AXI bus.
@@ -543,8 +586,6 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
                 T += 2;   SNIP();                       break;  // w!+
 			case opWfetchPlus:  SDUP();  /* ( a -- a' c ) */
                 M = FetchHalf(N);
-
- //               M = FetchX(N>>2, (N&2) * 8, 0xFFFF);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
                 Trace(0, RidN, N, N+2);

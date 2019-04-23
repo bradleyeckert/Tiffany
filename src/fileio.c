@@ -13,53 +13,16 @@ char * GetTime(void) {                  // get time/date string
     c_time_string = ctime(&current_time);   /* Convert to local time format. */
     return c_time_string;
 }
-// Load a binary image file
-// The image (in order) is ROM, RAM, and SPI flash
-
-char* LoadedFilename;                   // saved filename and format
-int LoadedFileType;
-
-int BinaryLoad (char* filename) {       // Load ROM from binary file
-    FILE *fp;
-    uint8_t data[4];
-    int length, i;
-    uint32_t n;
-    uint32_t addr = 0;                  // target byte address
-    fp = fopen(filename, "rb");
-    if (!fp) { return -1; }             // bad filename
-    LoadedFilename = filename;          // save in case we want to reload the file
-    LoadedFileType = 1;
-    do {
-        memset(data, 255, 4);
-        length = fread(data, 1, 4, fp); // get 4 bytes of data
-        n = 0;
-        for (i = 0; i < 4; i++) {       // make little-endian word
-            n += data[i] << (8 * i);
-        }
-        if ((addr < (ROMsize*4)) || (addr >= ((ROMsize+RAMsize)*4))) {
-            WriteROM(n, addr);          // write to internal ROM as well as ROM image (SPI flash)
-        } else {                        // unless in RAM address range
-            StoreCell(n, addr - ROMsize*4);
-        }
-        addr += 4;
-    } while (length == 4);
-    fclose(fp);
-    return 0;
-}
-
-void ReloadFile (void) {                // Reload known ROM image file
-    switch(LoadedFileType) {
-        case 1: BinaryLoad(LoadedFilename);
-        default: break;
-    }
-}
 
 // rom image may include all of memory space: ROM, RAM, and SPI flash
 // When output, it's read into the rom image, then processed.
 
-uint32_t rom[ROMsize+RAMsize+(SPIflashBlocks<<10)*sizeof(uint32_t)];
+uint32_t * rom;
 
-int32_t ROMwords (uint32_t size) {     // read ROM image to local memory
+static int32_t ROMwords (uint32_t size) {     // read ROM image to local memory
+    if (NULL == rom) {
+        rom = (uint32_t*) malloc(MaxROMsize * sizeof(uint32_t));
+    }
     uint32_t i;
     for (i=0; i<size; i++) {            // fill rom for local processing
         rom[i] = FetchCell(i*4);        // read through the VM's debug interface
@@ -113,6 +76,7 @@ case 1: fprintf(ofp, "%s", GetTime());  // 1: time and date
     break;
 case 2:                                 // 2: non-blank words in ROM
     fprintf(ofp, "%d", ROMwords(ROMsize));
+    free(rom);  rom = NULL;
     break;
 case 3: fprintf(ofp, "%d", ROMsize);    // 3: words in ROM space
     break;
@@ -134,6 +98,7 @@ case 10:                                // 10: C syntax internal ROM dump
             fprintf(ofp, ",");
         }
     }
+    free(rom);  rom = NULL;
     break;
 case 11:                                // 11: Assembler syntax internal ROM dump
     length = ROMwords(ROMsize);
@@ -152,6 +117,7 @@ case 11:                                // 11: Assembler syntax internal ROM dum
         }
     }
     fprintf(ofp, "\n");
+    free(rom);  rom = NULL;
     break;
 case 12:                                // 12: Assembler syntax for 8051
     length = ROMwords(ROMsize);
@@ -169,6 +135,7 @@ case 12:                                // 12: Assembler syntax for 8051
         }
     }
     fprintf(ofp, "\n");
+    free(rom);  rom = NULL;
     break;
 case 13:                                // 13: VHDL syntax internal ROM dump
     length = ROMwords(ROMsize);
@@ -176,6 +143,7 @@ case 13:                                // 13: VHDL syntax internal ROM dump
         fprintf(ofp, "when %d => ROMdata <= x""%08X"";\n", i, rom[i]);
     }
     fprintf(ofp, "when others => ROMdata <= x""FFFFFFFF"";\n");
+    free(rom);  rom = NULL;
     break;
 case 20:                                // 20: C syntax stepping
     MakeTestVectors(ofp, PopNum(), 1);

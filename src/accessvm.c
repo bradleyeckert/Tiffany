@@ -528,7 +528,7 @@ void AddWordlistHead (uint32_t wid, char *name) {
 // Initialize ALL variables in the terminal task
 void InitializeTermTCB (void) {
     VMpor();                            // clear VM and RAM
-    ROMinit();
+    vmMEMinit();
     initFilelist();                     // clear list of filenames used by LOCATE
     StoreCell(HeadPointerOrigin+4, HP); // leave cell for filelist
     StoreCell(0, CP);
@@ -851,7 +851,7 @@ uint32_t vmTEST (void) {
 Re: DumpRegs();
     RegChanges(stdout, 0);
     SetCursorPosition(0, DumpRows+4);   // help along the bottom
-    printf("\n(0..F)=digit, Enter=Clear, O=pOp, P=Push, R=Refresh, X=eXecute, \\=POR, ^C=Bye\n");
+    printf("\n(0..F)=digit, Enter=Clear, O=pOp, P=Push, R=Refresh, X=eXecute, ^C=Bye\n");
     #ifdef TRACEABLE
     printf("G=Goto, S=Step, V=oVer, /=Run, @=Fetch, U=dUmp, W=WipeHistory, Y=Redo, Z=Undo \n");
     #else
@@ -895,8 +895,6 @@ Re: DumpRegs();
                 case 'X': Tracing=1;  VMstep(Param,1);      // X = Execute
                           Tracing=0;  goto Re;
                 case '@': Param = FetchCell(Param); break;  // @ = Fetch
-                case '\\': InitializeTermTCB();
-                          ReloadFile();  goto Re;           // \ = Reset
                 case 'v':
                 case 'V': pc = RegRead(5);
                           uint32_t done = pc + 4;

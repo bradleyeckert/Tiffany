@@ -9,11 +9,12 @@
 /* Cell addresses (Byte addressing multiplies by 4)                           */
 /* 0000000 to ROMsize-1             Internal ROM                              */
 /* ROMsize to (ROMsize+RAMsize-1)   Internal RAM                              */
-/* The VM restricts the stacks to the bottom 1K bytes of vmRAM.               */
 
 #define TiffRP0     ((ROMsize + StackSpace-4)*4)    /* Initial stack pointers */
 #define TiffSP0     ((ROMsize + StackSpace/2)*4)           /* Byte addressing */
 #define termTCB(n)  ((ROMsize + StackSpace + (n))*4)    /* Terminal USER vars */
+
+extern int StackSpace;
 
 void ErrorMessage (int error, char *s);
 void initFilelist(void);

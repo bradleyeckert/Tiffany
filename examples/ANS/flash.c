@@ -7,7 +7,7 @@
 //
 #define ROMsize 8192
 //
-#define RAMsize 512
+#define RAMsize 1024
 //
 #define SPIflashBlocks 256
 //
@@ -15,7 +15,7 @@
 //
 #define InhibitFlashSave 0
 #define BASEADDR   (RAMsize+ROMsize)
-#define FLASHCELLS ((SPIflashBlocks<<10) - BASEADDR)
+#define FLASHCELLS (SPIflashBlocks<<10)
 #define FILENAME   "flash.bin"
 
 /*
@@ -23,28 +23,16 @@
    Addresses are VM byte addresses
 */
 
-#if (FLASHCELLS < 0)
-#error SPIflashBlocks is too small.
-#endif
-
-static uint32_t FlashMem[FLASHCELLS];
-
-uint32_t FlashRead (uint32_t addr) {
-    int32_t a = (addr >> 2) - BASEADDR;
-    if (a < 0) {
-        return -1;
-    }
-    if (a >= FLASHCELLS) {
-        return -1;
-    }
-    return FlashMem[a];
-};
-
+static uint32_t * FlashMem;
 FILE *fp;
 
 // If FILENAME exists, load it into flash
+// The Flash memory range starts at (ROMsize+RAMsize)*4 and is FLASHCELLS long.
 
 void FlashInit (void) {
+    if (NULL == FlashMem) {
+        FlashMem = (uint32_t*) malloc(MaxFlashCells * sizeof(uint32_t));
+    }
     memset(FlashMem, -1, FLASHCELLS*sizeof(uint32_t));
     fp = fopen(FILENAME, "rb");
     if (fp) {
@@ -70,6 +58,18 @@ void FlashBye (void) {
         }
         fclose(fp);
     }
+    free(FlashMem);
+};
+
+uint32_t FlashRead (uint32_t addr) {
+    int32_t a = (addr >> 2) - BASEADDR;
+    if (a < 0) {
+        return -1;
+    }
+    if (a >= FLASHCELLS) {
+        return -1;
+    }
+    return FlashMem[a];
 };
 
 // ---------------------
@@ -98,7 +98,8 @@ int FlashWrite (uint32_t x, uint32_t addr) {
     return 0;
 };
 
-/*
+
+/*------------------------------------------------------------------------------
 | Name   | Hex | Command                           |
 |:-------|-----|----------------------------------:|
 | FR     | 0Bh | Read Data Bytes from Memory       |
@@ -142,9 +143,9 @@ uint32_t SPIflashXfer (uint32_t n) {    /*EXPORT*/
 	uint8_t cout = 0xFF;
 	uint32_t word, data;
 //	printf("%02X ", n);
-	if (n & 0x200) {                 					// inactive bus
-		state = 0;
-		return cout;                    				// is floating hi
+	if (n & 0x200) {                 					// set /CS before transfer
+		state = 0;                    				    // inactive bus floats hi
+		return cout;
 	} else {
 		if (state) {                    				// continue previous command
 			int shift = 8*(addr&3);
@@ -187,12 +188,12 @@ uint32_t SPIflashXfer (uint32_t n) {    /*EXPORT*/
 					break;
 				default: state = 0;
 			}
-		} else {                        // start new command
+		} else {                                        // start new command
 			command = cin;
 			switch (command) {
 				case 0x05: /* RDSR   opcd -- n1 */  				state=2;  break;
 				case 0x0B: /* FR     opcd A2 A1 A0 xx -- data... */
-				case 0x02: /* PP     opcd A2 A1 A0 d0 d1 d2 ... */
+				case 0x02: /* PP     opcd A2 A1 A0 d0 d1 d2 ... */  // state 6(8) checks command
 				case 0x20: /* SER4K  opcd A2 A1 A0 */  				state=6;  break;
 				case 0x06: /* WREN   opcd */  						state=1;  wen=2;  break;
 				case 0x04: /* WRDI   opcd */  						state=1;  wen=0;  break;
@@ -201,7 +202,7 @@ uint32_t SPIflashXfer (uint32_t n) {    /*EXPORT*/
 			}
 		}
 	}
-	if (n & 0x100) {                  	// inactive bus
+	if (n & 0x100) {                  	                // set /CS after transfer
 		state = 0;
 	}
 	return cout;
