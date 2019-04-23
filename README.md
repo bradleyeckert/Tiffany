@@ -2,7 +2,7 @@
 
 An embeddable model Forth for small MCUs and FPGAs. The VM forms a sandbox in a C system, relying on C libraries for middleware and other wheels that you don't want to reinvent.
 
-Try `Tiff/bin/tiff.exe` to play. If you're a Linux user, compile from source using the Makefile.
+Try `bin/mf.exe` to play. If you're a Linux user, compile from source using the Makefile.
 Kids, never trust a downloaded executable. Unless it's your parents' computer...
 
 ## Why Forth?
@@ -83,7 +83,7 @@ Code that's binary compatible with the target can be tested on the desktop.
 
 ## What's programming in Mforth like?
 
-Tiff starts up with a relatively blank slate. 
+Tiff starts up with a relatively blank slate.
 It compiles the headers it needs to handle keywords, but code space is blank.
 There's no separation between assembly language and Forth since Forth is the assembly.
 I find myself using tokens I know are opcodes or short opcode sequences.
@@ -91,6 +91,6 @@ They are often free (in terms of code size) if used before literals and calls,
 which affects how I code.
 
 Mforth as presented by Tiff is like a cut-down ANS Forth. You can write an application in it.
-ANS Forth is one such application. It's a rather large beast, but fun to ride. 
-To make a standalone app, you would generate C source suitable for embedding, 
+ANS Forth is one such application. It's a rather large beast, but fun to ride.
+To make a standalone app, you would generate C source suitable for embedding,
 then compile that with a C compiler.

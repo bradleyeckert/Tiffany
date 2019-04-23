@@ -1,4 +1,4 @@
-TARGET ?= ./bin/tiff
+TARGET ?= ./bin/mf
 SRC_DIRS ?= ./src
 
 SRCS := $(shell find $(SRC_DIRS) -name *.cpp -or -name *.c -or -name *.s)
@@ -20,7 +20,7 @@ clean:
 -include $(DEPS)
 
 # On the Linux command line:
-# make		creates tiff and leaves a bunch of object files in /src
-# make clean	deletes the object files as well as tiff
+# make		creates mf and leaves a bunch of object files in /src
+# make clean	deletes the object files as well as mf
 
-# The executable is in ./bin. Run it by typing "./tiff".
+# The executable is in ./bin. Run it by typing "./mf".
