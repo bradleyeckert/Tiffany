@@ -43,7 +43,7 @@
 ;
 : NeedSlot  \ slot -- addr
    NoExecute
-   cp @ swap 64000 > if cell+ 2+ then   \ large address, leave room for >16-bit address
+   cp @ swap 64000 > if cell+ 1+ 1+ then \ large address, leave room for >16-bit address
    c_slot c@ > if NewGroup then
    cp @
 ;

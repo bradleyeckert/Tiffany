@@ -37,7 +37,7 @@
 : <>              xor 0= 0= ; macro     \ 6.2.0500  x y -- f
 : 0<>                 0= 0= ; macro     \ 6.2.0260  x y -- f
 : 0>              negate 0< ; macro     \ 6.2.0280  n -- f
-: aligned      2+ 1+ -4 and ;           \ 6.1.0706  n -- n'
+: aligned   1+ 1+ 1+ -4 and ;           \ 6.1.0706  n -- n'
 : 2@         @+ swap @ swap ;           \ 6.1.0350  a -- n2 n1
 : 2!             !+ !+ drop ; macro     \ 6.1.0310  n2 n1 a --
 : abs         |-if negate | ;           \ 6.1.0690  n -- u

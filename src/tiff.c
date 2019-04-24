@@ -843,7 +843,7 @@ static void LoadKeywords(void) {        // populate the list of gator brain func
     AddEquate ("op_c@+",   opCfetchPlus);
     AddEquate ("op_u2/",   opUtwoDiv);
     AddEquate ("op_no:",   opSKIP);
-    AddEquate ("op_2+",    opTwoPlus);
+//    AddEquate ("op_2+",    opTwoPlus);
     AddEquate ("op_jmp",   opJUMP);
     AddEquate ("op_w!+",   opWstorePlus);
     AddEquate ("op_w@+",   opWfetchPlus);
@@ -855,7 +855,7 @@ static void LoadKeywords(void) {        // populate the list of gator brain func
     AddEquate ("op_0<",    opZeroLess);
     AddEquate ("op_w@",    opWfetch);
     AddEquate ("op_xor",   opXOR);
-    AddEquate ("op_rept",  opREPT);
+    AddEquate ("op_reptc", opREPTC);
     AddEquate ("op_4+",    opFourPlus);
     AddEquate ("op_over",  opOVER);
     AddEquate ("op_+",     opADDC);

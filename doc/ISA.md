@@ -30,7 +30,7 @@ The MISC paradigm executes small instructions very fast, from an instruction gro
 
 One way that this ISA deviates from MISC is that MISC is more focused on power consumption. You can burn power by accessing either a register file or a RAM. MISC uses stacks instead, where the stacks are implemented using bidirectional shift register logic. Maybe I'm being a little naughty, but a single block RAM is used for stacks and fast user variables. It follows the Forth model from the 1970s, where stacks in RAM are accessible by the app. What are the odds that I'll need a Forth CPU in silicon that minimizes power consumption in the way MISC does?
 
-An instruction word may be any number of bits. 16, 18 and 32 are popular sizes. Optimal semantic density is in the 20 bit range due to more slots being discarded at higher widths. This affects only the size, not the speed. Since the intended hardware talks to an AXI bus, the chosen word size is 32-bit to match AXI's minimum bus width.
+An instruction word may be any number of bits. 16, 18 and 32 are popular sizes. Optimal semantic density is in the 20 bit range due to more slots being discarded at higher widths. This affects only the size, not the speed. Since the intended hardware talks to an AXI bus, the chosen word size is 32-bit to match AXI's minimum bus width. The AXI bus is used for I/O. @AS and !AS access it.
 
 The model's instruction size affects the ISA as well as the low level implementation, so to be the most useful we bet on a single horse: 32-bit. Word size affects how much memory you can address. In an embedded system, even a cheap one, there can be megabytes of data. Even phone apps weigh in at 10MB for a small one. Yes, that's ridiculous. However, supposing a CPU should be able to address that, a word size of at least 24 bits would be needed. Large SPI flash needs even more address bits, and keep in mind you need to add another address bit every two years. So, 32-bit is just about optimal for "small systems".
 
@@ -52,7 +52,14 @@ The number of bits depends on the slot position or the opcode. It can be 26, 20,
 
 ALU operations take their operands from registers for minimum input delay. Since the RAM is synchronous read/write, the opcode must be pre-decoded. The pre-decoder initiates reads. The main decoder has a registered opcode to work with, so the decode delay isn’t so bad. The pre-read stage of the pipeline allows time for immediate data to be registered, so the execute stage sees no delay. Opcodes have time to add the immediate data to registers, for more complex operations. One can index into the stack, for example.
 
-Preliminary opcodes:
+### Opcodes
+
+There are few rules regarding opcode numbering. They are:
+
+1. nop must be 0.
+2. call must be convertible to jump by clearing a bit. Preferably bit 3.
+
+In the following table:
 
 - *opcode conditionally skips the rest of the slots*
 - **opcode uses the rest of the slots as signed immediate data**
@@ -60,20 +67,20 @@ Preliminary opcodes:
 |         | 0         | 1          | 2         | 3         | 4         | 5         | 6         | 7         |
 |:-------:|:---------:|:----------:|:---------:|:---------:|:---------:|:---------:|:---------:|:---------:|
 | **0**   | nop       | dup        | exit      | +         | user      | 0<        | r>        | 2/        |
-| **1**   | ifc:      | 1+         | swap      | -         |           | c!+       | c@+       | u2/       |
-| **2**   | no:       | 2+         | ifz:      | **jmp**   |           | w!+       | w@+       | and       |
+| **1**   | ifc:      | 1+         | swap      |           |           | c!+       | c@+       | u2/       |
+| **2**   | no:       |            | ifz:      | **jmp**   |           | w!+       | w@+       | and       |
 | **3**   |           | **litx**   | >r        | **call**  |           | 0=        | w@        | xor       |
-| **4**   | rept      | 4+         | over      | c+        |           | !+        | @+        | 2\*       |
+| **4**   | reptc     | 4+         | over      | c+        |           | !+        | @+        | 2\*       |
 | **5**   | -rept     |            | rp        | drop      |           | rp!       | @         | 2\*c      |
 | **6**   | -if:      |            | sp        | **@as**   |           | sp!       | c@        | port      |
-| **7**   | +if:      | **lit**    | up        | **!as**   |           | up!       | r@        | invert    |
+| **7**   |           | **lit**    | up        | **!as**   |           | up!       | r@        | invert    |
 | *mux*   | *none*    | *T+offset* | *XP / N*  | *N +/- T* | *user*    | *0= / N*  | *mem bus* | *logic*   |
 
 The opcode map is optimized for LUT4 implementation. opcode[2:0] selects T from a 7:1 mux (column).
 opcode[5:3] selects the row within the column, sometimes with some decoding.
 There are 2 or 3 levels of logic between registers and the T mux.
 
-Group 1: 32-bit Adder/Subtractor
+Group 1: 32-bit Adder
 
 Group 2: Level 1 is 10-bit adder and mux-select decode, level 2 is 2:1 mux {sum, imm}.
 
@@ -117,9 +124,7 @@ Basic stack
 
 ALU
 - `+`     ( n m -- n+m ) carry out
-- `-`     ( n m -- n+m ) carry out
 - `c+`    ( n m -- n+m ) carry in and carry out
-- `c-`    ( n m -- n+m ) carry in and carry out
 - `1+`    ( n -- n+1 )
 - `2+`    ( n -- n+2 )
 - `cell+` ( n -- n+4 )
@@ -139,7 +144,7 @@ Control Flow
 - `ifz:`  ( flag -- ) Skip the rest of the slots if flag <> 0.
 - `jmp`   ( -- ) Jump: PC = Imm.
 - `no:`   ( -- ) Skip the rest of the slots. Displays as `_`
-- `rept`  ( -- ) Go back to slot 0.
+- `reptc` ( -- ) Go back to slot 0 if carry=0.
 - `-rept` ( n ? -- n' ? ) Go back to slot 0 if N<0; N=N+1.
 - `-if:`  ( n -- n ) Skip remaining slots if T>=0.
 - `+if:`  ( n -- n ) Skip remaining slots if T<0.
@@ -186,7 +191,3 @@ In a hardware implementation, the instruction group provides natural protection 
 A typical Forth kernel will have a number of sequential calls, which take four bytes per call. This is a little bulky, especially if the equivalent macro can fit in a group. The call and return overhead is eight clock cycles, so it’s also slow. Using the macro sequence should replace the call when possible. Code that’s inlineable is copied directly except for its `;`, leaving that slot open for the next instruction.
 
 Hardware multiply and divide, if provided, are accessed via the USER instruction. `um*` takes about 500 cycles when done by shift-and-add.
-
-### How are those fatso 32-bit instruction groups working for you?
-
-Not bad. Code is still puny compared to data storage requirements in typical apps. Semantic density is maybe 1/3 less than what I could get with 16-bit instructions.

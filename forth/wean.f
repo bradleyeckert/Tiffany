@@ -59,7 +59,7 @@ defer equ_ec                            \ 3rd cell -> equ compile
 :noname @+     ; xte-is @+
 :noname @      ; xte-is @               \ 6.1.0650
 :noname u2/    ; xte-is u2/
-:noname rept   ; xte-is rept
+:noname reptc  ; xte-is reptc
 :noname -rept  ; xte-is -rept
 :noname 2/     ; xte-is 2/              \ 6.1.0330
 :noname sp     ; xte-is sp
@@ -73,7 +73,6 @@ defer equ_ec                            \ 3rd cell -> equ compile
 :noname drop   ; xte-is drop            \ 6.1.1260
 :noname 1+     ; xte-is 1+              \ 6.1.0290
 :noname char+  ; xte-is char+           \ 6.1.0897
-:noname 2+     ; xte-is 2+
 :noname cell+  ; xte-is cell+           \ 6.1.0880
 :noname >r     ; xte-is >r              \ 6.1.0580
 :noname swap   ; xte-is swap            \ 6.1.2260

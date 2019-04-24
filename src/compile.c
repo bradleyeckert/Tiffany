@@ -21,9 +21,9 @@ uint32_t OpcodeCount[64];               // static instruction count
 static char names[64][6] = {
     ".",     "dup",  "exit",  "+",    "user", "0<",   "r>",  "2/",
     "ifc:",  "1+",   "swap",  "?",    "?",    "c!+",  "c@+", "u2/",
-    "_",     "2+",   "ifz:",  "jmp",  "?",    "w!+",  "w@+", "and",
+    "_",     "?",    "ifz:",  "jmp",  "?",    "w!+",  "w@+", "and",
     "?",     "litx", ">r",    "call", "?",    "0=",   "w@",  "xor",
-    "rept",  "4+",   "over",  "c+",   "?",    "!+",   "@+",  "2*",
+    "reptc", "4+",   "over",  "c+",   "?",    "!+",   "@+",  "2*",
     "-rept", "?",    "rp",    "drop", "?",    "rp!",  "@",   "2*c",
     "-if:",  "?",    "sp",    "@as",  "?",    "sp!",  "c@",  "port",
     "?",     "lit",  "up",    "!as",  "?",    "up!",  "r@",  "com"
@@ -681,7 +681,7 @@ void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     AddImplicit(opFetchPlus , "@+");
     AddImplicit(opFetch     , "@");
     AddImplicit(opUtwoDiv   , "u2/");
-    AddImplicit(opREPT      , "rept");
+    AddImplicit(opREPTC     , "reptc");
     AddImplicit(opMiREPT    , "-rept");
     AddImplicit(opTwoDiv    , "2/");
     AddImplicit(opSP        , "sp");
@@ -701,7 +701,7 @@ void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     AddExplicit(opCALL      , "call");
     AddImplicit(opOnePlus   , "1+");
     AddImplicit(opOnePlus   , "char+");
-    AddImplicit(opTwoPlus   , "2+");
+//    AddImplicit(opTwoPlus   , "2+");
     AddImplicit(opFourPlus  , "cell+");
     AddImplicit(opPUSH      , ">r");
     AddImplicit(opSWAP      , "swap");

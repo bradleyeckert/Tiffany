@@ -62,7 +62,7 @@ extern uint32_t OpCounter[64];              // dynamic instruction count
 #define opUtwoDiv    (017)  // u2/
 
 #define opSKIP       (020)  // no:  skip remaining slots
-#define opTwoPlus    (021)  // 2+
+//#define opTwoPlus    (021)  // 2+
 #define opSKIPNZ     (022)  // ifz:
 #define opJUMP       (023)  // jmp
 #define opWstorePlus (025)  // w!+  ( n a -- a+2 )
@@ -76,7 +76,7 @@ extern uint32_t OpCounter[64];              // dynamic instruction count
 #define opWfetch     (036)  // w@  ( a -- n )
 #define opXOR        (037)  // xor
 
-#define opREPT       (040)  // rept  slot=0
+#define opREPTC      (040)  // rept  slot=0 of C=0
 #define opFourPlus   (041)  // 4+
 #define opOVER       (042)  // over
 #define opADDC       (043)  // c+  with carry in

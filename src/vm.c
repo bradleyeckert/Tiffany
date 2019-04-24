@@ -483,11 +483,6 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
                 Trace(New, RidT, T, (unsigned) T / 2);  New=0;
 #endif // TRACEABLE
 			    CARRY = T&1;  T = T / 2;                break;	// u2/
-			case opTwoPlus:
-#ifdef TRACEABLE
-                Trace(New, RidT, T, T + 2);  New=0;
-#endif // TRACEABLE
-			    T = T + 2;                              break;	// 2+
 			case opOVER: M = N;  SDUP();
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
@@ -563,7 +558,8 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
                 Trace(New, RidT, T, T ^ N);  New=0;
 #endif // TRACEABLE
                 T = T ^ N;  SNIP();	                    break;	// xor
-			case opREPT:  slot = 32;                    break;	// rept
+			case opREPTC:
+			    if (!(CARRY & 1)) slot = 32;            break;	// reptc
 			case opFourPlus:
 #ifdef TRACEABLE
                 Trace(New, RidT, T, T + 4);  New=0;
@@ -604,7 +600,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 #endif // TRACEABLE
                 CARRY = T>>31;   T = M;                 break;  // 2*
 			case opMiREPT:
-                if (N&0x8000) slot = 32;          	            // -rept
+                if (N&0x10000) slot = 32;          	            // -rept
 #ifdef TRACEABLE
                 Trace(New, RidN, N, N+1);  New=0; // repeat loop uses N
 #endif // TRACEABLE                               // test and increment
