@@ -144,7 +144,7 @@ Control Flow
 - `ifz:`  ( flag -- ) Skip the rest of the slots if flag <> 0.
 - `jmp`   ( -- ) Jump: PC = Imm.
 - `no:`   ( -- ) Skip the rest of the slots. Displays as `_`
-- `reptc` ( -- ) Go back to slot 0 if carry=0.
+- `reptc` ( -- ) Go back to slot 0 if carry=0; N=N+1.
 - `-rept` ( n ? -- n' ? ) Go back to slot 0 if N<0; N=N+1.
 - `-if:`  ( n -- n ) Skip remaining slots if T>=0.
 - `+if:`  ( n -- n ) Skip remaining slots if T<0.

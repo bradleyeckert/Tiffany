@@ -453,16 +453,6 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 #endif // TRACEABLE
 			    T = T + 1;                              break;	// 1+
 			case opPUSH:  RDUP(T);  SDROP();            break;  // >r
-/*			case opSUB:
-			    DX = (uint64_t)N - (uint64_t)T;
-#ifdef TRACEABLE
-                Trace(New, RidT, T, (uint32_t)DX);  New=0;
-                Trace(0, RidCY, CARRY, (uint32_t)(DX>>32));
-#endif // TRACEABLE
-                T = (uint32_t)DX;
-                CARRY = (uint32_t)(DX>>32);
-                SNIP();	                                break;	// -
-*/
 			case opCstorePlus:    /* ( n a -- a' ) */
 			    StoreByte(N, T);
 #ifdef TRACEABLE
@@ -559,7 +549,11 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 #endif // TRACEABLE
                 T = T ^ N;  SNIP();	                    break;	// xor
 			case opREPTC:
-			    if (!(CARRY & 1)) slot = 32;            break;	// reptc
+			    if (!(CARRY & 1)) slot = 32;                    // reptc
+#ifdef TRACEABLE
+                Trace(New, RidN, N, N+1);  New=0; // repeat loop uses N
+#endif // TRACEABLE                               // test and increment
+                N++;  break;
 			case opFourPlus:
 #ifdef TRACEABLE
                 Trace(New, RidT, T, T + 4);  New=0;

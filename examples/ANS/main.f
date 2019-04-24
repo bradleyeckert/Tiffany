@@ -81,6 +81,16 @@ include ../../forth/double.f		    \ double math
 	counter r> - 0 <# # [char] . hold #s #> type ."  msec "
 ;
 
+: ff1d  \ d -- d' shift                 \ normalize a 64-bit mantissa, dropping the MSB
+   >r 0 swap |                          ( cnt lo | hi )
+   2* r> 2*c >r reptc                   \ to show off reptc, the FP enabler
+   swap r> swap
+;
+: ff1  \ u -- u' shift                  \ normalize a 32-bit mantissa, dropping the MSB
+   dup dup xor swap |                   ( cnt u )
+   2* reptc swap
+;
+
 include ../../forth/end.f               \ finish the app
 
 cp @  dup    16 !                       \ resolve internal ROM length
@@ -144,7 +154,6 @@ cr .( Test suite: ) cr
 include ../../forth/test/ttester.fs
 include ../../forth/test/coretest.fs
 include ../../forth/test/dbltest.fs
-bye
 [then]
 [then]
 
