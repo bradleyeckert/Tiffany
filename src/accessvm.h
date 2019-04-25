@@ -39,7 +39,6 @@ void AddWordlistHead (uint32_t wid, char *name);
 uint32_t iword_FIND (void);                     // ( addr len -- addr len | 0 ht )
 uint32_t WordFind (char *name);                                     // C version
 
-void tiffWords (char *substring, int verbosity);   // list words in search order
 char *GetXtName(uint32_t xt);                              // look up name of xt
 
 void ReplaceXTs(void);    // Replace XTs with executable code ( NewXT OldXT -- )
@@ -53,6 +52,8 @@ void DumpRegs(void);            // clear screen and dump register and stack data
 void Disassemble(uint32_t addr, uint32_t length);
 void MakeTestVectors(FILE *ofp, int length, int format);
 void WipeTIB (void);                                         // clear TIB memory
+
+extern char * hexfilename;
 
 
 #define DataStackCol     1

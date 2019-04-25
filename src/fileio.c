@@ -175,25 +175,107 @@ default: fprintf(ofp, "/*%d*/", n);
 }
 
 /*
-The raw image includes all internal ROM, RAM, and SPI flash (ROM space)
-Use the -b directive to load it instead of (or before) a Forth file.
+Save image in HEX format.
+Includes Internal ROM data and Flash data.
+This is useful for programming SPI flash devices for use with
+FPGA-based systems with RAM-based internal ROM. A SOC can just boot this image.
+Intel HEX format (.mcs or .hex) seems the most universal.
 */
+
+void GenHex (uint32_t begin, uint32_t end, FILE *fp) {
+    uint32_t addr = begin;              // address is cell index
+    unsigned int upper = 0;             // upper 16 bits of current address range
+    while (addr < end) {
+        unsigned int checksum;
+        unsigned int ahi = addr >> 14;
+        uint8_t hi, lo;
+        if (upper != ahi) {             // Extended Linear Address
+            upper = ahi;
+            hi = ahi >> 8;
+            lo = ahi & 0xFF;
+            checksum = 6+hi+lo;
+            fprintf(fp, ":02000004%02X%02X%02X\n", hi, lo, 0xFF & -checksum);
+        }
+        int cells = end - addr;         // cells left to output
+        if (cells > 4) {
+            cells = 4;
+        }
+        hi = (uint8_t)(addr >> 6);
+        lo = (addr*4) & 0xFF;
+        checksum = hi+lo+(cells*4);   // data record
+        fprintf(fp, ":%02X%02X%02X00", (cells*4), hi, lo);
+        for (int i=0; i<cells; i++) {
+            uint32_t x = rom[i+addr];
+            for (int i = 0; i < 4; i++) {   // unpack little-endian
+                uint8_t b = (uint8_t)(x >> (8 * i));
+                fprintf(fp, "%02X", b);
+                checksum += b;
+            }
+        }
+        fprintf(fp, "%02X\n", 0xFF & -checksum);
+        addr += cells;
+    }
+}
 
 void SaveImage (char *filename) {
     WipeTIB();                          // don't need to see TIB contents
-    int32_t length = ROMwords(SPIflashBlocks<<10); // end of ROM data
+    int32_t length = ROMwords(ROMsize); // internal ROM
     FILE *ofp;
     ofp = fopen(filename, "wb");
     if (ofp == NULL) {
         tiffIOR = -198;                 // Can't create output file
         return;
     }
-    // output length 32-bit rom/ram/etc words to binary file
-    for (uint32_t i=0; i<length; i++) {
-        uint32_t x = rom[i];
-        for (int i = 0; i < 4; i++) {   // unpack little-endian
-            fputc((uint8_t)(x >> (8 * i)), ofp);
+    GenHex(0, length, ofp);
+    length = ROMwords(SPIflashBlocks<<10); // flash data
+    GenHex(ROMsize+RAMsize, length, ofp);
+    fputs(":00000001FF\n", ofp);        // EOF marker
+    fclose(ofp);
+    free(rom);  rom = NULL;
+}
+
+/* untested, unused hex loader. might be useful for booting entirely from hex file.
+*/
+
+static int NextHexByte(FILE *fp) {
+    int ch = fgetc(fp);  if (EOF == ch) return -1;
+    int cl = fgetc(fp);  if (EOF == cl) return -1;
+    ch -= '0';  if(ch>9) ch-= 7;
+    cl -= '0';  if(cl>9) ch-= 7;
+    return (16*ch) + cl;
+}
+
+void LoadImage (char * filename) {
+    if (filename) {                     // hex file exists, overwrite everything
+        FILE *fp;
+        fp = fopen(filename, "r");
+        if (fp) {
+            uint32_t addr = 0;
+            int c;
+            do {
+                c = fgetc(fp);
+                if (EOF == c) goto eof;
+            } while (c != ':');         // skip to next ':'
+            int length = NextHexByte(fp);
+            int value = (NextHexByte(fp) << 8) + NextHexByte(fp);
+            int cmd = NextHexByte(fp);
+            uint32_t x = 0;
+            switch(cmd) {
+                case 4: addr = (addr & 0xFFFF) + (value << 16);
+                    break;
+                case 0: addr = (addr & 0xFFFF0000) + value;
+                    for (int i=0; i<(length/4); i++) {
+                    x  = NextHexByte(fp) << 24;
+                    x += NextHexByte(fp) << 16;
+                    x += NextHexByte(fp) << 8;
+                    x += NextHexByte(fp);
+                }
+                WriteROM(x, addr);
+                addr += 4;
+            }
+eof:        fclose(fp);
+        } else {                        // couldn't open file
+            printf("Missing HEX file %s\n", filename);
         }
     }
-    fclose(ofp);
 }

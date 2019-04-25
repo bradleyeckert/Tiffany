@@ -1,11 +1,11 @@
 # Tiff, a PC host for Mforth
 
-Tiff is a straight C console application that implements a "minimal" Forth.
+Tiff is a C99 console application that implements a "minimal" Forth.
 “Tiff” is short for “Tiffany”, the main character in the film “Bride of Chucky”.
 Trust me, the C code is a slasher horror show.
 
 Tiff uses a simulated Mforth CPU to execute compiled code as needed. It’s designed to load a Forth system mostly from scratch,
-gradually handing off all control to the simulated CPU. 
+gradually handing off all control to the simulated CPU.
 The resulting ROM image is binary compatible with models implemented in your embedded C application
 or with an FPGA or ASIC, which runs the same Forth system (big or small) as Tiff.
 
@@ -67,9 +67,9 @@ The compilation of primitives, such as zero-operand instructions, is handled by 
 This dual-xt header scheme allows for efficient code generation, but it’s a little incompatible with Forth’s “tick”. Tiff returns xte. What we want is a primitive below tick, which returns the address of xtc (H1) in the header structure. Let’s call this H’ and the returned token xth. You could then 2@ an xth to get ( w xtc ). Typical word compilation would use H’ 2@ FFFFFF AND EXECUTE where xtc is the xte of COMPILE,.
 
 You may notice that some headers will need to be created (in the VMgen) before the xte of COMPILE, is known.
-For example, an xtc of -2 in the VMgen is used as Tiff's version of `COMPILE,`. 
+For example, an xtc of -2 in the VMgen is used as Tiff's version of `COMPILE,`.
 All xts of internal Tiff functions are negative numbers.
-These will be cleaned up in `wean.f`. 
+These will be cleaned up in `wean.f`.
 
 A key feature of xtc tokens is that some of them have strategic addresses such that
 flipping a bit from `1` to `0` changes the behavior to something else.

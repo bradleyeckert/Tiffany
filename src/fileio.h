@@ -7,6 +7,6 @@
 #include <stdint.h>
 
 void MakeFromTemplate (char *infile, char *outfile);
-void SaveImage (char *filename);               // save ROM/RAM/ROM image to file
+void SaveImage (char *filename);               // save ROM/flash image to file
 
 #endif // __FILEIO_H__

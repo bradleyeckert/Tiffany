@@ -120,10 +120,7 @@ uint32_t vmEmit(uint32_t xchar) {
             }
         }
     }
-    char* s = c;  char b;
-    while ((b = *s++)) {
-        putchar(b);     // avoid printf dependency
-    }                   // else use printf("%s",c);
+    puts(c);
 #ifdef __linux__
     fflush(stdout);
     usleep(1000);

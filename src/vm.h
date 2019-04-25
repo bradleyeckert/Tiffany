@@ -9,7 +9,7 @@
 //================================================================================
 
 // Defined in vm.c, the basic debug and simulation interface.
-void vmMEMinit(void);                         // Clear all memory
+void vmMEMinit(char * name);                // Clear all memory
 void ROMbye(void);                          // free memory
 uint32_t VMstep(uint32_t IR, int Paused);   // Execute an instruction group
 void VMpor(void);                           // Reset the VM

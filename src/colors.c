@@ -82,13 +82,17 @@ static char WordColors[] = {
     36, 40, // call-only
     32, 45, // anonymous
     32, 40, // typical - green
+    33, 45, // call-only + anonymous + immediate
+    35, 40, // call-only + immediate
+    33, 45, // anonymous + immediate
+    33, 40, // typical - yellow
     31, 40  // smudged
 };
 
-void WordColor(int color) {             // set color based on word type
+void WordColor(int color) {             // set color based on word type 0..15
     if (theme()) {
         if (color & 1) {
-            color = 8;
+            color = 16;
         } else {
             color *= 2;
         }

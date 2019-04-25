@@ -277,6 +277,84 @@ static void iword__IF (void) {
 }
 
 
+// WORDS primitive
+
+/*
+| Cell | \[31:24\]                        | \[23:0\]                           |
+| ---- |:---------------------------------| ----------------------------------:|
+| -3   | Source File ID                   | tag | definition length            |
+| -2   | Source Line, Low byte            | xtc, Execution token for compile   |
+| -1   | Source Line, High byte           | xte, Execution token for execute   |
+| 0    | # of instructions in definition  | Link                               |
+| 1    | spare                            | Name Text, first 3 characters      |
+| 2    | 4th name character               | Name Text, chars 5-7, etc...       |
+*/
+static void PrintWordlist(uint32_t WID, char *substring, int verbosity) {
+    char key[32];
+    char name[32];
+    char wordname[32];
+    if (strlen(substring) == 0)         // zero length string same as NULL
+        substring = NULL;
+    if (verbosity) {
+        printf("NAME             LEN    XTE    XTC FID  LINE  TAG    VALUE FLAG HEAD\n");
+    }
+    uint32_t xtc, xte, tag;
+    do {
+        uint8_t length = FetchByte(WID+4);
+        FetchString(wordname, WID+5, length & 0x1F);
+        if (substring) {
+            if (strlen(substring) > 31) goto done;  // no words this long
+            strcpy(key, substring);
+            strcpy(name, wordname);
+            if (!FetchByte(CASESENS)) {
+                UnCase(key);
+                UnCase(name);
+            }
+            char *s = strstr(name, key);
+            if (s != NULL) goto good;
+        } else {
+good:
+            tag = FetchCell(WID-12);
+            xte = FetchCell(WID-4);
+            xtc = FetchCell(WID-8);
+            int color = (length>>5) & 7;
+            if (!(xtc & 0xFFFFFF)) color += 8;      // immediate
+            WordColor(color);
+            int flags = length>>5;
+            if (verbosity) {                        // long version
+                uint32_t linenum = ((xte>>16) & 0xFF00) + (xtc>>24);
+                printf("%-17s%3d%7X%7X",
+                       wordname, FetchHalf(WID-12), xte&0xFFFFFF, xtc&0xFFFFFF);
+                if (linenum == 0xFFFF)
+                    printf("  --    --");
+                else
+                    printf("%4X%6d", tag>>24, linenum);
+                printf("%5X%9X%5d %X\n",
+                       (tag>>24)&0xFF, FetchCell(WID-16), flags, WID);
+                ColorNormal();
+            } else {
+                printf("%s", wordname);
+                ColorNormal();
+                printf(" ");
+            }
+        }
+        WID = FetchCell(WID) & 0xFFFFFF;
+    } while (WID);
+done:
+    ColorNormal();
+}
+
+static void tiffWords (char *substring, int verbosity) {
+    uint8_t wids = FetchByte(WIDS);
+    while (wids--) {
+        uint32_t wid = FetchCell(CONTEXT + wids*4);  // search the first list
+        PrintWordlist(FetchCell(wid), substring, verbosity);
+    }
+    ColorNormal();
+    printf("\n");
+}
+
+
 // When a file is included, the rest of the TIB is discarded.
 // A new file is pushed onto the file stack
 
@@ -371,7 +449,6 @@ static void iword_WORDS (void) {        // list words
     FollowingToken(name, 32);
     tiffWords (name, 0);
 }
-
 static void iword_XWORDS (void) {       // detailed word list
     FollowingToken(name, 32);
     tiffWords (name, 1);
@@ -589,7 +666,8 @@ static char *LocateFilename (int id) {  // get filename from FileID
     name[name[0]+1] = 0;
     return name+1;
 }
-static void iword_LOCATE (void) {                // locate source text
+
+static void iword_LOCATE (void) {       // locate source text
     uint32_t ht = Htick();
     uint8_t fileid = FetchByte(ht-9);
     uint8_t lineLo = FetchByte(ht-5);
@@ -625,7 +703,7 @@ static void iword_DASM (void) {         // disassemble range ( addr len )
         printf("Too long to disassemble\n");
         return;
     }
-    Disassemble(addr, length);
+    Disassemble(addr, length);          // compile.c
 }
 static void iword_SEE (void) {          // disassemble word
     uint32_t ht = Htick();
@@ -680,7 +758,6 @@ static void iword_SAFE(void) {
         PC = VMstep(FetchCell(PC), 0) << 2;
     }
 }
-
 
 static int keywords = 0;                // # of keywords added at startup
 typedef void (*VoidFn)();
@@ -945,7 +1022,7 @@ int NotKeyword (char *key) {            // do a command, return 0 if found
 
 // Interpret the TIB inside the VM, on the VM data stack.
 static void iword_INTERPRET(void) {
-    while (iword_PARSENAME()) {           // get the next blank delimited keyword
+    while (iword_PARSENAME()) {         // get the next blank delimited keyword
 #ifdef VERBOSE
         uint32_t tempLen = PopNum();
         uint32_t tempAddr = PopNum();
@@ -954,17 +1031,21 @@ static void iword_INTERPRET(void) {
         PushNum(tempAddr);
         PushNum(tempLen);
 #endif
-        uint32_t ht = iword_FIND();       // search for keyword in the Forth dictionary
+        uint32_t ht = iword_FIND();     // search for keyword in the Forth dictionary
         if (ht) {  // ( 0 ht )          // it's a Forth (in ROM) word
             PopNum();
             PopNum();
-            uint32_t xt;
+            uint32_t xte = 0xFFFFFF & FetchCell(ht - 4);
+            uint32_t xtc = 0xFFFFFF & FetchCell(ht - 8);
             if (FetchCell(STATE)) {     // compiling
-                xt = 0xFFFFFF & FetchCell(ht - 8);
+                if (xtc) {
+                    tiffFUNC(xtc);
+                } else {
+                    tiffFUNC(xte);      // xtc was wiped by IMMEDIATE
+                }
             } else {                    // interpreting
-                xt = 0xFFFFFF & FetchCell(ht - 4);
+                tiffFUNC(xte);
             }
-            tiffFUNC(xt);
         } else {                        // okay, maybe an internal keyword
             uint32_t length = PopNum();
             if (length>31) length=32;   // sanity check
@@ -1096,21 +1177,21 @@ void tiffQUIT (char *cmdline) {
                 case 1:
                     Refill();
                     break;
-                default:	// unexpected
+                default:	            // unexpected
                     StoreCell(0, SOURCEID);
             }
 #ifdef VERBOSE
             FetchString(name, FetchCell(TIBB), (uint8_t)FetchCell(TIBS));
             printf("ior before Interpret of |%s| is %d\n", name, tiffIOR);
 #endif
-            iword_INTERPRET();            // interpret the TIBB until it's exhausted
+            iword_INTERPRET();          // interpret the TIBB until it's exhausted
             if (tiffIOR) break;
 /*
 Here's an interesting problem. stdin cooked input echo includes the trailing newline.
 This newline means that output will appear on a new line.
-It's a slightly different look and feel.
+It's a slightly different look and feel from some Forths.
 
-ok: at the newline means you didn't die. That's always `ok`.
+ok> at the newline means you didn't die. That's always `ok`.
 */
 
             switch (FetchCell(SOURCEID)) {

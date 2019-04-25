@@ -9,7 +9,6 @@
 // This file serves as the official specification for the Mforth VM.
 // It is usable as a template for generating a C testbench or embedding in an app.
 
-#define IMM    (IR & ~(-1<<slot))
 //
 #define ROMsize 8192
 //
@@ -18,6 +17,17 @@
 #define SPIflashBlocks 256
 //
 #define EmbeddedROM
+
+#define IMM     (IR & ~(-1<<slot))
+
+#ifndef TRACEABLE
+// Useful macro substitutions if not tracing
+#define SDUP()  RAM[--SP & (RAMsize-1)] = N;  N = T
+#define SDROP() T = N;  N = RAM[SP++ & (RAMsize-1)]
+#define SNIP()  N = RAM[SP++ & (RAMsize-1)]
+#define RDUP(x) RAM[--RP & (RAMsize-1)] = x
+#define RDROP() RAM[RP++ & (RAMsize-1)]
+#endif // TRACEABLE
 
 /* -----------------------------------------------------------------------------
     Globals:
@@ -48,7 +58,7 @@ static const uint32_t InternalROM[655] = {
 /*0012*/ 0x2AB09000, 0x28629A28, 0x69A09000, 0x18628628, 0x68A09000, 0x186F8A68,
 /*0018*/ 0x2BE29A08, 0xAEB09000, 0x8A209000, 0x68A18A68, 0x68A18A1A, 0x69A8A218,
 /*001E*/ 0x1930001B, 0xAEBAC240, 0x05209000, 0x04240000, 0x07005FFE, 0x05F09000,
-/*0024*/ 0x74240000, 0x7DD09000, 0x7DD74240, 0x75D09000, 0xFC914240, 0x449E4003,
+/*0024*/ 0x74240000, 0x7DD09000, 0x7DD74240, 0x75D09000, 0xFC914240, 0x24927903,
 /*002A*/ 0xFD709000, 0x98AB8A08, 0x965AC240, 0xC3F25000, 0x09000000, 0xFCAFD7FE,
 /*0030*/ 0x68240000, 0x69A2860C, 0x2868C240, 0xFDAFC918, 0x89DC2B26, 0xAC240000,
 /*0036*/ 0xC1300033, 0x09000000, 0x38240000, 0xE4000004, 0xCAE09000, 0xE4000008,
@@ -142,11 +152,11 @@ static const uint32_t InternalROM[655] = {
 /*0246*/ 0x646C726F, 0xFFFFFF21, 0xE4000910, 0x39B00131, 0x6C00014C, 0xE400000A,
 /*024C*/ 0xE4000000, 0x2BF25A68, 0xF9B001B0, 0x6C000051, 0x4C00024E, 0x09000000,
 /*0252*/ 0x00000003, 0x00008104, 0x00008100, 0x000080F0, 0x00008080, 0x00000004,
-/*0258*/ 0x00008118, 0x0000000A, 0x0000A4D4, 0x0000096C, 0x00008238, 0x00000006,
+/*0258*/ 0x00008118, 0x0000000A, 0x0000A4BC, 0x0000096C, 0x00008238, 0x00000006,
 /*025E*/ 0x0000812C, 0x00008234, 0x000004FC, 0x00000001, 0x0000000C, 0x0000816C,
 /*0264*/ 0x0000000C, 0x00000001, 0x00008148, 0x001A0001, 0x00000001, 0x00008150,
-/*026A*/ 0x1A000940, 0x00000003, 0x0000815C, 0x0000A498, 0x00050003, 0x00008234,
-/*0270*/ 0x00000001, 0x00008234, 0x0000A4B0, 0x00000000, 0x00008238, 0xE4000948,
+/*026A*/ 0x1A000940, 0x00000003, 0x0000815C, 0x0000A480, 0x00050003, 0x00008234,
+/*0270*/ 0x00000001, 0x00008234, 0x0000A498, 0x00000000, 0x00008238, 0xE4000948,
 /*0276*/ 0x9A28899C, 0x9C329A28, 0x18140000, 0x4930027C, 0x6A619B70, 0x4C000276,
 /*027C*/ 0x1B908168, 0x96B40000, 0xE4008100, 0xF7908080, 0xD79080EC, 0xB7908168,
 /*0282*/ 0xB9A40000, 0xE4010000, 0xE4008120, 0x96B40000, 0xE4018000, 0xE400811C,
@@ -245,12 +255,6 @@ uint32_t FetchROM(uint32_t addr) {
     static uint32_t PC;     static uint32_t UP = 64;
     static uint32_t CARRY;  static uint32_t DebugReg;
 
-    static void SDUP(void)  { RAM[--SP & (RAMsize-1)] = N;  N = T; }
-    static void SDROP(void) { T = N;  N = RAM[SP++ & (RAMsize-1)]; }
-    static void SNIP(void)  { N = RAM[SP++ & (RAMsize-1)]; }
-    static void RDUP(uint32_t x)  { RAM[--RP & (RAMsize-1)] = x; }
-    static uint32_t RDROP(void) { return RAM[RP++ & (RAMsize-1)]; }
-
 #endif // TRACEABLE
 
 // Generic fetch from ROM or RAM: ROM is at the bottom, RAM is in middle, ROM is at top
@@ -287,8 +291,8 @@ static void StoreX (uint32_t addr, uint32_t data, int shift, int mask) {
 
 /// EXPORTS ////////////////////////////////////////////////////////////////////
 
-void vmMEMinit(void){     // erase all ROM and flash, allocate memory if not allocated yet.
-#ifndef EmbeddedROM
+void vmMEMinit(void){     				// erase all ROM and flash,
+#ifndef EmbeddedROM						// allocate memory if not allocated yet.
     if (NULL == ROM) {
         ROM = (uint32_t*) malloc(MaxROMsize * sizeof(uint32_t));
     }
@@ -308,7 +312,7 @@ void vmMEMinit(void){     // erase all ROM and flash, allocate memory if not all
 };
 
 #ifndef EmbeddedROM
-void ROMbye (void) {
+void ROMbye (void) {					// free VM memory if it used malloc
     free(ROM);
     free(RAM);
 }
@@ -330,19 +334,38 @@ int WriteROM(uint32_t data, uint32_t address) {
         return 0;
     }
     tiffIOR = FlashWrite(data, address);
-    printf("FlashWrite to %X", address);  // writing above ROM space
- //           tiffIOR = -20;
+    printf("FlashWrite to %X, you should be using SPI flash write (ROM! etc) instead\n", address);  // writing above ROM space
+           tiffIOR = -20;
     return tiffIOR;
 }
 #endif // EmbeddedROM
 
-
+uint32_t FetchCell(uint32_t addr) {
+    if (addr & 3) {
+        exception = -23;
+    }
+	uint32_t ca = addr >> 2;
+    if (ca < ROMsize) {
+#ifdef EmbeddedROM
+        return (FetchROM(ca));
+#else
+        return (ROM[ca]);
+#endif // EmbeddedROM
+    }
+	ca -= ROMsize;
+    if (ca < RAMsize) {
+        return (RAM[ca]);
+    }
+    return (FlashRead(addr));
+}
+/*
 uint32_t FetchCell(uint32_t addr) {
     if (addr & 3) {
         exception = -23;
     }
     return FetchX(addr>>2, 0, 0xFFFFFFFF);
 }
+*/
 uint16_t FetchHalf(uint32_t addr) {
     if (addr & 1) {
         exception = -23;
@@ -551,16 +574,6 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 #endif // TRACEABLE
 			    T = T + 1;                              break;	// 1+
 			case opPUSH:  RDUP(T);  SDROP();            break;  // >r
-/*			case opSUB:
-			    DX = (uint64_t)N - (uint64_t)T;
-#ifdef TRACEABLE
-                Trace(New, RidT, T, (uint32_t)DX);  New=0;
-                Trace(0, RidCY, CARRY, (uint32_t)(DX>>32));
-#endif // TRACEABLE
-                T = (uint32_t)DX;
-                CARRY = (uint32_t)(DX>>32);
-                SNIP();	                                break;	// -
-*/
 			case opCstorePlus:    /* ( n a -- a' ) */
 			    StoreByte(N, T);
 #ifdef TRACEABLE
@@ -581,11 +594,6 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
                 Trace(New, RidT, T, (unsigned) T / 2);  New=0;
 #endif // TRACEABLE
 			    CARRY = T&1;  T = T / 2;                break;	// u2/
-			case opTwoPlus:
-#ifdef TRACEABLE
-                Trace(New, RidT, T, T + 2);  New=0;
-#endif // TRACEABLE
-			    T = T + 2;                              break;	// 2+
 			case opOVER: M = N;  SDUP();
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
@@ -609,8 +617,6 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
                 T += 2;   SNIP();                       break;  // w!+
 			case opWfetchPlus:  SDUP();  /* ( a -- a' c ) */
                 M = FetchHalf(N);
-
- //               M = FetchX(N>>2, (N&2) * 8, 0xFFFF);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
                 Trace(0, RidN, N, N+2);
@@ -663,7 +669,12 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
                 Trace(New, RidT, T, T ^ N);  New=0;
 #endif // TRACEABLE
                 T = T ^ N;  SNIP();	                    break;	// xor
-			case opREPT:  slot = 32;                    break;	// rept
+			case opREPTC:
+			    if (!(CARRY & 1)) slot = 32;                    // reptc
+#ifdef TRACEABLE
+                Trace(New, RidN, N, N+1);  New=0; // repeat loop uses N
+#endif // TRACEABLE                               // test and increment
+                N++;  break;
 			case opFourPlus:
 #ifdef TRACEABLE
                 Trace(New, RidT, T, T + 4);  New=0;
@@ -704,7 +715,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 #endif // TRACEABLE
                 CARRY = T>>31;   T = M;                 break;  // 2*
 			case opMiREPT:
-                if (N&0x8000) slot = 32;          	            // -rept
+                if (N&0x10000) slot = 32;          	            // -rept
 #ifdef TRACEABLE
                 Trace(New, RidN, N, N+1);  New=0; // repeat loop uses N
 #endif // TRACEABLE                               // test and increment

@@ -1,8 +1,5 @@
 ﻿\ Hello World example
 
-hp @  ROMsize RAMsize +  invert +
-0< [if] .( HP is too low ) HP @ . .( / ) ROMsize . [then]
-
 defer coldboot
 defer safemode
 defer errorISR
@@ -18,9 +15,11 @@ include ../../forth/comma.f             \ smart comma
 	10 0 do i . loop
 ;
 
+defer coldboot
+
 include ../../forth/end.f               \ finish the app
 
-make ../../templates/app.A51 vm.A51     \ 8051 target
+make ../../templates/app.A51 C:\SiliconLabs\SimplicityStudio\M2\src\vm.A51
 
 \ theme=color
 

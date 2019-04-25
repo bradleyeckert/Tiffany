@@ -170,7 +170,7 @@ static void StoreX (uint32_t addr, uint32_t data, int shift, int mask) {
 
 /// EXPORTS ////////////////////////////////////////////////////////////////////
 
-void vmMEMinit(void){     				// erase all ROM and flash,
+void vmMEMinit(char * name){            // erase all ROM and flash,
 #ifndef EmbeddedROM						// allocate memory if not allocated yet.
     if (NULL == ROM) {
         ROM = (uint32_t*) malloc(MaxROMsize * sizeof(uint32_t));
@@ -178,16 +178,16 @@ void vmMEMinit(void){     				// erase all ROM and flash,
     if (NULL == RAM) {
         RAM = (uint32_t*) malloc(MaxRAMsize * sizeof(uint32_t));
     }
-#ifdef TRACEABLE
+  #ifdef TRACEABLE
     if (NULL == ProfileCounts) {
         ProfileCounts = (uint32_t*) malloc(MaxROMsize * sizeof(uint32_t));
     }
-#endif
+  #endif
     for (int i=0; i<ROMsize; i++) {
         WriteROM(-1, i*4);
     }
 #endif // EmbeddedROM
-    FlashInit();
+    FlashInit(AutoFlashFile & (NULL == name));
 };
 
 #ifndef EmbeddedROM
@@ -358,7 +358,7 @@ void VMpor(void) {  // EXPORTED
     T=0;  N=0;  DebugReg = 0;
     memset(RAM,  0, RAMsize*sizeof(uint32_t));       // clear RAM
 #ifdef EmbeddedROM
-    FlashInit();
+    FlashInit(0);
 #endif // EmbeddedROM
 }
 

@@ -153,78 +153,6 @@ uint32_t WordFind (char *name) {        // a more C-friendly version}
     return 0;
 }
 
-// WORDS primitive
-
-/*
-| Cell | \[31:24\]                        | \[23:0\]                           |
-| ---- |:---------------------------------| ----------------------------------:|
-| -3   | Source File ID                   | List of words that reference this  |
-| -2   | Source Line, Low byte            | xtc, Execution token for compile   |
-| -1   | Source Line, High byte           | xte, Execution token for execute   |
-| 0    | # of instructions in definition  | Link                               |
-| 1    | Name Length                      | Name Text, first 3 characters      |
-| 2    | 4th name character               | Name Text, chars 5-7, etc...       |
-*/
-void PrintWordlist(uint32_t WID, char *substring, int verbosity) {
-    char key[32];
-    char name[32];
-    char wordname[32];
-    if (strlen(substring) == 0)         // zero length string same as NULL
-        substring = NULL;
-    if (verbosity) {
-        printf("NAME             LEN    XTE    XTC FID  LINE  WHERE    VALUE FLAG HEAD\n");
-    }
-    do {
-        uint8_t length = FetchByte(WID+4);
-        WordColor((length>>5) & 7);
-        int flags = length>>5;
-        length &= 0x1F;
-        FetchString(wordname, WID+5, length);
-        if (substring) {
-            if (strlen(substring) > 31) goto done;  // no words this long
-            strcpy(key, substring);
-            strcpy(name, wordname);
-            if (!FetchByte(CASESENS)) {
-                UnCase(key);
-                UnCase(name);
-            }
-            char *s = strstr(name, key);
-            if (s != NULL) goto good;
-        } else {
-good:       if (verbosity) {            // long version
-                uint32_t where = FetchCell(WID-12);
-                uint32_t xtc = FetchCell(WID-8);
-                uint32_t xte = FetchCell(WID-4);
-                uint32_t linenum = ((xte>>16) & 0xFF00) + (xtc>>24);
-                printf("%-17s%3d%7X%7X",
-                       wordname, FetchByte(WID+3), xte&0xFFFFFF, xtc&0xFFFFFF);
-                if (linenum == 0xFFFF)
-                    printf("  --    --");
-                else
-                    printf("%4X%6d", where>>24, linenum);
-                printf("%7X%9X%5d %X\n",
-                       where&0xFFFFFF, FetchCell(WID-16), flags, WID);
-            }
-            else printf("%s", wordname);
-            ColorNormal();
-            printf(" ");
-        }
-        WID = FetchCell(WID) & 0xFFFFFF;
-    } while (WID);
-done:
-    ColorNormal();
-}
-
-void tiffWords (char *substring, int verbosity) {
-    uint8_t wids = FetchByte(WIDS);
-    while (wids--) {
-        uint32_t wid = FetchCell(CONTEXT + wids*4);  // search the first list
-        PrintWordlist(FetchCell(wid), substring, verbosity);
-    }
-    ColorNormal();
-    printf("\n");
-}
-
 // Look up the name of a definition from its address (xte)
 char *GetXtNameWID(uint32_t WID, uint32_t xt) {
     do {
@@ -528,7 +456,7 @@ void AddWordlistHead (uint32_t wid, char *name) {
 // Initialize ALL variables in the terminal task
 void InitializeTermTCB (void) {
     VMpor();                            // clear VM and RAM
-    vmMEMinit();
+    vmMEMinit(hexfilename);             // load hex file if it exists
     initFilelist();                     // clear list of filenames used by LOCATE
     StoreCell(HeadPointerOrigin+4, HP); // leave cell for filelist
     StoreCell(0, CP);

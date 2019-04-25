@@ -8,7 +8,6 @@
 //`0`#define RAMsize `4`
 //`0`#define SPIflashBlocks `5`
 //`0`#define NOERRORMESSAGES
-//`0`#define InhibitFlashSave 0
 #define BASEADDR   (RAMsize+ROMsize)
 #define FLASHCELLS (SPIflashBlocks<<10)
 #define FILENAME   "flash.bin"
@@ -24,11 +23,12 @@ FILE *fp;
 // If FILENAME exists, load it into flash
 // The Flash memory range starts at (ROMsize+RAMsize)*4 and is FLASHCELLS long.
 
-void FlashInit (void) {
+void FlashInit (int UseFile) {
     if (NULL == FlashMem) {
         FlashMem = (uint32_t*) malloc(MaxFlashCells * sizeof(uint32_t));
     }
     memset(FlashMem, -1, FLASHCELLS*sizeof(uint32_t));
+    if (!UseFile) return;
     fp = fopen(FILENAME, "rb");
     if (fp) {
         for (int i=0; i<FLASHCELLS; i++) {
@@ -41,9 +41,9 @@ void FlashInit (void) {
 
 // Save flash image to filename, creating if necessary
 
-void FlashBye (void) {
+void FlashBye (int UseFile) {
     int p = FLASHCELLS;
-    if (InhibitFlashSave) return;
+    if (!UseFile) return;
     while ((p) && (0xFFFFFFFF == FlashMem[--p])) {}
     if (!p) return;             // nothing to save
     fp = fopen(FILENAME, "wb");
