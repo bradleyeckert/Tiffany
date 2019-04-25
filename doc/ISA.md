@@ -54,10 +54,11 @@ ALU operations take their operands from registers for minimum input delay. Since
 
 ### Opcodes
 
-There are few rules regarding opcode numbering. They are:
+There are a few rules regarding opcode numbering. They are:
 
 1. nop must be 0.
 2. call must be convertible to jump by clearing a bit. Preferably bit 3.
+3. the most frequently used opcodes should be opcodes 1 thru 3: `EXIT`, `DUP`, `+`.
 
 In the following table:
 
