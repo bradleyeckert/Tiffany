@@ -5,7 +5,7 @@
 #define __CONFIG_H__
 
 // Sizes of internal memories in 32-bit cells
-#define StackSpaceDefault  64         /* combined stack space at bottom of RAM */
+#define StackSpaceDefault 128         /* combined stack space at bottom of RAM */
 #define RAMsizeDefault  0x400                 /* should be an exact power of 2 */
 #define ROMsizeDefault  0x2000                /* should be an exact power of 2 */
 #define FlashBlksDefault  256                               /* # of 4K sectors */

@@ -10,7 +10,6 @@
 //`0`#define NOERRORMESSAGES
 #define BASEADDR   (RAMsize+ROMsize)
 #define FLASHCELLS (SPIflashBlocks<<10)
-#define FILENAME   "flash.bin"
 
 /*
    Exports: FlashInit, SPIflashXfer, FlashRead, FlashWrite, FlashBye
@@ -23,13 +22,13 @@ FILE *fp;
 // If FILENAME exists, load it into flash
 // The Flash memory range starts at (ROMsize+RAMsize)*4 and is FLASHCELLS long.
 
-void FlashInit (int UseFile) {
+void FlashInit (char * filename) {
     if (NULL == FlashMem) {
         FlashMem = (uint32_t*) malloc(MaxFlashCells * sizeof(uint32_t));
     }
     memset(FlashMem, -1, FLASHCELLS*sizeof(uint32_t));
-    if (!UseFile) return;
-    fp = fopen(FILENAME, "rb");
+    if (!filename) return;
+    fp = fopen(filename, "rb");
     if (fp) {
         for (int i=0; i<FLASHCELLS; i++) {
             int n = fread(&FlashMem[i], sizeof(uint32_t), 1, fp);
@@ -41,12 +40,12 @@ void FlashInit (int UseFile) {
 
 // Save flash image to filename, creating if necessary
 
-void FlashBye (int UseFile) {
+void FlashBye (char * filename) {
     int p = FLASHCELLS;
-    if (!UseFile) return;
+    if (!filename) return;
     while ((p) && (0xFFFFFFFF == FlashMem[--p])) {}
     if (!p) return;             // nothing to save
-    fp = fopen(FILENAME, "wb");
+    fp = fopen(filename, "wb");
     if (fp) {  // save non-blank to file
         for (int i=0; i<p; i++) {
             fwrite(&FlashMem[i], sizeof(uint32_t), 1, fp);
@@ -148,8 +147,8 @@ uint32_t SPIflashXfer (uint32_t n) {    /*EXPORT*/
 				case 1: break;							// wait for trailing CS
 				case 2: cout = wen;   state=1;  break;  // status = WEN, never busy
 				case 3: cout = 0xAA;  state++;  break;	// 3-byte RDJDID
-				case 4: cout = 0xFF & (SPIflashBlocks>>8);  state++;  break;
-				case 5: cout = 0xFF & SPIflashBlocks;       state=1;  break;
+				case 4: cout = 0xFF & (SPIflashBlocks>>12); state++;  break;
+				case 5: cout = 0xFF & (SPIflashBlocks>>4);  state=1;  break;
 				case 6: addr = cin<<16;  					state++;  break;
 				case 7: addr += cin<<8;  					state++;  break;
 				case 8: addr += cin;

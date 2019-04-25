@@ -4,11 +4,15 @@ The memory model uses 32-bit byte addresses in little endian format. Physical me
 
 - Internal ROM for code
 - Internal dual-port or single-port RAM for data
+- External flash memory
 - External AXI space
 
 Code ROM is synchronous-read ROM. Data RAM is dual-port synchronous RAM. In an ASIC, masked ROM is 1/10th to 1/20th the die area of dual-port RAM (per bit), so a decent amount of area is available for code. In an FPGA, you typically have 18Kb blocks of DPRAM, so 512-word chunks. The RAM needs byte lane enables. It can also be single-port, with a performance hit. The VM should alter clock cycle counts depending on the RAM type.
 
-AXI is a streaming-style system interface where data is best transferred in bursts due to long latency times. It's the standard industry interface. Rather than abstracting it away, the ISA gives direct control to the programmer. Several opcodes are multi-cycle instructions that stream RAM data to and from the AXI bus.
+AXI is a streaming-style system interface where data is best transferred in bursts due to long latency times. It's the standard industry interface. Rather than abstracting it away, the ISA gives direct control to the programmer. Two opcodes, `!as` and `@as` are multi-cycle instructions that stream RAM data to and from the AXI bus.
+
+The rationale behind the AXI bus is to put all of the user's custom memory space there so as not to slow down the main memory. Peripherals live in AXI space.
+The AXI's address range is 32-bit, starting at 0. You can't access it with `@` and `!`. Instead, you would use `@as` and `!as`. DRAM would be on the AXI bus. An app that uses DRAM would be written to page data in and out of DRAM instead of using random access without forethought.
 
 ## Word Size
 
@@ -16,38 +20,19 @@ Cells should have enough bits to address a SPI flash using byte addressing. The 
 
 ## Address Ranges
 
-In Tiff, #defines in config.h specify the sizes (in 32-bit words) of RAM and ROM as `RAMsize` and `ROMsize` respectively.
+In `mf`, #defines in config.h specify the default and maximum sizes (in 32-bit words) of RAM and ROM. They can be changed from the command line.
 
-| Type | Range                        | AXI Read   | AXI Write  |
-|:----:|:----------------------------:|-----------:|-----------:|
-| ROM  | 0 to ROMsize-1               | -          | -          |
-| RAM  | ROMsize to ROMsize+RAMsize-1 | Burst In   | Burst Out  |
-| AXI  | Other                        | Code fetch | -          |
+| Type  | Range                        |
+|:-----:|:----------------------------:|
+| ROM   | 0 to ROMsize-1               |
+| RAM   | ROMsize to ROMsize+RAMsize-1 |
+| Flash | Other                        |
 
-AXI space starts at address 0. Tiff treats this as SPI flash. It's up to the implementation to write-protect the bottom of SPI flash so as to not be able to wipe out header space. The AXI address range of \[0 to ROMsize+RAMsize-1\] is a section of SPI flash that's unreachable by the PC, so you can't run code from it or read it with the normal fetch opcodes. However, it can be streamed into RAM. Two opcodes are reserved for transferring bursts of RAM data to and from AXI space.
-
-An application could keep data in the \[0 to ROMsize+RAMsize-1\] range, or an FPGA version could load code RAM with a ROM image from SPI flash at power-up.
-
-Tiff simulates a blank flash in AXI space and applies the rule of never writing a '0' bit twice to the same bit without erasing it first. Such activity may over-charge the floating gate (if the architecture doesn't prevent it), leading to reliability problems. Tiff writes ROM data to both AXI space and internal ROM when simulating the "Load code RAM from SPI flash" boot method.
-
-## Streaming Operations
-
-Read channel of AXI:
-
-- AXI\[PC\] to the IR, one word, for extended code space fetch (not an opcode)
-- AXI\[A\] to RAM for streaming in a working buffer
-
-Write channel of AXI:
-
-- Code RAM to AXI\[A\] for streaming out a working buffer
-
-Getting single words from the AXI read channel could take tens of cycles. However, since almost all time is spent in internal code space it doesn't matter. A little prefetch buffering would help things along.
-
-The AXI4 protocol allows for a burst size between 1 and 256 words. Bursts use 32-bit words.
+`mf` simulates a blank flash in AXI space and applies the rule of never writing a '0' bit twice to the same bit without erasing it first. Such activity may over-charge the floating gate (if the architecture doesn't prevent it), leading to reliability problems. `mf` writes ROM data to both AXI space and internal ROM when simulating the "Load code RAM from SPI flash" boot method.
 
 ## Writing to SPI flash
 
-While the SPI flash can be read from the AXI bus, writing it is another matter. One of the user functions is `flashxfer`, which performs a byte transfer over the flash's SPI bus. Programming code runs from internal ROM. This works because most flash chips have a common set of commands. The SPI format may be single, dual, or quad. It takes 12 bits to control a `flashxfer` byte transfer:
+While the SPI flash can be read with `@`, writing it is another matter. One of the user functions is `flashxfer`, which performs a byte transfer over the flash's SPI bus. Programming code runs from internal ROM. This works because most flash chips have a common set of commands. The SPI format may be single, dual, or quad. It takes 12 bits to control a `flashxfer` byte transfer:
 
 | Bits   | Range                        |
 |:------:|:----------------------------:|
@@ -58,7 +43,7 @@ While the SPI flash can be read from the AXI bus, writing it is another matter. 
 
 Data returned by `flashxfer` is 8-bit.
 
-In an MCU implementation where `flashxfer` operates on internal flash, it should implement a bare bones protocol simulating a SPI flash chip. Tiff uses this method to write to the flash memory model: see `tiffUser.c`. The bare bones protocol uses the minimum command set:
+In an MCU implementation where `flashxfer` operates on internal flash, it should implement a bare bones protocol simulating a SPI flash chip. `mf` uses this method to write to the flash memory model: see `flash.c`. The bare bones protocol uses the minimum command set:
 
 | Name   | Hex | Command                           |
 |:-------|-----|----------------------------------:|
@@ -84,11 +69,9 @@ The RDJDID result is MFR, Type, Capacity. These have vendor-specific meanings, s
 | IS25WP080D | ISSI    | 9Dh | 70h  | 14h |
 | IS25WP040D | ISSI    | 9Dh | 70h  | 13h |
 | IS25WP020D | ISSI    | 9Dh | 70h  | 12h |
-| *simulated* | *none* | AAh | 55h  | n   |
+| *simulated* | *none* | AAh | n    | n   |
 
-The simulated part has a capacity byte of log2 of the KB count. For example, a 512kb flash has 64K bytes, so n=16. As you can see from the table, ISSI and Winbond also use this scheme.
-
-Note: vmaccess.c currently uses !AS to write to flash, which should be replaced by the new method to be implemented in tiffuser.c.
+The simulated part has a capacity byte of `n` 64KB sectors. This scheme allows for a 4GB range.
 
 Adesto and Winbond status register:
 |bit|name|usage                      |

@@ -123,7 +123,8 @@ uint32_t vmEmit(uint32_t xchar) {
             }
         }
     }
-    puts(c);
+    char *s = c;  char b;
+    while ((b = *s++)) putchar(b);
 #ifdef __linux__
     fflush(stdout);
     usleep(1000);

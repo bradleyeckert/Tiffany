@@ -12,3 +12,6 @@ For example, `make.bat` leaves Mforth open so you can run `bench`. Type `bye` to
 It takes about 500 ms on my i7 laptop.
 When ANS is compiled by a C compiler and run, `bench` takes more like 170 ms.
 That's a 3x improvement.
+
+In the interest of looking horrible, the same benchmark executes in 3 ms in SwiftForth on an i7.
+The 50x speed difference is a good indicator that you should use native code for algorithms where speed matters.

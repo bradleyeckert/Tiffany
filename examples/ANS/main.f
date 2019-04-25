@@ -16,7 +16,7 @@ include ../../forth/core.f
 include ../../forth/timing.f
 include ../../forth/numio.f             \ numeric I/O
 
-1 [if] \ Using Mforth's internal QUIT, comment out for COLD (standalone Forth).
+0 [if] \ Using Mforth's internal QUIT, comment out for COLD (standalone Forth).
 
 	: throw  \ n --  				    \ for testing, remove later
 	?dup if  port drop  			    \ save n in dbg register, like error interrupt

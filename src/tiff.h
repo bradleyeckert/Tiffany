@@ -22,6 +22,7 @@ void initFilelist(void);
 // used by main.c, defined in tiff.c
 uint32_t vmTEST(void);
 void tiffQUIT (char *cmdline);
+void iword_COLD(void);
 extern char *DefaultFile;
 extern int HeadPointerOrigin;
 

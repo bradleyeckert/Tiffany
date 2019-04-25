@@ -458,16 +458,10 @@ static void iword_MAKE (void) {
     FollowingToken(name2, 80);          // generated file
     MakeFromTemplate(name, name2);      // fileio.c
 }
-static void iword_SaveImg (void) {
+static void iword_SaveHexImage (void) {
     FollowingToken(name, 80);           // binary image filename
-    SaveImage(name);                    // fileio.c
+    SaveHexImage(name);                 // fileio.c
 }
-/*
-static void CommaROM (uint32_t x) {
-    PushNum(x);
-    CompComma();
-}
-*/
 static void iword_LitChar (void) {
     FollowingToken(name, 32);
     Literal(name[0]);
@@ -487,32 +481,32 @@ void GetQuotedString (char terminator) {
 }
 
 static void SkipPast(char c);           // forward reference
-static void iword_Paren (void) {
+static void iword_Paren (void) {        // (
     SkipPast(')');
 }
-static void iword_Brace (void) {
+static void iword_Brace (void) {        // {
     SkipPast('}');
 }
 
-static void iword_DotParen (void) {
+static void iword_DotParen (void) {     // .(
     GetQuotedString(')');
     printf("%s", name);
 }
 static void iword_CR (void) {
     printf("\n");
 }
-static void iword_MonoTheme (void) {
+static void iword_MonoTheme (void) {    // don't use color codes (dumb terminal)
     StoreByte(0, THEME);
 }
-static void iword_ColorTheme (void) {
+static void iword_ColorTheme (void) {   // use VT220 color codes etc.
     StoreByte(1, THEME);
 }
 
-static void iword_CommaEString (void) {  // ,\"
+static void iword_CommaEString (void) { // ,\"
     GetQuotedString('"');
     CompString(name, 1, CP);
 }
-static void iword_CommaString (void) {   // ,"
+static void iword_CommaString (void) {  // ,"
     GetQuotedString('"');
     CompString(name, 5, CP);
 }
@@ -743,7 +737,7 @@ static void iword_STATS (void) {
     printf("\nCP=%X, DP=%X/%X, HP=%X/%X", cp, dp, ROMsize*4, hp, (ROMsize+RAMsize)*4);
 }
 
-static void iword_COLD(void) {
+void iword_COLD(void) {
     VMpor();
     uint32_t PC = 0;
     while (1) {
@@ -897,7 +891,7 @@ static void LoadKeywords(void) {        // populate the list of gator brain func
     AddKeyword("replace-xt",    ReplaceXTs);    // Replace XTs  ( NewXT OldXT -- )
     AddKeyword("xte-is",        xte_is);        // Replace a word's xte  ( NewXT -- )
     AddKeyword("make",          iword_MAKE);
-    AddKeyword("save-image",    iword_SaveImg); // save binary image
+    AddKeyword("save-hex",      iword_SaveHexImage);
 
     AddKeyword("iwords",        ListKeywords);  // internal words, after the dictionary
 

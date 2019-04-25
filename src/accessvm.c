@@ -456,7 +456,7 @@ void AddWordlistHead (uint32_t wid, char *name) {
 // Initialize ALL variables in the terminal task
 void InitializeTermTCB (void) {
     VMpor();                            // clear VM and RAM
-    vmMEMinit(hexfilename);             // load hex file if it exists
+    vmMEMinit(LoadFlashFilename);       // load hex file if it exists
     initFilelist();                     // clear list of filenames used by LOCATE
     StoreCell(HeadPointerOrigin+4, HP); // leave cell for filelist
     StoreCell(0, CP);

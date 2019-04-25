@@ -8,11 +8,7 @@ the internal ROM declaration (big table). Then you can compile the files in the 
 with a C compiler to make the console application.
 
 The program size is 27 kB when compiled (statically linked) as a Code::Blocks console
-application. Since the ROM is about 2K bytes, most of that is C scaffolding.
+application. Since the ROM is about 2K bytes, most of that is C libraries.
 The VM could be implemented in MASM if you wanted to get crazy about code size,
 but this demonstrates that you can have small compiled Forth apps.
 The idea is to embedded Forth apps in C apps to enable interactive testing.
-
-An interesting experiment would be to specify the ROM file from the command line.
-That way, the "Hello World" app would be more like 2KB (it has some library bloat)
-and the same puny (26KB) executable would host arbitrary apps.

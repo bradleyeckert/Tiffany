@@ -1,1 +1,1 @@
-"../../bin/mf" -n  -f main.f
+"../../bin/mf" -f main.f

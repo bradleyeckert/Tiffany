@@ -10,18 +10,19 @@
 #define HP0max  (MaxROMsize - 0x1000)
 
 /*global*/ int HeadPointerOrigin = (ROMsizeDefault + RAMsizeDefault)*4;
-/*global*/ int AutoFlashFile = 0;
-/*global*/ char * hexfilename = NULL;
+/*global*/ char * LoadFlashFilename = NULL;
+static     char * SaveFlashFilename = NULL;
+static     char * BootFilename = NULL;
+static     int  testmode = 0;
+
 
 void TidyUp (void) {                    // stuff to do at exit
     ROMbye();
-    FlashBye((AutoFlashFile));
+    FlashBye(SaveFlashFilename);
 #ifdef TRACEABLE
     DestroyTrace();                     // free the trace buffer
 #endif
 }
-
-int error = 0;
 
 uint32_t Number (char * s, uint32_t limit, char cmd) {
     char *eptr;
@@ -54,68 +55,55 @@ int main(int argc, char *argv[]) {
 nextarg:
     while (argc>Arg) {                  // spin through the 2-character arguments
         if ((strlen(argv[Arg]) == 2) && (argv[Arg][0] == '-')) {   // starts with a "-?" command
-            char c = argv[Arg][1];  // get the command
+            char c = argv[Arg][1];      // get the command
             Arg++;
             switch (c) {
-                case 'x':
-                    if (argc>Arg) {
-                        hexfilename = argv[Arg++];
-                        goto nextarg;
-                    }
-                    printf("Use \"-x <filename>\"\n");
-                    goto bye;
-                case 'h':
-                    if (argc>Arg) {
-                        HeadPointerOrigin = Number(argv[Arg++], HP0max, 'h');
-                        goto nextarg;
-                    }
-                    printf("Use \"-h <Header Pointer Origin Address>\"\n");
-                    goto bye;
-                case 'r':
-                    if (argc>Arg) {
-                        RAMsize = Number(argv[Arg++], MaxRAMsize, 'r');
-                        if (RAMsize & (RAMsize-1)) {
-                            printf("RAM size must be an exact power of 2.\n");
-                            // because of VM sandboxing. See SDUP and friends.
-                            goto bye;
-                        }
-                        goto nextarg;
-                    }
-                    printf("Use \"-r <RAM cells>\"\n");
-                    goto bye;
-                case 's':
-                    if (argc>Arg) {
-                        StackSpace = Number(argv[Arg++], RAMsize/2, 'r');
-                        goto nextarg;
-                    }
-                    printf("Use \"-s <Stack space cells>\"\n");
-                    goto bye;
-                case 'm':
-                    if (argc>Arg) {
-                        ROMsize = Number(argv[Arg++], MaxROMsize, 'm');
-                        goto nextarg;
-                    }
-                    printf("Use \"-m <ROM cells>\"\n");
-                    goto bye;
-                case 'b':
-                    if (argc>Arg) {
-                        SPIflashBlocks = Number(argv[Arg++], MaxFlashCells >> 10, 's');
-                        goto nextarg;
-                    }
-                    printf("Use \"-b <4K flash blocks>\"\n");
-                    goto bye;
-                case 'a':
-                    AutoFlashFile = 1;
+                case 'f':               // change the load filename from the default `mf.f`
+                    if (argc == Arg) goto splain;
+                    DefaultFile = argv[Arg++];
                     goto nextarg;
-                case 'f':           // change the load filename from the default `mf.f`
-                    if (argc>Arg) {
-                        DefaultFile = argv[Arg++];
-                        goto nextarg;
+                case 'h':
+                    if (argc == Arg) goto splain;
+                    HeadPointerOrigin = Number(argv[Arg++], HP0max, 'h');
+                    goto nextarg;
+                case 'r':
+                    if (argc == Arg) goto splain;
+                    RAMsize = Number(argv[Arg++], MaxRAMsize, 'r');
+                    if (RAMsize & (RAMsize-1)) {
+                        printf("RAM size must be an exact power of 2.\n");
+                        // because of VM sandboxing. See SDUP and friends.
+                        goto bye;
                     }
-                    printf("Use \"-f <filename>\"");
-                    goto bye;
+                    goto nextarg;
+                case 'm':
+                    if (argc == Arg) goto splain;
+                    ROMsize = Number(argv[Arg++], MaxROMsize, 'm');
+                    goto nextarg;
+                case 's':
+                    if (argc == Arg) goto splain;
+                    StackSpace = Number(argv[Arg++], RAMsize/2, 'r');
+                    goto nextarg;
+                case 'b':
+                    if (argc == Arg) goto splain;
+                    SPIflashBlocks = Number(argv[Arg++], MaxFlashCells >> 10, 's');
+                    goto nextarg;
+                case 'i':
+                    if (argc == Arg) goto splain;
+                    LoadFlashFilename = argv[Arg++];
+                    goto nextarg;
+                case 'o':
+                    if (argc == Arg) goto splain;
+                    SaveFlashFilename = argv[Arg++];
+                    goto nextarg;
+                case 'c':
+                    if (argc == Arg) goto splain;
+                    BootFilename = argv[Arg++];
+                    goto nextarg;
+                case 't':
+                    testmode = 1;
+                    goto nextarg;
                 default:
-                    printf("Format: [cmds] [\"Forth Command Line\"]\n");
+splain:             printf("Format: [cmds] [\"Forth Command Line\"]\n");
                     printf("cmds are optional 2-char commands starting with '-':\n");
                     printf("-f <filename>  Change startup INCLUDE filename from {%s}\n", DefaultFile);
                     printf("-h <addr>      Change header start address from {0x%X}\n",   HeadPointerOrigin);
@@ -123,17 +111,29 @@ nextarg:
                     printf("-m <n>         Change ROM size from {0x%X} cells\n",         ROMsizeDefault);
                     printf("-s <n>         Change stack region from {0x%X} cells\n",     StackSpace);
                     printf("-b <n>         Change SPI flash 4k block count from {%d}\n", FlashBlksDefault);
-                    printf("-a             Enable automatic flash image load/save\n");
+                    printf("-i <filename>  Initialize flash image from file\n");
+                    printf("-o <filename>  Save flash image upon exit\n");
+                    printf("-c <filename>  Hex file for cold booting (note save-hex)\n");
+                    printf("-t             Enable test mode if cold booting\n");
                     goto bye;
             }
-        } else goto go; // exhausted options, there could be a Forth command line remaining
+        } else goto go;                 // exhausted options, there could be a Forth command line remaining
     }
 go:
-    InitializeTermTCB();                // by default, ROM and SPI flash are blank (all '1's)
-    if (argc>Arg) {
-        tiffQUIT(argv[Arg]);            // command line is next argument
+    if (BootFilename) {
+        vmMEMinit(NULL);                // clear ROM and flash
+        LoadHexImage(BootFilename);     // load ROM and flash from Hex file
+        if (testmode) {
+            vmTEST();                   // optional startup with debugger dashboard
+        }
+        iword_COLD();                   // cold boot
     } else {
-        tiffQUIT(NULL);                 // empty command line
+        InitializeTermTCB();            // by default, ROM and SPI flash are blank (all '1's)
+        if (argc>Arg) {
+            tiffQUIT(argv[Arg]);        // command line is next argument
+        } else {
+            tiffQUIT(NULL);             // empty command line
+        }
     }
 bye:
     return 0;

@@ -7,6 +7,7 @@
 #include <stdint.h>
 
 void MakeFromTemplate (char *infile, char *outfile);
-void SaveImage (char *filename);               // save ROM/flash image to file
+void SaveHexImage (char *filename);               // save ROM/flash image to file
+void LoadHexImage (char *filename);
 
 #endif // __FILEIO_H__

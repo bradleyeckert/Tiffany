@@ -53,9 +53,6 @@ void Disassemble(uint32_t addr, uint32_t length);
 void MakeTestVectors(FILE *ofp, int length, int format);
 void WipeTIB (void);                                         // clear TIB memory
 
-extern char * hexfilename;
-
-
 #define DataStackCol     1
 #define ReturnStackCol  13
 #define RegistersCol    25

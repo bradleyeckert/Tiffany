@@ -17,7 +17,12 @@
 #include <unistd.h>
 #include <sys/select.h>
 #include <termios.h>
+#elif _WIN32
+#include <windows.h>
+#include <conio.h>
+#endif // __linux__
 
+#ifdef __linux__
 // Linux uses cooked mode to input a command line (see Tiff.c's QUIT loop).
 // Any keyboard input uses raw mode.
 // Apparently, Windows getch does this switchover for us.
@@ -76,8 +81,6 @@ uint32_t vmKey(uint32_t dummy)
 }
 
 #elif _WIN32
-#include <windows.h>
-#include <conio.h>
 
 uint32_t vmQkey(uint32_t dummy) {
     Sleep(1);   // don't hog the CPU
@@ -120,7 +123,8 @@ uint32_t vmEmit(uint32_t xchar) {
             }
         }
     }
-    puts(c);
+    char *s = c;  char b;
+    while ((b = *s++)) putchar(b);
 #ifdef __linux__
     fflush(stdout);
     usleep(1000);

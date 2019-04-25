@@ -176,9 +176,10 @@ default: fprintf(ofp, "/*%d*/", n);
 
 /*
 Save image in HEX format.
+A SOC can boot this image. Test using the "-c <filename>" directive.
 Includes Internal ROM data and Flash data.
 This is useful for programming SPI flash devices for use with
-FPGA-based systems with RAM-based internal ROM. A SOC can just boot this image.
+FPGA-based systems with RAM-based internal ROM.
 Intel HEX format (.mcs or .hex) seems the most universal.
 */
 
@@ -217,7 +218,7 @@ void GenHex (uint32_t begin, uint32_t end, FILE *fp) {
     }
 }
 
-void SaveImage (char *filename) {
+void SaveHexImage (char *filename) {
     WipeTIB();                          // don't need to see TIB contents
     int32_t length = ROMwords(ROMsize); // internal ROM
     FILE *ofp;
@@ -234,44 +235,49 @@ void SaveImage (char *filename) {
     free(rom);  rom = NULL;
 }
 
-/* untested, unused hex loader. might be useful for booting entirely from hex file.
+/*
+    Load to StoreROM in hex format
 */
 
 static int NextHexByte(FILE *fp) {
-    int ch = fgetc(fp);  if (EOF == ch) return -1;
-    int cl = fgetc(fp);  if (EOF == cl) return -1;
+    unsigned int ch = fgetc(fp);  if (EOF == ch) return -1;
+    unsigned int cl = fgetc(fp);  if (EOF == cl) return -1;
     ch -= '0';  if(ch>9) ch-= 7;
-    cl -= '0';  if(cl>9) ch-= 7;
+    cl -= '0';  if(cl>9) cl-= 7;
     return (16*ch) + cl;
 }
 
-void LoadImage (char * filename) {
+void LoadHexImage (char *filename) {
     if (filename) {                     // hex file exists, overwrite everything
         FILE *fp;
         fp = fopen(filename, "r");
         if (fp) {
-            uint32_t addr = 0;
-            int c;
-            do {
-                c = fgetc(fp);
-                if (EOF == c) goto eof;
-            } while (c != ':');         // skip to next ':'
-            int length = NextHexByte(fp);
-            int value = (NextHexByte(fp) << 8) + NextHexByte(fp);
-            int cmd = NextHexByte(fp);
-            uint32_t x = 0;
-            switch(cmd) {
-                case 4: addr = (addr & 0xFFFF) + (value << 16);
-                    break;
-                case 0: addr = (addr & 0xFFFF0000) + value;
-                    for (int i=0; i<(length/4); i++) {
-                    x  = NextHexByte(fp) << 24;
-                    x += NextHexByte(fp) << 16;
-                    x += NextHexByte(fp) << 8;
-                    x += NextHexByte(fp);
+            while (1) {
+                uint32_t addr = 0;
+                int c;
+                do {
+                    c = fgetc(fp);
+                    if (EOF == c) goto eof;
+                } while (c != ':');         // skip to next ':'
+                int length = NextHexByte(fp);
+                int value = (NextHexByte(fp) << 8) + NextHexByte(fp);
+                int cmd = NextHexByte(fp);
+                uint32_t x = 0;
+                switch(cmd) {
+                    case 4: addr = (addr & 0xFFFF) + (value << 16);
+                        break;
+                    case 0: addr = (addr & 0xFFFF0000) + value;
+                        for (int i=0; i<(length/4); i++) {
+                            x  = NextHexByte(fp);
+                            x += NextHexByte(fp) << 8;
+                            x += NextHexByte(fp) << 16;
+                            x += NextHexByte(fp) << 24;
+                            StoreROM(x, addr);
+                            addr += 4;
+                        }
+                        break;
+                    default: break;
                 }
-                WriteROM(x, addr);
-                addr += 4;
             }
 eof:        fclose(fp);
         } else {                        // couldn't open file

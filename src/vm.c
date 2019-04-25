@@ -187,7 +187,7 @@ void vmMEMinit(char * name){            // erase all ROM and flash,
         WriteROM(-1, i*4);
     }
 #endif // EmbeddedROM
-    FlashInit(AutoFlashFile & (NULL == name));
+    FlashInit(LoadFlashFilename);
 };
 
 #ifndef EmbeddedROM
