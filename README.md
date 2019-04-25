@@ -18,7 +18,7 @@ This allows internal `mf` C functions to be replaced by Forth definitions as the
 A complete ANS Forth can be built by replacing all of the internal C functions with Forth and defining a QUIT loop.
 
 You can bootstrap an ANS Forth or just use part of Forth for your application.
-The resulting ROM image can be saved as a hex file with "save-hex <filename>".
+The resulting ROM image can be saved as a hex file with "save-hex \<filename\>".
 
 TheROM image is binary compatible with models implemented in your embedded C application
 or with an FPGA or ASIC, which runs the same Forth system (big or small) as `mf`.
@@ -30,18 +30,18 @@ or with an FPGA or ASIC, which runs the same Forth system (big or small) as `mf`
 
 Cmds are 2-character commands starting with '-'. They are:
 
-| Cmd | Parameter  | Usage                                       |
-| --- |:-----------|:------------------------------------------- |
-| -f  | <filename> | Change startup INCLUDE filename from `mf.f` |
-| -h  | <addr>     | Set header start address in cells           |
-| -r  | <n>        | Set RAM size in cells                       |
-| -m  | <n>        | Set ROM size in cells                       |
-| -s  | <n>        | Set terminal stack region in cells          |
-| -b  | <n>        | Set SPI flash 4k block count                |
-| -i  | <filename> | Initialize flash image from file            |
-| -o  | <filename> | Save flash image upon exit                  |
-| -c  | <filename> | Hex file for cold booting (note `save-hex`) |
-| -t  |            | Enable test mode if cold booting            |
+| Cmd | Parameter    | Usage                                       |
+| --- |:-------------|:------------------------------------------- |
+| -f  | \<filename\> | Change startup INCLUDE filename from `mf.f` |
+| -h  | \<addr\>     | Set header start address in cells           |
+| -r  | \<n\>        | Set RAM size in cells                       |
+| -m  | \<n\>        | Set ROM size in cells                       |
+| -s  | \<n\>        | Set terminal stack region in cells          |
+| -b  | \<n\>        | Set SPI flash 4k block count                |
+| -i  | \<filename\> | Initialize flash image from file            |
+| -o  | \<filename\> | Save flash image upon exit                  |
+| -c  | \<filename\> | Hex file for cold booting (note `save-hex`) |
+| -t  |              | Enable test mode if cold booting            |
 
 Any other command produces a list of commands instead of launching the app.
 
