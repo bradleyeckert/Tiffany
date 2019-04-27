@@ -35,6 +35,7 @@ An instruction word may be any number of bits. 16, 18 and 32 are popular sizes. 
 The model's instruction size affects the ISA as well as the low level implementation, so to be the most useful we bet on a single horse: 32-bit. Word size affects how much memory you can address. In an embedded system, even a cheap one, there can be megabytes of data. Even phone apps weigh in at 10MB for a small one. Yes, that's ridiculous. However, supposing a CPU should be able to address that, a word size of at least 24 bits would be needed. Large SPI flash needs even more address bits, and keep in mind you need to add another address bit every two years. So, 32-bit is just about optimal for "small systems".
 
 ### Instruction Group
+
 The ISA uses 6-bit opcodes in a 32-bit instruction group. Opcodes that use immediate data take that data from the remainder of the instruction group. A slot pointer steps through the opcodes in sequence. It can be conditionally reset to cause a loop, or set to the end to skip the rest of the opcodes in the group.
 
 | Slot | Bits  | Range   |
@@ -75,6 +76,7 @@ In the following table:
 | **5**   | -rept     |            | rp        | drop      |           | rp!       | @         | 2\*c      |
 | **6**   | -if:      |            | sp        | **@as**   |           | sp!       | c@        | port      |
 | **7**   |           | **lit**    | up        | **!as**   |           | up!       | r@        | invert    |
+|:-------:|:---------:|:----------:|:---------:|:---------:|:---------:|:---------:|:---------:|:---------:|
 | *mux*   | *none*    | *T+offset* | *XP / N*  | *N +/- T* | *user*    | *0= / N*  | *mem bus* | *logic*   |
 
 The opcode map is optimized for LUT4 implementation. opcode[2:0] selects T from a 7:1 mux (column).
@@ -137,7 +139,7 @@ ALU
 - `0<`    ( n -- flag )
 - `and`   ( n m -- n&m )
 - `xor`   ( n m -- n^m )
-- `invert`( n -- ~n )
+- `invert`( n -- ~n ) Displays as `com`
 
 Control Flow
 - `call`  ( R: -- PC ) PC = Imm.
@@ -148,7 +150,6 @@ Control Flow
 - `reptc` ( -- ) Go back to slot 0 if carry=0; N=N+1.
 - `-rept` ( n ? -- n' ? ) Go back to slot 0 if N<0; N=N+1.
 - `-if:`  ( n -- n ) Skip remaining slots if T>=0.
-- `+if:`  ( n -- n ) Skip remaining slots if T<0.
 
 Memory
 - `!+`    ( n a -- a+4 ) 32-bit
@@ -164,7 +165,7 @@ Memory
 - `sp`    ( n -- a+n ) Data stack pointer
 - `up`    ( n -- a+n ) User pointer
 - `rp!`   ( a -- )
-- `sp!`   ( a -- )
+- `sp!`   ( a -- ? ) Does not pop the stack.
 - `up!`   ( a -- )
 
 Interface
@@ -187,7 +188,7 @@ Jumps and calls use unsigned absolute addresses of width 2, 8, 14, 20, or 26 bit
 
 The RAM used by the CPU core is relatively small. To access more memory, you would connect the AXI4 bus to other memory types such as single-port SRAM or a DRAM controller. Burst transfers use a !AS or @AS instruction to issue the address (with burst length=Imm) and stream that many words to/from external memory. Code is fetched from the AXI4 bus when outside of the internal ROM space. Depending on the implementation, AXI has excess latency to contend with. This doesn’t matter if most time is spent in internal ROM.
 
-In a hardware implementation, the instruction group provides natural protection of atomic operations from interrupts, since the ISR is held off until the group is finished. A nice way of handling interrupts in a Forth system, since calls and returns are so frequent, is to redirect return instructions to take an interrupt-hardware-generated address instead of popping the PC from the return stack. This is a great benefit in hardware verification, as verifying asynchronous interrupts is much more involved. As a case in point, the RTX2000 had an interrupt bug.
+In a hardware implementation, the instruction group provides natural protection of atomic operations from interrupts, since the ISR is held off until the group is finished. There is an error interrupt: When an error occurs, the error number is written to the `port` register, the PC is pushed to the stack, and PC is set to 2.
 
 A typical Forth kernel will have a number of sequential calls, which take four bytes per call. This is a little bulky, especially if the equivalent macro can fit in a group. The call and return overhead is eight clock cycles, so it’s also slow. Using the macro sequence should replace the call when possible. Code that’s inlineable is copied directly except for its `;`, leaving that slot open for the next instruction.
 
