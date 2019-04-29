@@ -1,6 +1,34 @@
 # MachineForth ISA
 
-The MachineForth paradigm, discovered by the late Jeff Fox, is a method for programming Forth stack machines in the most direct way possible, by making machine opcodes a part of the high level language. The programmer is writing to an actual machine rather than a virtual one. It’s a different way of programming. With the right ISA, optimizations are minimal so this virtualization is unnecessary. An ISA for a dialect of MachineForth is presented.
+The MachineForth paradigm, discovered by the late Jeff Fox,
+is a method for programming Forth stack machines in the most direct way possible,
+by making machine opcodes a part of the high level language.
+The programmer is writing to an actual machine rather than a virtual one.
+It’s a different way of programming.
+With the right ISA, optimizations are minimal so this virtualization is unnecessary.
+An ISA for a dialect of MachineForth is presented below.
+
+## Comparisons with other Forth CPUs
+
+James Bowman's J1 and J1B. The J1 is about 10 years old. J1B is the 32-bit version.
+16-bit instructions lead to compact code. It's a zero-operand WISC with 16-bit instructions.
+Very small, very awesome. I didn't copy it because:
+
+- Small address range. 13-bit calls and jumps, cover a 16KB address space.
+- Stacks are not in memory, so multitasking is not as tidy.
+- It simulates slowly. I wanted a sandbox that would run on ARM.
+
+Richard James Howe's H2 is a J1-like CPU. It has a Forth implementation.
+
+Charles Ting's eP32 CPU. Uses 6-bit opcodes packed in a 32-bit word.
+
+- Stacks are not in memory, so multitasking is not as tidy.
+- Design and ISA details are behind a paywall.
+- Has some more powerful instructions to support multiply and divide.
+
+Summary: Using RAM for stacks isn't much of a performance hit.
+It's convenient for Forth sandboxes on existing non-Forth CPUs.
+MISC-like opcodes provide an assembly language that mixes seamlessly with high level Forth.
 
 ## The Virtual Machine
 
@@ -18,7 +46,8 @@ Microprocessor companies have a depressing habit of asserting IP rights on ISAs.
 An ISA is the backend for a tool ecosystem that CPU companies had very little hand in creating.
 It's like the auto makers owning the roads.
 Closed ISAs hold back the industry. Fortunately, RISCV is helping to de-incentivize them.
-Therefore the MachineForth ISA presented here (I'll call it Mforth), is completely free and open. You get to do whatever you want with it.
+Therefore the MachineForth ISA presented here (I'll call it Mforth),
+is completely free and open. You get to do whatever you want with it.
 The specification is `vm.c` but is summarized below.
 
 ## The ISA
@@ -180,16 +209,50 @@ Interface
 - User variable store: lit up !+ drop
 - ABS: |-if invert 1+ |
 
-Conditional skip instructions skip the remainder of the instruction group, which could be up to 5 slots. This eliminates the branch overhead for short IF THEN statements and allows for more complex combinations of conditional branches and calls. The syntax of the skip instructions uses vertical bars to delineate the opcodes that are intended to fit in one instruction group. The compiler will skip to the next group if there are insufficient slots to fit it, or complain if it’s too big.
+Conditional skip instructions skip the remainder of the instruction group, which could be up to 5 slots.
+This eliminates the branch overhead for short IF THEN statements and allows for more complex combinations of conditional branches and calls.
+The syntax of the skip instructions uses vertical bars to delineate the opcodes that are intended to fit in one instruction group.
+The compiler will skip to the next group if there are insufficient slots to fit it, or complain if it’s too big.
 
 The SP, RP, and UP instructions are used to address PICK, Local, and USER variables respectively. After loading the address into A using one of these, you can use any word/halfword/byte fetch or store opcode.
 
-Jumps and calls use unsigned absolute addresses of width 2, 8, 14, 20, or 26 bits, corresponding to an addressable space of 16, 1K, 64K, 4M, or 256M bytes. Most applications will be under 64K bytes, leaving the first three slots available for other opcodes. Many calls will be into the the kernel, in the lower 1K bytes. That leaves four slots for other opcodes.
+Jumps and calls use unsigned absolute addresses of width 2, 8, 14, 20, or 26 bits, corresponding to an addressable space of 16, 1K, 64K, 4M, or 256M bytes.
+Most applications will be under 64K bytes, leaving the first three slots available for other opcodes.
+Many calls will be into the the kernel, in the lower 1K bytes.
+That leaves four slots for other opcodes.
 
-The RAM used by the CPU core is relatively small. To access more memory, you would connect the AXI4 bus to other memory types such as single-port SRAM or a DRAM controller. Burst transfers use a !AS or @AS instruction to issue the address (with burst length=Imm) and stream that many words to/from external memory. Code is fetched from the AXI4 bus when outside of the internal ROM space. Depending on the implementation, AXI has excess latency to contend with. This doesn’t matter if most time is spent in internal ROM.
+The RAM used by the CPU core is relatively small.
+To access more memory, you would connect the AXI4 bus to other memory types such as single-port SRAM or a DRAM controller.
+Burst transfers use a !AS or @AS instruction to issue the address (with burst length=Imm) and stream words to/from external memory.
 
-In a hardware implementation, the instruction group provides natural protection of atomic operations from interrupts, since the ISR is held off until the group is finished. There is an error interrupt: When an error occurs, the error number is written to the `port` register, the PC is pushed to the stack, and PC is set to 2.
+RAM has a negative address ANDed with (RAMsize-1) where RAMsize is an exact power of 2.
+In `mf` it sits at the top of the memory space.
+Negative literals are formed by putting a COM opcode in slot 0. It's pretty good.
+I thought about having signed literals, but it adds logic. So, no.
 
-A typical Forth kernel will have a number of sequential calls, which take four bytes per call. This is a little bulky, especially if the equivalent macro can fit in a group. The call and return overhead is eight clock cycles, so it’s also slow. Using the macro sequence should replace the call when possible. Code that’s inlineable is copied directly except for its `;`, leaving that slot open for the next instruction.
+A typical Forth kernel will have a number of sequential calls, which take four bytes per call.
+This is a little bulky, especially if the equivalent macro can fit in a group.
+The call and return overhead is eight clock cycles, so it’s also slow.
+Using the macro sequence should replace the call when possible.
+Code that’s inlineable is copied directly except for its `;`, leaving that slot open for the next instruction.
 
-Hardware multiply and divide, if provided, are accessed via the USER instruction. `um*` takes about 500 cycles when done by shift-and-add.
+Hardware multiply and divide, if provided, are accessed via the USER instruction. `um*` takes about 500 cycles when done by shift-and-add. An opcode could easily be added to greatly speed this up.
+
+### Interrupts
+
+In a hardware implementation, the instruction group provides natural protection of atomic operations from interrupts,
+since the ISR is held off until the group is finished.
+There is an error interrupt: When an error occurs, the error number is written to the `port` register,
+the PC is pushed to the stack, and PC is set to 2.
+The normal Forth practice is to have ISRs to the time-critical stuff and then wake up a high level task to take care of cleanup.
+Moving this paradigm into SOC hardware, hardware does the time critical stuff and the interrupt is replaced by
+something to wake up the high level cleanup task.
+
+Forth's round-robin multitasker would need modification to fit this:
+How does hardware know where to put WAKE and PASS tokens, and what they are?
+The CPU can keep STATUS variables at the bottom of RAM and load them based on wire signals.
+PASS and WAKE may be compiled at known ROM addresses.
+The STATUS variable would be a pointer to the status that gets altered by hardware.
+So essentially, there is no need for interrupts.
+This greatly simplifies verification. Also, you don't have to worry about microloop latency.
+

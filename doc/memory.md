@@ -22,11 +22,11 @@ Cells should have enough bits to address a SPI flash using byte addressing. The 
 
 In `mf`, #defines in config.h specify the default and maximum sizes (in 32-bit words) of RAM and ROM. They can be changed from the command line.
 
-| Type  | Range                        |
-|:-----:|:----------------------------:|
-| ROM   | 0 to ROMsize-1               |
-| RAM   | ROMsize to ROMsize+RAMsize-1 |
-| Flash | Other                        |
+| Type  | Range                         |
+|:-----:|:-----------------------------:|
+| ROM   | 0 to ROMsize-1                |
+| RAM   | -RAMsize to 0xFFFFFFFF        |
+| Flash | Other                         |
 
 `mf` simulates a blank flash in AXI space and applies the rule of never writing a '0' bit twice to the same bit without erasing it first. Such activity may over-charge the floating gate (if the architecture doesn't prevent it), leading to reliability problems. `mf` writes ROM data to both AXI space and internal ROM when simulating the "Load code RAM from SPI flash" boot method.
 

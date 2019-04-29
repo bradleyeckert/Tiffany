@@ -70,6 +70,34 @@ Some opcodes want to read and write simultaneously, but not to the same address.
 
 The opcode decoder for initiating reads also latches control lines that control the next pipeline stage.
 It may delay reading (stalling slot execution) to allow necessary writes or other activity.
-A `state' signal controls the behavior of the opcode decoder.
+A `state` signal controls the behavior of the opcode decoder.
 
+### Memory Access
+
+A memory address is in RAM if negative, ROM otherwise.
+
+### Typical pipeline flows
+
+The FETCH process fetches instructions into the IR based on PC.
+It outputs a `ready` signal to the execution unit when a valid instruction group is present.
+
+Changes in instruction flow may occur in any slot due to EXIT.
+When such occurs, the execution unit changes the PC.
+FETCH monitors the PC and returns corresponding data with `ready`.
+The execution unit will wait until `ready`.
+
+A control flow change `state` sequence is:
+
+- execute: an opcode has changed the PC (or POR cleared PC) and entered the `stalled` state.
+- stalled: if `ready` = '1', load `opcode:IR` from the data and execute. Also bump PC.
+- execute: step through the slots.
+
+If control flow is sequential, the last slot in the group can enter the `stalled` state.
+
+- stalled: if `ready` = '1', load `opcode:IR` from the data and execute. Also bump PC.
+- execute: step through the slots.
+
+Including a `stalled` state may be a little wasteful, but it gives time for the last slot to execute.
+Adjacecent instruction groups are separate: The last execute doesn't spill over into the next decode.
+Other `state`s may introduce multi-cycle opcode operations.
 

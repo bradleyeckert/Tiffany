@@ -16,12 +16,12 @@ void VMpor(void);                           // Reset the VM
 void SetDbgReg(uint32_t n);                 // write to the debug mailbox
 uint32_t GetDbgReg(void);                   // read from the debug mailbox
 uint32_t vmRegRead(int ID);                 // quick read of VM register
-uint32_t FetchCell(uint32_t addr);
-uint16_t FetchHalf(uint32_t addr);
-uint8_t FetchByte(uint32_t addr);
-void StoreCell (uint32_t x, uint32_t addr);
-void StoreHalf (uint16_t x, uint32_t addr);
-void StoreByte (uint8_t x, uint32_t addr);
+uint32_t FetchCell(int32_t addr);
+uint16_t FetchHalf(int32_t addr);
+uint8_t  FetchByte(int32_t addr);
+void StoreCell (uint32_t x, int32_t addr);
+void StoreHalf (uint16_t x, int32_t addr);
+void StoreByte (uint8_t x,  int32_t addr);
 
 // Different host and target behaviors:
 // Host: Writes to ROM image, looking for non-blank violations.
@@ -76,7 +76,7 @@ extern uint32_t OpCounter[64];              // dynamic instruction count
 #define opWfetch     (036)  // w@  ( a -- n )
 #define opXOR        (037)  // xor
 
-#define opREPTC      (040)  // rept  slot=0 of C=0
+#define opREPTC      (040)  // rept  slot=0 if C=0
 #define opFourPlus   (041)  // 4+
 #define opOVER       (042)  // over
 #define opADDC       (043)  // c+  with carry in

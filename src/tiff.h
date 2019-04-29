@@ -10,9 +10,10 @@
 /* 0000000 to ROMsize-1             Internal ROM                              */
 /* ROMsize to (ROMsize+RAMsize-1)   Internal RAM                              */
 
-#define TiffRP0     ((ROMsize + StackSpace-4)*4)    /* Initial stack pointers */
-#define TiffSP0     ((ROMsize + StackSpace/2)*4)           /* Byte addressing */
-#define termTCB(n)  ((ROMsize + StackSpace + (n))*4)    /* Terminal USER vars */
+#define TiffRP0     ((-RAMsize + StackSpace-4)*4)   /* Initial stack pointers */
+#define TiffSP0     ((-RAMsize + StackSpace/2)*4)          /* Byte addressing */
+//#define termTCB(n)  ((ROMsize + StackSpace + (n))*4)   /* Terminal USER vars */
+#define termTCB(n)  ((-RAMsize + StackSpace + (n))*4)   /* Terminal USER vars */
 
 extern int StackSpace;
 
@@ -58,22 +59,22 @@ void UnCase(char *s);
 #define TOIN        termTCB(16)  /* offset into TIB                           */
 #define BLK         termTCB(17)  /* Current block, 0 if none                  */
 // 8-bit variables are used here to save RAM
-#define WIDS        termTCB(18)+0  /* number of WID entries in context stack  */
-#define CALLED      termTCB(18)+1  /* set if last explicit opcode was a call  */
-#define SLOT        termTCB(18)+2  /* current slot position, these are a pair */
-#define LITPEND     termTCB(18)+3  /* literal-pending flag                    */
-#define COLONDEF    termTCB(19)+0  /* colon definition is in progress         */
-#define CASESENS    termTCB(19)+1  /* case-sensitive flag                     */
-#define NOECHO      termTCB(19)+2  /* inhibit ACCEPT echoing                  */
-#define THEME       termTCB(19)+3  /* color scheme for VT220, 0=mono          */
+#define WIDS        termTCB(18)  /* number of WID entries in context stack    */
+#define CALLED      (WIDS + 1)   /* set if last explicit opcode was a call    */
+#define SLOT        (WIDS + 2)   /* current slot position, these are a pair   */
+#define LITPEND     (WIDS + 3)   /* literal-pending flag                      */
+#define COLONDEF    termTCB(19)  /* colon definition is in progress           */
+#define CASESENS    (COLONDEF+1) /* case-sensitive flag                       */
+#define NOECHO      (COLONDEF+2) /* inhibit ACCEPT echoing                    */
+#define THEME       (COLONDEF+3) /* color scheme for VT220, 0=mono            */
 // Compiler internal state
 #define CALLADDR    termTCB(20)  /* address+slot of last compiled CALL        */
 #define NEXTLIT     termTCB(21)  /* Next literal to be compiled               */
 #define IRACC       termTCB(22)  /* IR accumulator                            */
 #define HEAD        termTCB(23)  /* Points to header of last found word       */
 #define LINENUMBER  termTCB(24)  /* 16-bit line number, if used.              */
-#define FILEID      termTCB(24)+2  /* 8-bit file ID, if used.                 */
-#define SCOPE       termTCB(24)+3  /* 8-bit SCOPE flag {dp, cp, hp}           */
+#define FILEID      (LINENUMBER+2)  /* 8-bit file ID, if used.                */
+#define SCOPE       (LINENUMBER+3)  /* 8-bit SCOPE flag {dp, cp, hp}          */
 #define CONTEXT     termTCB(25)  /* 8 cells of context                        */
 #define HLD         termTCB(26)  /* Numeric input pointer                     */
 #define TIB         termTCB(27)  /* Terminal Input Buffer                     */

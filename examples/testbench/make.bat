@@ -1,1 +1,1 @@
-"../../bin/mf" -n -s 128  -f main.f
+"../../bin/mf"  -f main.f

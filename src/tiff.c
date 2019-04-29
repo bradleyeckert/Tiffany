@@ -223,7 +223,7 @@ void CommaHeader (char *name, uint32_t xte, uint32_t xtc, int Size, int flags){
 	uint8_t fileid = FetchByte(FILEID);
 	uint32_t   wid = FetchCell(CURRENT);                  // CURRENT -> Wordlist
     uint32_t  link = FetchCell(wid);
-	CommaH ((fileid << 24) | 0xFF0000 | (Size&0xFFFF));   // [-3]: File ID | size
+	CommaH ((fileid << 24) | 0xFF0000 | (Size & 0xFFFF)); // [-3]: File ID | size
 	CommaH (((LineNum & 0xFF)<<24)  +  (xtc & 0xFFFFFF)); // [-2]
 	CommaH (((LineNum & 0xFF00)<<16) + (xte & 0xFFFFFF)); // [-1]
 	StoreCell (FetchCell(HP), wid);

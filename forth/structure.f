@@ -148,22 +148,47 @@ hex
    2/ 2/  4000000 -  '  ROM!            \ resolve forward jump
 ;
 : create  \ -- | -- addr                \ 6.1.1000
-   2 _create
+   2 _create  align
    here  c_scope c@ 1 = 8 and +  literal,  \ skip forward if in ROM
-   NewGroup
-   op_exit invert 1A lshift invert ,c   \ exit <blank>
+   op_exit  Implicit
+   iracc @
+   -40 c_slot c@ lshift invert +		\ last group is "exit" or "com exit"
+   ,c  ClearIR
+;
+
+: iscom?  \ 'group -- flag				\ does the group have a COM in slot 0?
+   @ [ -1   1A lshift ] literal  and
+   [ op_com 1A lshift ] literal  xor 0=
+;
+
+: _>body  \ xt -- body link flag		\ flag = T if there is no DOES> field
+   @+ FFFFF and  swap          			( literal 'group )
+   dup @ >r  iscom? if
+      invert  r> 3FFF
+   else
+      r> FFFFF							( body group mask )
+   then
+   dup >r and  dup r> =
 ;
 
 : >body  \ xt -- body                   \ 6.1.0550
-   @ FFFFF and                          \ lit:addr --> addr
+   _>body  2drop
 ;
+
 decimal
 
+\ DOES> ends the current thread and causes the last CREATE to pick it up.
+\ The COM EXIT or EXIT are cleared to COM NOP or NOP so that a JMP is executed.
+
 : does>  \ RA --                        \ 6.1.1250
-   r> 2/ 2/                             \ jump here
-   \ <blank> to jmp:RA   exit to nop
-   [ op_jmp 20 lshift    op_exit invert 26 lshift  + ] literal +
-   -4 last link> cell+   ROM!           \ resolve the does> field
+   r> 2/ 2/                             \ jump here, jdest
+   -4 last link> cell+  dup >r
+   iscom? if
+	  [ op_jmp 14 lshift  op_exit invert 20 lshift  + ] literal
+   else \ slot0 = com, must be "com exit"
+	  [ op_jmp 20 lshift  op_exit invert 26 lshift  + ] literal
+   then
+   +  r> ROM!           				\ resolve the does> field
 ;
 
 \ Eaker CASE statement

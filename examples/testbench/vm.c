@@ -46,25 +46,27 @@
 /*global*/ uint32_t RAMsize = RAMsizeDefault;
 /*global*/ uint32_t ROMsize = ROMsizeDefault;
 /*global*/ uint32_t SPIflashBlocks = FlashBlksDefault;
+#else
+char * LoadFlashFilename = NULL;
 #endif
 
 static int exception = 0;               // local error code
 
 //
-static const uint32_t InternalROM[384] = {
-/*0000*/ 0x4C000172, 0x00002710, 0x4C00015D, 0xFC90C240, 0x96B09000, 0x36B09000,
+static const uint32_t InternalROM[383] = {
+/*0000*/ 0x4C000171, 0x00002710, 0x4C00015C, 0xFC90C240, 0x96B09000, 0x36B09000,
 /*0006*/ 0x56B09000, 0x05AB8318, 0x96B09000, 0x05AD8318, 0x36B09000, 0xFC909000,
 /*000C*/ 0xFC9FC240, 0xFE1FC240, 0x9E709000, 0x68A18A08, 0x29A28608, 0x2A209000,
 /*0012*/ 0x2AB09000, 0x28629A28, 0x69A09000, 0x18628628, 0x68A09000, 0x186F8A68,
 /*0018*/ 0x2BE29A08, 0xAEB09000, 0x8A209000, 0x68A18A68, 0x68A18A1A, 0x69A8A218,
 /*001E*/ 0x1930001B, 0xAEBAC240, 0x05209000, 0x04240000, 0x07005FFE, 0x05F09000,
-/*0024*/ 0x74240000, 0x7DD09000, 0x7DD74240, 0x75D09000, 0xFC914240, 0x449E4003,
+/*0024*/ 0x74240000, 0x7DD09000, 0x7DD74240, 0x75D09000, 0xFC914240, 0x24927903,
 /*002A*/ 0xFD709000, 0x98AB8A08, 0x965AC240, 0xC3F25000, 0x09000000, 0xFCAFD7FE,
 /*0030*/ 0x68240000, 0x69A2860C, 0x2868C240, 0xFDAFC918, 0x89DC2B26, 0xAC240000,
 /*0036*/ 0xC1300033, 0x09000000, 0x38240000, 0xE4000004, 0xCAE09000, 0xE4000008,
 /*003C*/ 0xCAE09000, 0xE400000C, 0xEAEE4008, 0xCBF2431C, 0x1C240000, 0x0679F2B8,
-/*0042*/ 0x2AB09000, 0xE400000A, 0xE4008218, 0x96B09000, 0xE4000010, 0xE4008218,
-/*0048*/ 0x96B09000, 0xB9000000, 0xE4FFFFFF, 0x5C240000, 0x8A2FC340, 0xC2BAEB08,
+/*0042*/ 0x2AB09000, 0xE400000A, 0xE4000DE7, 0xFE5AC240, 0xE4000010, 0xE4000DE7,
+/*0048*/ 0xFE5AC240, 0xB9000000, 0xE4FFFFFF, 0x5C240000, 0x8A2FC340, 0xC2BAEB08,
 /*004E*/ 0xACAFC918, 0x84A68A68, 0x68240000, 0x18624688, 0x88340000, 0xC2B69A6A,
 /*0054*/ 0xAEBAE16A, 0x18A1A20C, 0xFA20CA68, 0x2857D000, 0xC2B68240, 0xAC6AC6AC,
 /*005A*/ 0x85A09000, 0xE400000C, 0xAAE09000, 0x186AC6AC, 0x68240000, 0x8A27DD40,
@@ -97,29 +99,29 @@ static const uint32_t InternalROM[384] = {
 /*00FC*/ 0x09000000, 0x69B000F6, 0x193000D3, 0x6C0000FD, 0x2AB09000, 0x10000006,
 /*0102*/ 0x09000000, 0x2B900000, 0xFDA40000, 0x8924C10F, 0x2BF27F28, 0x3867F907,
 /*0108*/ 0xFD000000, 0x25A07901, 0x5FF279ED, 0x64B88320, 0x5CA3DF18, 0xC1300109,
-/*010E*/ 0xADA4C105, 0xAEB1BF08, 0x89AE4004, 0xC9A40000, 0xE4008214, 0xB9AE4000,
-/*0114*/ 0xAB908214, 0x96B6C030, 0x1B908214, 0x96B1AB19, 0x7C240000, 0x052AC240,
-/*011A*/ 0xE4008214, 0xBAD19000, 0xE4008214, 0x96B18A68, 0xD6B2AB18, 0x18A09000,
-/*0120*/ 0x09000000, 0x01000000, 0xE40004D2, 0x05000000, 0xAD000000, 0x05000000,
-/*0126*/ 0x85000000, 0x0D000000, 0x15000000, 0x45000000, 0xFD000000, 0x05A40000,
-/*012C*/ 0x1D000000, 0x25000000, 0xF9000000, 0xFC90D000, 0x19000000, 0x7D000000,
-/*0132*/ 0x75000000, 0x74540000, 0xE4BC614E, 0xE4008268, 0x05A40000, 0x95000000,
-/*0138*/ 0xAD000000, 0xF8E40000, 0x29000000, 0xD9000000, 0xAEB40000, 0xF9640000,
-/*013E*/ 0x29000000, 0x79000000, 0xAEB40000, 0xFA640000, 0x29000000, 0xB9000000,
-/*0144*/ 0x5D000000, 0xE40003E8, 0xF95AD000, 0xF9E40000, 0xAF900063, 0xF8DAD000,
-/*014A*/ 0x1B640000, 0x8D000000, 0x89000000, 0x3D000000, 0x1D000000, 0x8D000000,
-/*0150*/ 0x29000000, 0x1CF40000, 0xBD000000, 0x9D000000, 0xFC340000, 0x64000055,
-/*0156*/ 0xAC240000, 0x10000002, 0xAC240000, 0xE40082F5, 0xB9000000, 0xAD000000,
-/*015C*/ 0x09000000, 0x09000000, 0xE4000000, 0xE40082F4, 0xE4000004, 0x6C000070,
-/*0162*/ 0xE4008304, 0x07900010, 0x0F900010, 0x6C000076, 0xE4000000, 0xFF900000,
-/*0168*/ 0xFDB0009E, 0xAF900000, 0xFCF07902, 0xFDB000A7, 0xAEB09000, 0xE40F4240,
-/*016E*/ 0xE4000163, 0xE4000071, 0x6C0000FF, 0x4C000119, 0x6C000120, 0x6C000121,
-/*0174*/ 0xE400005B, 0x6C000157, 0x6C000159, 0xE400002D, 0x6C000157, 0x6C00015E,
-/*017A*/ 0xE40005B4, 0x6C000110, 0xAF90002D, 0x6C000157, 0x4C00017E, 0x09000000};
+/*010E*/ 0xADA4C105, 0xAEB1BF08, 0x89AE4004, 0xC9AE4DEB, 0xFEE6B900, 0xAB900DEB,
+/*0114*/ 0xFE5ADB30, 0x1B900DEB, 0xFE5AC6AC, 0x1817C240, 0x052AC240, 0xE4000DEB,
+/*011A*/ 0xFEEB4640, 0xE4000DEB, 0xFE5AC628, 0x6B5ACAAC, 0x18628240, 0x09000000,
+/*0120*/ 0x01000000, 0xE40004D2, 0x05000000, 0xAD000000, 0x05000000, 0x85000000,
+/*0126*/ 0x0D000000, 0x15000000, 0x24940000, 0xFD000000, 0x05A40000, 0x1D000000,
+/*012C*/ 0x25000000, 0xF9000000, 0xFC90D000, 0x19000000, 0x7D000000, 0x75000000,
+/*0132*/ 0x74540000, 0xE4BC614E, 0xE4000D97, 0xFC169000, 0x95000000, 0xAD000000,
+/*0138*/ 0xF8E40000, 0x29000000, 0xD9000000, 0xAEB40000, 0xF9640000, 0x29000000,
+/*013E*/ 0x79000000, 0xAEB40000, 0xFA640000, 0x29000000, 0xB9000000, 0x5D000000,
+/*0144*/ 0xE40003E8, 0xF95AD000, 0xF9E40000, 0xAF900063, 0xF8DAD000, 0x1B640000,
+/*014A*/ 0x8D000000, 0x89000000, 0x3D000000, 0x1D000000, 0x8D000000, 0x29000000,
+/*0150*/ 0x1CF40000, 0xBD000000, 0x9D000000, 0xFC340000, 0x64000055, 0xAC240000,
+/*0156*/ 0x10000002, 0xAC240000, 0xE4000D0A, 0xFEE40000, 0xAD000000, 0x09000000,
+/*015C*/ 0x09000000, 0xE4000000, 0xE4000D0B, 0xFF900004, 0x6C000070, 0xE4000CFB,
+/*0162*/ 0xFC1E4010, 0x0F900010, 0x6C000076, 0xE4000000, 0xFF900000, 0xFDB0009E,
+/*0168*/ 0xAF900000, 0xFCF07902, 0xFDB000A7, 0xAEB09000, 0xE40F4240, 0xE4000163,
+/*016E*/ 0xE4000071, 0x6C0000FF, 0x4C000118, 0x6C00011F, 0x6C000120, 0xE400005B,
+/*0174*/ 0x6C000156, 0x6C000158, 0xE400002D, 0x6C000156, 0x6C00015D, 0xE40005B0,
+/*017A*/ 0x6C000110, 0xAF90002D, 0x6C000156, 0x4C00017D, 0x09000000};
 //
 uint32_t FetchROM(uint32_t addr) {
 //
-  if (addr < 384) {
+  if (addr < 383) {
 //
     return InternalROM[addr];
 //
@@ -212,40 +214,45 @@ uint32_t FetchROM(uint32_t addr) {
 #endif // TRACEABLE
 
 // Generic fetch from ROM or RAM: ROM is at the bottom, RAM is in middle, ROM is at top
-static uint32_t FetchX (uint32_t addr, int shift, int mask) {
-    if (addr < ROMsize) {
+static uint32_t FetchX (int32_t addr, int shift, int32_t mask) {
+    uint32_t cell;
+    if (addr < 0) {
+        int addrmask = RAMsize-1;
+        cell = RAM[addr & addrmask];
+    } else if (addr >= ROMsize) {
+        cell = FlashRead(addr << 2);
+    } else {
 #ifdef EmbeddedROM
-        return (FetchROM(addr) >> shift) & mask;
+        cell = FetchROM(addr);
 #else
-        return (ROM[addr] >> shift) & mask;
+        cell = ROM[addr];
 #endif // EmbeddedROM
     }
-    if (addr < (ROMsize + RAMsize)) {
-        return (RAM[addr-ROMsize] >> shift) & mask;
-    }
-    return (FlashRead(addr*4) >> shift) & mask;
+    if (mask < 0) return cell;
+    uint32_t r = (cell >> shift) & mask;
+    return r;
 }
 
 // Generic store to RAM only.
-static void StoreX (uint32_t addr, uint32_t data, int shift, int mask) {
-    if ((addr<ROMsize) || (addr>=(ROMsize+RAMsize))) {
-        exception = -9;  return;
-    } // disallow ROM and SPI flash writing
-    int ra = addr - ROMsize;  // cell index
-    uint32_t temp = RAM[ra] & (~(mask << shift));
+static void StoreX (int32_t addr, uint32_t data, int shift, int32_t mask) {
+    if (addr < 0) {
+        int ra = addr & (RAMsize - 1);
+        uint32_t temp = RAM[ra] & (~(mask << shift));
 #ifdef TRACEABLE
-    temp = ((data & mask) << shift) | temp;
-    Trace(New, ra, RAM[ra], temp);  New=0;
-    RAM[ra] = temp;
+        temp = ((data & mask) << shift) | temp;
+        Trace(New, ra, RAM[ra], temp);  New=0;
+        RAM[ra] = temp;
 #else
-    RAM[ra] = ((data & mask) << shift) | temp;
+        RAM[ra] = ((data & mask) << shift) | temp;
 #endif // TRACEABLE
-//  printf("![%X]=%X ", ra, RAM[ra]);
+    } else {
+        exception = -9;
+    }
 }
 
 /// EXPORTS ////////////////////////////////////////////////////////////////////
 
-void vmMEMinit(void){     				// erase all ROM and flash,
+void vmMEMinit(char * name){            // erase all ROM and flash,
 #ifndef EmbeddedROM						// allocate memory if not allocated yet.
     if (NULL == ROM) {
         ROM = (uint32_t*) malloc(MaxROMsize * sizeof(uint32_t));
@@ -253,16 +260,16 @@ void vmMEMinit(void){     				// erase all ROM and flash,
     if (NULL == RAM) {
         RAM = (uint32_t*) malloc(MaxRAMsize * sizeof(uint32_t));
     }
-#ifdef TRACEABLE
+  #ifdef TRACEABLE
     if (NULL == ProfileCounts) {
         ProfileCounts = (uint32_t*) malloc(MaxROMsize * sizeof(uint32_t));
     }
-#endif
-    for (int i=0; i<ROMsize; i++) {
-        WriteROM(-1, i*4);
-    }
+  #endif
+    // initialize actual sizes
+    memset(ROM, -1, ROMsize*sizeof(uint32_t));
+    memset(RAM,  0, RAMsize*sizeof(uint32_t));
 #endif // EmbeddedROM
-    FlashInit();
+    FlashInit(LoadFlashFilename);
 };
 
 #ifndef EmbeddedROM
@@ -280,7 +287,7 @@ int WriteROM(uint32_t data, uint32_t address) {
 }
 #else
 int WriteROM(uint32_t data, uint32_t address) {
-    uint32_t addr = address / 4;
+    uint32_t addr = address >> 2;
     if (address & 3) return -23;        // alignment problem
     if (addr >= (SPIflashBlocks<<10)) return -9;
     if (addr < ROMsize) {
@@ -294,11 +301,14 @@ int WriteROM(uint32_t data, uint32_t address) {
 }
 #endif // EmbeddedROM
 
-uint32_t FetchCell(uint32_t addr) {
+uint32_t FetchCell(int32_t addr) {
     if (addr & 3) {
         exception = -23;
     }
-	uint32_t ca = addr >> 2;
+	int32_t ca = addr>>2;  // if addr<0, "/4" <> ">>2". weird, huh?
+    if (addr < 0) {
+        return (RAM[ca & (RAMsize-1)]);
+    }
     if (ca < ROMsize) {
 #ifdef EmbeddedROM
         return (FetchROM(ca));
@@ -306,32 +316,37 @@ uint32_t FetchCell(uint32_t addr) {
         return (ROM[ca]);
 #endif // EmbeddedROM
     }
-	ca -= ROMsize;
-    if (ca < RAMsize) {
-        return (RAM[ca]);
-    }
     return (FlashRead(addr));
 }
+
 /*
-uint32_t FetchCell(uint32_t addr) {
+uint32_t FetchCell(int32_t addr) {
     if (addr & 3) {
         exception = -23;
     }
     return FetchX(addr>>2, 0, 0xFFFFFFFF);
 }
 */
-uint16_t FetchHalf(uint32_t addr) {
+
+uint16_t FetchHalf(int32_t addr) {
     if (addr & 1) {
         exception = -23;
     }
-    return FetchX(addr>>2, (addr&2)*8, 0xFFFF);
+    int shift = (addr & 2) << 3;
+    return FetchX(addr>>2, shift, 0xFFFF);
 }
-uint8_t FetchByte(uint32_t addr) {
-    return FetchX(addr>>2, (addr&3)*8, 0xFF);
+uint8_t FetchByte(int32_t addr) {
+    int shift = (addr & 3) << 3;
+    return FetchX(addr>>2, shift, 0xFF);
 }
-void StoreCell (uint32_t x, uint32_t addr) {
+
+void StoreCell (uint32_t x, int32_t addr) {
     if (addr & 3) {
         exception = -23;
+    }
+    if (addr < 0) {
+        StoreX(addr>>2, x, 0, 0xFFFFFFFF);
+        return;
     }
 #ifdef EmbeddedROM
     if ((addr < ROMsize*4) || (addr >= (ROMsize+RAMsize)*4)) {
@@ -357,14 +372,16 @@ void StoreCell (uint32_t x, uint32_t addr) {
     StoreX(addr>>2, x, 0, 0xFFFFFFFF);
 }
 
-void StoreHalf (uint16_t x, uint32_t addr) {
+void StoreHalf (uint16_t x, int32_t addr) {
     if (addr & 1) {
         exception = -23;
     }
-    StoreX(addr>>2, x, (addr&2)*8, 0xFFFF);
+    int shift = (addr & 2) << 3;
+    StoreX(addr>>2, x, shift, 0xFFFF);
 }
-void StoreByte (uint8_t x, uint32_t addr) {
-    StoreX(addr>>2, x, (addr&3)*8, 0xFF);
+void StoreByte (uint8_t x, int32_t addr) {
+    int shift = (addr & 3) << 3;
+    StoreX(addr>>2, x, shift, 0xFF);
 }
 
 
@@ -433,7 +450,7 @@ void VMpor(void) {  // EXPORTED
     T=0;  N=0;  DebugReg = 0;
     memset(RAM,  0, RAMsize*sizeof(uint32_t));       // clear RAM
 #ifdef EmbeddedROM
-    FlashInit();
+    FlashInit(0);
 #endif // EmbeddedROM
 }
 
@@ -480,7 +497,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 			case opNOP:									break;	// nop
 			case opDUP: SDUP();							break;	// dup
 			case opEXIT:
-                M = RDROP() >> 2;
+                M = RDROP()/4;
 #ifdef TRACEABLE
                 Trace(New, RidPC, PC, M);  New=0;
                 if (!Paused) {
@@ -528,16 +545,6 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 #endif // TRACEABLE
 			    T = T + 1;                              break;	// 1+
 			case opPUSH:  RDUP(T);  SDROP();            break;  // >r
-/*			case opSUB:
-			    DX = (uint64_t)N - (uint64_t)T;
-#ifdef TRACEABLE
-                Trace(New, RidT, T, (uint32_t)DX);  New=0;
-                Trace(0, RidCY, CARRY, (uint32_t)(DX>>32));
-#endif // TRACEABLE
-                T = (uint32_t)DX;
-                CARRY = (uint32_t)(DX>>32);
-                SNIP();	                                break;	// -
-*/
 			case opCstorePlus:    /* ( n a -- a' ) */
 			    StoreByte(N, T);
 #ifdef TRACEABLE
@@ -545,7 +552,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 #endif // TRACEABLE
                 T += 1;   SNIP();                       break;  // c!+
 			case opCfetchPlus:  SDUP();  /* ( a -- a' c ) */
-                M = FetchX(N>>2, (N&3) * 8, 0xFF);
+                M = FetchByte((signed)N);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
                 Trace(0, RidN, N, N+1);
@@ -558,11 +565,6 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
                 Trace(New, RidT, T, (unsigned) T / 2);  New=0;
 #endif // TRACEABLE
 			    CARRY = T&1;  T = T / 2;                break;	// u2/
-			case opTwoPlus:
-#ifdef TRACEABLE
-                Trace(New, RidT, T, T + 2);  New=0;
-#endif // TRACEABLE
-			    T = T + 2;                              break;	// 2+
 			case opOVER: M = N;  SDUP();
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
@@ -585,7 +587,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 #endif // TRACEABLE
                 T += 2;   SNIP();                       break;  // w!+
 			case opWfetchPlus:  SDUP();  /* ( a -- a' c ) */
-                M = FetchHalf(N);
+                M = FetchHalf((signed)N);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
                 Trace(0, RidN, N, N+2);
@@ -628,7 +630,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 #endif // TRACEABLE
                 T = M;                                  break;  // 0=
 			case opWfetch:  /* ( a -- w ) */
-                M = FetchHalf(T);
+                M = FetchHalf((signed)T);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
 #endif // TRACEABLE
@@ -638,7 +640,12 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
                 Trace(New, RidT, T, T ^ N);  New=0;
 #endif // TRACEABLE
                 T = T ^ N;  SNIP();	                    break;	// xor
-			case opREPT:  slot = 32;                    break;	// rept
+			case opREPTC:
+			    if (!(CARRY & 1)) slot = 32;                    // reptc
+#ifdef TRACEABLE
+                Trace(New, RidN, N, N+1);  New=0; // repeat loop uses N
+#endif // TRACEABLE                               // test and increment
+                N++;  break;
 			case opFourPlus:
 #ifdef TRACEABLE
                 Trace(New, RidT, T, T + 4);  New=0;
@@ -658,13 +665,13 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
                 CARRY = (uint32_t)(DX>>32);
                 SNIP();	                                break;	// c+
 			case opStorePlus:    /* ( n a -- a' ) */
-			    StoreCell(N, T);
+			    StoreCell(N, (signed)T);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, T+4);
 #endif // TRACEABLE
                 T += 4;   SNIP();                       break;  // !+
 			case opFetchPlus:  SDUP();  /* ( a -- a' c ) */
-                M = FetchCell(T);
+                M = FetchCell((signed)T);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
                 Trace(0, RidN, N, N+4);
@@ -679,7 +686,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 #endif // TRACEABLE
                 CARRY = T>>31;   T = M;                 break;  // 2*
 			case opMiREPT:
-                if (N&0x8000) slot = 32;          	            // -rept
+                if (N&0x10000) slot = 32;          	            // -rept
 #ifdef TRACEABLE
                 Trace(New, RidN, N, N+1);  New=0; // repeat loop uses N
 #endif // TRACEABLE                               // test and increment
@@ -701,7 +708,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 #endif // TRACEABLE
 			    RP = M;  SDROP();                       break;	// rp!
 			case opFetch:  /* ( a -- n ) */
-                M = FetchCell(T);
+                M = FetchCell((signed)T);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
 #endif // TRACEABLE
@@ -716,7 +723,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 			case opSKIPGE: if ((signed)T < 0) break;            // -if:
                 goto ex;
 			case opSP: M = SP;                                  // sp
-GetPointer:     M = T + (M + ROMsize)*4;
+GetPointer:     M = T + (M - RAMsize)*4; // common for rp, sp, up
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
 #endif // TRACEABLE
@@ -731,7 +738,7 @@ GetPointer:     M = T + (M + ROMsize)*4;
                 // SP! does not post-drop
 			    SP = M;         	                    break;	// sp!
 			case opCfetch:  /* ( a -- w ) */
-                M = FetchX(T>>2, (T&3) * 8, 0xFF);
+                M = FetchByte((signed)T);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
 #endif // TRACEABLE
@@ -810,9 +817,9 @@ uint32_t vmRegRead(int ID) {
 	switch(ID) {
 		case 0: return T;
 		case 1: return N;
-		case 2: return (RP+ROMsize)*4;
-		case 3: return (SP+ROMsize)*4;
-		case 4: return (UP+ROMsize)*4;
+		case 2: return (RP-ROMsize)*4;
+		case 3: return (SP-ROMsize)*4;
+		case 4: return (UP-RAMsize)*4;
 		case 5: return PC*4;
 		default: return 0;
 	}

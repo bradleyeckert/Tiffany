@@ -13,7 +13,7 @@ uint32_t VMstep(uint32_t IR, int Paused);   // Execute an instruction group
 void VMpor(void);                           // Reset the VM
 void SetDbgReg(uint32_t n);                 // write to the debug mailbox
 uint32_t GetDbgReg(void);                   // read from the debug mailbox
-uint32_t FetchCell(uint32_t addr);
+uint32_t FetchCell(int32_t addr);
 
 // Defined in vm.c, used for development only. Not on the target system.
 int WriteROM(uint32_t data, uint32_t address);
@@ -66,7 +66,7 @@ void tiffQUIT(char *s);                                    // The C-side QUIT lo
 #define opWfetch     (036)  // w@  ( a -- n )
 #define opXOR        (037)  // xor
 
-#define opREPT       (040)  // rept  slot=0
+#define opREPTC      (040)  // rept  slot=0 if C=0
 #define opFourPlus   (041)  // 4+
 #define opOVER       (042)  // over
 #define opADDC       (043)  // c+  with carry in

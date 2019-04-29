@@ -116,7 +116,7 @@ cp @ @ -1 = [if]		\ flash is not blank, try deleting "flash.bin" file.
 \ Traverse to the last IDATA structure and initialize RAM from that.
 \ Then any WIDs point to the latest wordlists.
 
-cp @ ," DataCodeHead" 1+
+cp @ ," DataCodeHead" 1+  alignc
 : .unused  \ --
 	literal                             \ sure is nice to pull in external literal
 	3 0 do                              \ even it's not ANS
@@ -154,7 +154,6 @@ cr .( Test suite: ) cr
 include ../../forth/test/ttester.fs
 include ../../forth/test/coretest.fs
 include ../../forth/test/dbltest.fs
-[then]
 [then]
 
 \ theme=color

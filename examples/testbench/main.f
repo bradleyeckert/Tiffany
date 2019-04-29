@@ -25,7 +25,7 @@ include ../../forth/core.f
     cell+       |                       \ 4D2 4D6 <sp
     +           |                       \ 9A8 <sp
     0<          |                       \ 0 <sp
-    2+          |                       \ 2 <sp
+    1+ 1+       |                       \ 2 <sp
     invert      |                       \ FFFFFFFD <sp
     dup >r      |                       \ FFFFFFFD <sp
     2/          |                       \ FFFFFFFE <sp

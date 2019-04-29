@@ -42,6 +42,8 @@
 /*global*/ uint32_t RAMsize = RAMsizeDefault;
 /*global*/ uint32_t ROMsize = ROMsizeDefault;
 /*global*/ uint32_t SPIflashBlocks = FlashBlksDefault;
+#else
+char * LoadFlashFilename = NULL;
 #endif
 
 static int exception = 0;               // local error code
@@ -93,7 +95,7 @@ static int exception = 0;               // local error code
     uint32_t OpCounter[64];     // opcode counter
     uint32_t * ProfileCounts;
     uint32_t cyclecount;
-    uint32_t maxRPtime;   // max cycles between RETs
+    uint32_t maxRPtime;   		// max cycles between RETs
     uint32_t maxReturnPC = 0;   // PC where it occurred
     static uint32_t RPmark;
 
@@ -137,35 +139,40 @@ static int exception = 0;               // local error code
 #endif // TRACEABLE
 
 // Generic fetch from ROM or RAM: ROM is at the bottom, RAM is in middle, ROM is at top
-static uint32_t FetchX (uint32_t addr, int shift, int mask) {
-    if (addr < ROMsize) {
+static uint32_t FetchX (int32_t addr, int shift, int32_t mask) {
+    uint32_t cell;
+    if (addr < 0) {
+        int addrmask = RAMsize-1;
+        cell = RAM[addr & addrmask];
+    } else if (addr >= ROMsize) {
+        cell = FlashRead(addr << 2);
+    } else {
 #ifdef EmbeddedROM
-        return (FetchROM(addr) >> shift) & mask;
+        cell = FetchROM(addr);
 #else
-        return (ROM[addr] >> shift) & mask;
+        cell = ROM[addr];
 #endif // EmbeddedROM
     }
-    if (addr < (ROMsize + RAMsize)) {
-        return (RAM[addr-ROMsize] >> shift) & mask;
-    }
-    return (FlashRead(addr*4) >> shift) & mask;
+    if (mask < 0) return cell;
+    uint32_t r = (cell >> shift) & mask;
+    return r;
 }
 
 // Generic store to RAM only.
-static void StoreX (uint32_t addr, uint32_t data, int shift, int mask) {
-    if ((addr<ROMsize) || (addr>=(ROMsize+RAMsize))) {
-        exception = -9;  return;
-    } // disallow ROM and SPI flash writing
-    int ra = addr - ROMsize;  // cell index
-    uint32_t temp = RAM[ra] & (~(mask << shift));
+static void StoreX (int32_t addr, uint32_t data, int shift, int32_t mask) {
+    if (addr < 0) {
+        int ra = addr & (RAMsize - 1);
+        uint32_t temp = RAM[ra] & (~(mask << shift));
 #ifdef TRACEABLE
-    temp = ((data & mask) << shift) | temp;
-    Trace(New, ra, RAM[ra], temp);  New=0;
-    RAM[ra] = temp;
+        temp = ((data & mask) << shift) | temp;
+        Trace(New, ra, RAM[ra], temp);  New=0;
+        RAM[ra] = temp;
 #else
-    RAM[ra] = ((data & mask) << shift) | temp;
+        RAM[ra] = ((data & mask) << shift) | temp;
 #endif // TRACEABLE
-//  printf("![%X]=%X ", ra, RAM[ra]);
+    } else {
+        exception = -9;
+    }
 }
 
 /// EXPORTS ////////////////////////////////////////////////////////////////////
@@ -183,9 +190,9 @@ void vmMEMinit(char * name){            // erase all ROM and flash,
         ProfileCounts = (uint32_t*) malloc(MaxROMsize * sizeof(uint32_t));
     }
   #endif
-    for (int i=0; i<ROMsize; i++) {
-        WriteROM(-1, i*4);
-    }
+    // initialize actual sizes
+    memset(ROM, -1, ROMsize*sizeof(uint32_t));
+    memset(RAM,  0, RAMsize*sizeof(uint32_t));
 #endif // EmbeddedROM
     FlashInit(LoadFlashFilename);
 };
@@ -205,7 +212,7 @@ int WriteROM(uint32_t data, uint32_t address) {
 }
 #else
 int WriteROM(uint32_t data, uint32_t address) {
-    uint32_t addr = address / 4;
+    uint32_t addr = address >> 2;
     if (address & 3) return -23;        // alignment problem
     if (addr >= (SPIflashBlocks<<10)) return -9;
     if (addr < ROMsize) {
@@ -219,11 +226,14 @@ int WriteROM(uint32_t data, uint32_t address) {
 }
 #endif // EmbeddedROM
 
-uint32_t FetchCell(uint32_t addr) {
+uint32_t FetchCell(int32_t addr) {
     if (addr & 3) {
         exception = -23;
     }
-	uint32_t ca = addr >> 2;
+	int32_t ca = addr>>2;  // if addr<0, "/4" <> ">>2". weird, huh?
+    if (addr < 0) {
+        return (RAM[ca & (RAMsize-1)]);
+    }
     if (ca < ROMsize) {
 #ifdef EmbeddedROM
         return (FetchROM(ca));
@@ -231,32 +241,37 @@ uint32_t FetchCell(uint32_t addr) {
         return (ROM[ca]);
 #endif // EmbeddedROM
     }
-	ca -= ROMsize;
-    if (ca < RAMsize) {
-        return (RAM[ca]);
-    }
     return (FlashRead(addr));
 }
+
 /*
-uint32_t FetchCell(uint32_t addr) {
+uint32_t FetchCell(int32_t addr) {
     if (addr & 3) {
         exception = -23;
     }
     return FetchX(addr>>2, 0, 0xFFFFFFFF);
 }
 */
-uint16_t FetchHalf(uint32_t addr) {
+
+uint16_t FetchHalf(int32_t addr) {
     if (addr & 1) {
         exception = -23;
     }
-    return FetchX(addr>>2, (addr&2)*8, 0xFFFF);
+    int shift = (addr & 2) << 3;
+    return FetchX(addr>>2, shift, 0xFFFF);
 }
-uint8_t FetchByte(uint32_t addr) {
-    return FetchX(addr>>2, (addr&3)*8, 0xFF);
+uint8_t FetchByte(int32_t addr) {
+    int shift = (addr & 3) << 3;
+    return FetchX(addr>>2, shift, 0xFF);
 }
-void StoreCell (uint32_t x, uint32_t addr) {
+
+void StoreCell (uint32_t x, int32_t addr) {
     if (addr & 3) {
         exception = -23;
+    }
+    if (addr < 0) {
+        StoreX(addr>>2, x, 0, 0xFFFFFFFF);
+        return;
     }
 #ifdef EmbeddedROM
     if ((addr < ROMsize*4) || (addr >= (ROMsize+RAMsize)*4)) {
@@ -282,14 +297,16 @@ void StoreCell (uint32_t x, uint32_t addr) {
     StoreX(addr>>2, x, 0, 0xFFFFFFFF);
 }
 
-void StoreHalf (uint16_t x, uint32_t addr) {
+void StoreHalf (uint16_t x, int32_t addr) {
     if (addr & 1) {
         exception = -23;
     }
-    StoreX(addr>>2, x, (addr&2)*8, 0xFFFF);
+    int shift = (addr & 2) << 3;
+    StoreX(addr>>2, x, shift, 0xFFFF);
 }
-void StoreByte (uint8_t x, uint32_t addr) {
-    StoreX(addr>>2, x, (addr&3)*8, 0xFF);
+void StoreByte (uint8_t x, int32_t addr) {
+    int shift = (addr & 3) << 3;
+    StoreX(addr>>2, x, shift, 0xFF);
 }
 
 
@@ -405,7 +422,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 			case opNOP:									break;	// nop
 			case opDUP: SDUP();							break;	// dup
 			case opEXIT:
-                M = RDROP() >> 2;
+                M = RDROP()/4;
 #ifdef TRACEABLE
                 Trace(New, RidPC, PC, M);  New=0;
                 if (!Paused) {
@@ -460,7 +477,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 #endif // TRACEABLE
                 T += 1;   SNIP();                       break;  // c!+
 			case opCfetchPlus:  SDUP();  /* ( a -- a' c ) */
-                M = FetchX(N>>2, (N&3) * 8, 0xFF);
+                M = FetchByte((signed)N);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
                 Trace(0, RidN, N, N+1);
@@ -495,7 +512,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 #endif // TRACEABLE
                 T += 2;   SNIP();                       break;  // w!+
 			case opWfetchPlus:  SDUP();  /* ( a -- a' c ) */
-                M = FetchHalf(N);
+                M = FetchHalf((signed)N);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
                 Trace(0, RidN, N, N+2);
@@ -538,7 +555,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 #endif // TRACEABLE
                 T = M;                                  break;  // 0=
 			case opWfetch:  /* ( a -- w ) */
-                M = FetchHalf(T);
+                M = FetchHalf((signed)T);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
 #endif // TRACEABLE
@@ -573,13 +590,13 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
                 CARRY = (uint32_t)(DX>>32);
                 SNIP();	                                break;	// c+
 			case opStorePlus:    /* ( n a -- a' ) */
-			    StoreCell(N, T);
+			    StoreCell(N, (signed)T);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, T+4);
 #endif // TRACEABLE
                 T += 4;   SNIP();                       break;  // !+
 			case opFetchPlus:  SDUP();  /* ( a -- a' c ) */
-                M = FetchCell(T);
+                M = FetchCell((signed)T);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
                 Trace(0, RidN, N, N+4);
@@ -616,7 +633,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 #endif // TRACEABLE
 			    RP = M;  SDROP();                       break;	// rp!
 			case opFetch:  /* ( a -- n ) */
-                M = FetchCell(T);
+                M = FetchCell((signed)T);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
 #endif // TRACEABLE
@@ -631,7 +648,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 			case opSKIPGE: if ((signed)T < 0) break;            // -if:
                 goto ex;
 			case opSP: M = SP;                                  // sp
-GetPointer:     M = T + (M + ROMsize)*4;
+GetPointer:     M = T + (M - RAMsize)*4; // common for rp, sp, up
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
 #endif // TRACEABLE
@@ -646,7 +663,7 @@ GetPointer:     M = T + (M + ROMsize)*4;
                 // SP! does not post-drop
 			    SP = M;         	                    break;	// sp!
 			case opCfetch:  /* ( a -- w ) */
-                M = FetchX(T>>2, (T&3) * 8, 0xFF);
+                M = FetchByte((signed)T);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
 #endif // TRACEABLE
@@ -725,9 +742,9 @@ uint32_t vmRegRead(int ID) {
 	switch(ID) {
 		case 0: return T;
 		case 1: return N;
-		case 2: return (RP+ROMsize)*4;
-		case 3: return (SP+ROMsize)*4;
-		case 4: return (UP+ROMsize)*4;
+		case 2: return (RP-ROMsize)*4;
+		case 3: return (SP-ROMsize)*4;
+		case 4: return (UP-RAMsize)*4;
 		case 5: return PC*4;
 		default: return 0;
 	}

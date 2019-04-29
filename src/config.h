@@ -22,8 +22,8 @@
 #define TraceDepth 12           /* Log2 of the trace buffer size, 13*2^N bytes */
 
 // number of rows in the CPU register dump, minimum 9, maximum 12
-#define DumpRows         10
-#define StartupTheme      0                   /* 0=monochrome, 1=color (VT220) */
+#define DumpRows           10
+#define StartupTheme        0                 /* 0=monochrome, 1=color (VT220) */
 
 #define OKstyle  1                   /* Style of OK prompt: 0=classic, 1=depth */
 // #define VERBOSE     /* for debugging the quit loop, etc. */

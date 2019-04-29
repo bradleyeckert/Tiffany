@@ -46,13 +46,15 @@
 /*global*/ uint32_t RAMsize = RAMsizeDefault;
 /*global*/ uint32_t ROMsize = ROMsizeDefault;
 /*global*/ uint32_t SPIflashBlocks = FlashBlksDefault;
+#else
+char * LoadFlashFilename = NULL;
 #endif
 
 static int exception = 0;               // local error code
 
 //
-static const uint32_t InternalROM[655] = {
-/*0000*/ 0x4C000289, 0x4C00028C, 0x4FFFFFFF, 0xFC90C240, 0x96B09000, 0x36B09000,
+static const uint32_t InternalROM[656] = {
+/*0000*/ 0x4C00028A, 0x4C00028D, 0x4FFFFFFF, 0xFC90C240, 0x96B09000, 0x36B09000,
 /*0006*/ 0x56B09000, 0x05AB8318, 0x96B09000, 0x05AD8318, 0x36B09000, 0xFC909000,
 /*000C*/ 0xFC9FC240, 0xFE1FC240, 0x9E709000, 0x68A18A08, 0x29A28608, 0x2A209000,
 /*0012*/ 0x2AB09000, 0x28629A28, 0x69A09000, 0x18628628, 0x68A09000, 0x186F8A68,
@@ -63,8 +65,8 @@ static const uint32_t InternalROM[655] = {
 /*0030*/ 0x68240000, 0x69A2860C, 0x2868C240, 0xFDAFC918, 0x89DC2B26, 0xAC240000,
 /*0036*/ 0xC1300033, 0x09000000, 0x38240000, 0xE4000004, 0xCAE09000, 0xE4000008,
 /*003C*/ 0xCAE09000, 0xE400000C, 0xEAEE4008, 0xCBF2431C, 0x1C240000, 0x0679F2B8,
-/*0042*/ 0x2AB09000, 0xE400000A, 0xE4008218, 0x96B09000, 0xE4000010, 0xE4008218,
-/*0048*/ 0x96B09000, 0xB9000000, 0xE4FFFFFF, 0x5C240000, 0x8A2FC340, 0xC2BAEB08,
+/*0042*/ 0x2AB09000, 0xE400000A, 0xE4000DE7, 0xFE5AC240, 0xE4000010, 0xE4000DE7,
+/*0048*/ 0xFE5AC240, 0xB9000000, 0xE4FFFFFF, 0x5C240000, 0x8A2FC340, 0xC2BAEB08,
 /*004E*/ 0xACAFC918, 0x84A68A68, 0x68240000, 0x18624688, 0x88340000, 0xC2B69A6A,
 /*0054*/ 0xAEBAE16A, 0x18A1A20C, 0xFA20CA68, 0x2857D000, 0xC2B68240, 0xAC6AC6AC,
 /*005A*/ 0x85A09000, 0xE400000C, 0xAAE09000, 0x186AC6AC, 0x68240000, 0x8A27DD40,
@@ -97,75 +99,75 @@ static const uint32_t InternalROM[655] = {
 /*00FC*/ 0x09000000, 0x69B000F6, 0x193000D3, 0x6C0000FD, 0x2AB09000, 0x10000006,
 /*0102*/ 0x09000000, 0x2B900000, 0xFDA40000, 0x8924C10F, 0x2BF27F28, 0x3867F907,
 /*0108*/ 0xFD000000, 0x25A07901, 0x5FF279ED, 0x64B88320, 0x5CA3DF18, 0xC1300109,
-/*010E*/ 0xADA4C105, 0xAEB1BF08, 0x89AE4004, 0xC9A40000, 0xE4008214, 0xB9AE4000,
-/*0114*/ 0xAB908214, 0x96B6C030, 0x1B908214, 0x96B1AB19, 0x7C240000, 0x052AC240,
-/*011A*/ 0xE4008214, 0xBAD19000, 0xE4008214, 0x96B18A68, 0xD6B2AB18, 0x18A09000,
-/*0120*/ 0x09000000, 0x04400004, 0x09000000, 0xE400000A, 0x6C0000F4, 0x6C000121,
-/*0126*/ 0x0D000000, 0x6C000120, 0x05B00121, 0x6C00006C, 0x49300127, 0xAC240000,
-/*012C*/ 0x6C000120, 0x04400003, 0x4930012C, 0x10000002, 0xAC240000, 0x4C000171,
-/*0132*/ 0x39300131, 0x040A0D02, 0x4A325B1B, 0xE40004CC, 0x4C000132, 0xE40004CF,
-/*0138*/ 0x4C000132, 0x04400000, 0x4C000120, 0x6C000139, 0x4930013B, 0x04400001,
-/*013E*/ 0x09000000, 0x000004B0, 0x000004D4, 0x000004DC, 0x000004E4, 0x000004EC,
-/*0144*/ 0xE40004FC, 0xE4008230, 0x96B09000, 0x9E740000, 0xE4008230, 0xB83B9A08,
-/*014A*/ 0xE4000000, 0x4C000147, 0xE4000001, 0x4C000147, 0xE4000002, 0x4C000147,
-/*0150*/ 0xE4000003, 0x4C000147, 0xE4000004, 0x4C000147, 0x89AFC9FC, 0x289286DA,
-/*0156*/ 0xE4000006, 0x6C000094, 0x69B00154, 0xE400003F, 0x5C60C240, 0x6C000154,
-/*015C*/ 0x079000C0, 0x5F900080, 0x7DD40000, 0x49300161, 0xAD30015B, 0x07900080,
-/*0162*/ 0x5D24C170, 0x07900020, 0x5D24C16E, 0x07900010, 0x5D24C16B, 0xE4000007,
-/*0168*/ 0x5DB00156, 0x6C000156, 0x4C000156, 0xE400000F, 0x5DB00156, 0x4C000156,
-/*016E*/ 0xE400001F, 0x5D300156, 0x09000000, 0x07F27F14, 0xFD24C176, 0x6C00015B,
-/*0174*/ 0x6C00014A, 0x4C000171, 0xAEB09000, 0xE4000020, 0x4C00014A, 0xC2B09000,
-/*017A*/ 0x6C000177, 0xFC9FD000, 0x4C000179, 0x09000000, 0xE4000009, 0x89B0006C,
-/*0180*/ 0xE4000007, 0x5C3E4030, 0x0C240000, 0xE4008334, 0xE4008268, 0x96B09000,
-/*0186*/ 0xE4008268, 0xBBF27F04, 0xE4008268, 0x96B36B08, 0xE4000000, 0xE4008218,
-/*018C*/ 0xB9B000A7, 0x6B908218, 0xB9B000A7, 0x29B0017E, 0x6C000186, 0x18240000,
-/*0192*/ 0x6C00018A, 0x8A26C02F, 0x7524C192, 0x09000000, 0x1524C199, 0xE400002D,
-/*0198*/ 0x6C000186, 0x09000000, 0xAEB40000, 0xE4008268, 0xBB908334, 0x8BF24308,
-/*019E*/ 0x8BF24340, 0x6C000179, 0x4C000131, 0x68169B36, 0x6C000183, 0x6C000192,
-/*01A4*/ 0x19B00196, 0x6C00019A, 0x1930019E, 0xE4000000, 0x293001A1, 0x69B00022,
-/*01AA*/ 0x193001A1, 0xE4000000, 0x6C0001A1, 0x4C000177, 0xE4000000, 0x4C0001AB,
-/*01B0*/ 0xE4008218, 0xBB90000A, 0x7D24C1B4, 0x4C0001AE, 0x6C000022, 0x4C0001AB,
-/*01B6*/ 0xB93001B0, 0x6C000183, 0xFC940000, 0x69B0018A, 0x18940000, 0xC13001B9,
-/*01BC*/ 0xADB00192, 0x4C00019A, 0xE4008218, 0xB9A6C046, 0xE4000000, 0x29B001B7,
-/*01C2*/ 0x1B908218, 0x96B6C131, 0x4C000177, 0x6810460C, 0x69000000, 0x07E7D000,
-/*01C8*/ 0x493001E9, 0x6C000120, 0x6C000150, 0x493001C9, 0x6C000152, 0x0790000D,
-/*01CE*/ 0x7DD40000, 0x493001D2, 0xAC6ACAFC, 0x24309000, 0x07900008, 0x7DD40000,
-/*01D4*/ 0x493001DE, 0xAE289F40, 0x493001DD, 0xFC9FD000, 0x4C0001DB, 0x445B1B07,
-/*01DA*/ 0x445B1B20, 0xE4000764, 0x39B00131, 0x4C0001E8, 0x07900020, 0xFC90D000,
-/*01E0*/ 0xC13001E7, 0xAF90824E, 0xD9D40000, 0x493001E5, 0x05B0014A, 0x28D40000,
-/*01E6*/ 0x4C0001E8, 0xAEB40000, 0x4C0001C7, 0x1AB2BF27, 0x09000000, 0x96B09000,
-/*01EC*/ 0x6BFE40FF, 0x5FEE4003, 0x5E79E740, 0x6C000094, 0xFC6E4003, 0xFD796B08,
-/*01F2*/ 0xFC940000, 0x6A2DA240, 0x6C0001EC, 0x24A24A18, 0x2704C1F3, 0xAEBAC240,
-/*01F8*/ 0xE4000000, 0xE4008263, 0x36B09000, 0xE4000001, 0xE4008263, 0x36B09000,
-/*01FE*/ 0xE4008263, 0xD924C202, 0xE4008220, 0x09000000, 0xE4008224, 0x09000000,
-/*0204*/ 0x05AB9000, 0x6C0001EB, 0xE4000004, 0x19300007, 0xE4008220, 0x4C000204,
-/*020A*/ 0xE400821C, 0x4C000204, 0xE4008224, 0x05ABA5AC, 0xE4000004, 0x19300007,
-/*0210*/ 0xE4008263, 0xD924C213, 0x4C000208, 0x4C00020C, 0x05AB9000, 0x6C0001EC,
-/*0216*/ 0xFAE24694, 0xAC240000, 0xE4008220, 0x4C000214, 0xE400821C, 0x4C000214,
-/*021C*/ 0xE4008224, 0x05AB8DAC, 0xE4000001, 0x19300007, 0xE4008263, 0xD924C223,
-/*0222*/ 0x4C000218, 0x4C00021C, 0x8B908224, 0xB9F5C240, 0xE4008220, 0xB8AE4000,
-/*0228*/ 0xFDB00208, 0x06E75000, 0x6C000224, 0x4930022D, 0x85300229, 0x0416C208,
-/*022E*/ 0x06E75D40, 0x6C000224, 0x49300233, 0x99B00208, 0x4C00022E, 0x09000000,
-/*0234*/ 0xE4008238, 0xBB908240, 0x96B40000, 0xE4008268, 0xE40000CC, 0x6C000092,
-/*023A*/ 0xE4000000, 0xE9000000, 0x6C000226, 0x6BF27E0C, 0x1C72A228, 0x6C0001EB,
-/*0240*/ 0x18A75000, 0x4930023C, 0xAC240000, 0x4C000248, 0x6C65480C, 0x57206F6C,
-/*0246*/ 0x646C726F, 0xFFFFFF21, 0xE4000910, 0x39B00131, 0x6C00014C, 0xE400000A,
-/*024C*/ 0xE4000000, 0x2BF25A68, 0xF9B001B0, 0x6C000051, 0x4C00024E, 0x09000000,
-/*0252*/ 0x00000003, 0x00008204, 0x00008200, 0x000081F0, 0x00008100, 0x00000004,
-/*0258*/ 0x00008218, 0x0000000A, 0x0000A4BC, 0x0000096C, 0x00008338, 0x00000006,
-/*025E*/ 0x0000822C, 0x00008334, 0x000004FC, 0x00000001, 0x0000000C, 0x0000826C,
-/*0264*/ 0x0000000C, 0x00000001, 0x00008248, 0x001A0001, 0x00000001, 0x00008250,
-/*026A*/ 0x1A000940, 0x00000003, 0x0000825C, 0x0000A480, 0x00050003, 0x00008334,
-/*0270*/ 0x00000001, 0x00008334, 0x0000A498, 0x00000000, 0x00008338, 0xE4000948,
-/*0276*/ 0x9A28899C, 0x9C329A28, 0x18140000, 0x4930027C, 0x6A619B70, 0x4C000276,
-/*027C*/ 0x1B908268, 0x96B40000, 0xE4008200, 0xF7908100, 0xD79081EC, 0xB7908268,
-/*0282*/ 0xB9A40000, 0xE4010000, 0xE4008220, 0x96B40000, 0xE4018000, 0xE400821C,
-/*0288*/ 0x96B09000, 0x6C000275, 0x6C000243, 0x4C000101, 0x6C000275, 0x6C000243,
-/*028E*/ 0x4C000101};
+/*010E*/ 0xADA4C105, 0xAEB1BF08, 0x89AE4004, 0xC9AE4DEB, 0xFEE6B900, 0xAB900DEB,
+/*0114*/ 0xFE5ADB30, 0x1B900DEB, 0xFE5AC6AC, 0x1817C240, 0x052AC240, 0xE4000DEB,
+/*011A*/ 0xFEEB4640, 0xE4000DEB, 0xFE5AC628, 0x6B5ACAAC, 0x18628240, 0x09000000,
+/*0120*/ 0x04400004, 0x09000000, 0xE400000A, 0x6C0000F4, 0x6C000120, 0x0D000000,
+/*0126*/ 0x6C00011F, 0x05B00120, 0x6C00006C, 0x49300126, 0xAC240000, 0x6C00011F,
+/*012C*/ 0x04400003, 0x4930012B, 0x10000002, 0xAC240000, 0x4C00016F, 0x39300130,
+/*0132*/ 0x040A0D02, 0x4A325B1B, 0xE40004C8, 0x4C000131, 0xE40004CB, 0x4C000131,
+/*0138*/ 0x04400000, 0x4C00011F, 0x6C000138, 0x4930013A, 0x04400001, 0x09000000,
+/*013E*/ 0x000004AC, 0x000004D0, 0x000004D8, 0x000004E0, 0x000004E8, 0xE40004F8,
+/*0144*/ 0xE4000DCF, 0xFE5AC240, 0x9E7E4DCF, 0xFEE0EE6A, 0xE4000000, 0x4C000146,
+/*014A*/ 0xE4000001, 0x4C000146, 0xE4000002, 0x4C000146, 0xE4000003, 0x4C000146,
+/*0150*/ 0xE4000004, 0x4C000146, 0x89AFC9FC, 0x289286DA, 0xE4000006, 0x6C000094,
+/*0156*/ 0x69B00152, 0xE400003F, 0x5C60C240, 0x6C000152, 0x079000C0, 0x5F900080,
+/*015C*/ 0x7DD40000, 0x4930015F, 0xAD300159, 0x07900080, 0x5D24C16E, 0x07900020,
+/*0162*/ 0x5D24C16C, 0x07900010, 0x5D24C169, 0xE4000007, 0x5DB00154, 0x6C000154,
+/*0168*/ 0x4C000154, 0xE400000F, 0x5DB00154, 0x4C000154, 0xE400001F, 0x5D300154,
+/*016E*/ 0x09000000, 0x07F27F14, 0xFD24C174, 0x6C000159, 0x6C000148, 0x4C00016F,
+/*0174*/ 0xAEB09000, 0xE4000020, 0x4C000148, 0xC2B09000, 0x6C000175, 0xFC9FD000,
+/*017A*/ 0x4C000177, 0x09000000, 0xE4000009, 0x89B0006C, 0xE4000007, 0x5C3E4030,
+/*0180*/ 0x0C240000, 0xE4000CCB, 0xFF900D97, 0xFE5AC240, 0xE4000D97, 0xFEEFC9FD,
+/*0186*/ 0xE4000D97, 0xFE5ACDAE, 0xE4000000, 0xE4000DE7, 0xFEE6C0A7, 0x6B900DE7,
+/*018C*/ 0xFEE6C0A7, 0x29B0017C, 0x6C000184, 0x18240000, 0x6C000188, 0x8A26C02F,
+/*0192*/ 0x7524C190, 0x09000000, 0x1524C197, 0xE400002D, 0x6C000184, 0x09000000,
+/*0198*/ 0xAEBE4D97, 0xFEEE4CCB, 0xFE2FC90E, 0x8BF24340, 0x6C000177, 0x4C000130,
+/*019E*/ 0x68169B36, 0x6C000181, 0x6C000190, 0x19B00194, 0x6C000198, 0x1930019B,
+/*01A4*/ 0xE4000000, 0x2930019E, 0x69B00022, 0x1930019E, 0xE4000000, 0x6C00019E,
+/*01AA*/ 0x4C000175, 0xE4000000, 0x4C0001A8, 0xE4000DE7, 0xFEEE400A, 0x7D24C1B1,
+/*01B0*/ 0x4C0001AB, 0x6C000022, 0x4C0001A8, 0xB93001AD, 0x6C000181, 0xFC940000,
+/*01B6*/ 0x69B00188, 0x18940000, 0xC13001B6, 0xADB00190, 0x4C000198, 0xE4000DE7,
+/*01BC*/ 0xFEE69B46, 0xE4000000, 0x29B001B4, 0x1B900DE7, 0xFE5AD000, 0x6C000130,
+/*01C2*/ 0x4C000175, 0x6810460C, 0x69000000, 0x07E7D000, 0x493001E7, 0x6C00011F,
+/*01C8*/ 0x6C00014E, 0x493001C7, 0x6C000150, 0x0790000D, 0x7DD40000, 0x493001D0,
+/*01CE*/ 0xAC6ACAFC, 0x24309000, 0x07900008, 0x7DD40000, 0x493001DC, 0xAE289F40,
+/*01D4*/ 0x493001DB, 0xFC9FD000, 0x4C0001D9, 0x445B1B07, 0x445B1B20, 0xE400075C,
+/*01DA*/ 0x39B00130, 0x4C0001E6, 0x07900020, 0xFC90D000, 0xC13001E5, 0xAF900DB1,
+/*01E0*/ 0xFF675000, 0x493001E3, 0x05B00148, 0x28D40000, 0x4C0001E6, 0xAEB40000,
+/*01E6*/ 0x4C0001C5, 0x1AB2BF27, 0x09000000, 0x96B09000, 0x6BFE40FF, 0x5FEE4003,
+/*01EC*/ 0x5E79E740, 0x6C000094, 0xFC6E4003, 0xFD796B08, 0xFC940000, 0x6A2DA240,
+/*01F2*/ 0x6C0001EA, 0x24A24A18, 0x2704C1F1, 0xAEBAC240, 0xE4000000, 0xE4000D9C,
+/*01F8*/ 0xFCDAC240, 0xE4000001, 0xE4000D9C, 0xFCDAC240, 0xE4000D9C, 0xFF640000,
+/*01FE*/ 0x49300201, 0xE4000DDF, 0xFC240000, 0xE4000DDB, 0xFC240000, 0x05AB9000,
+/*0204*/ 0x6C0001E9, 0xE4000004, 0x19300007, 0xE4000DDF, 0xFD300203, 0xE4000DE3,
+/*020A*/ 0xFD300203, 0xE4000DDB, 0xFC16AE94, 0xAF900004, 0x19300007, 0xE4000D9C,
+/*0210*/ 0xFF640000, 0x49300213, 0x4C000207, 0x4C00020B, 0x05AB9000, 0x6C0001EA,
+/*0216*/ 0xFAE24694, 0xAC240000, 0xE4000DDF, 0xFD300214, 0xE4000DE3, 0xFD300214,
+/*021C*/ 0xE4000DDB, 0xFC16AE34, 0xAF900001, 0x19300007, 0xE4000D9C, 0xFF640000,
+/*0222*/ 0x49300224, 0x4C000218, 0x4C00021C, 0x8B900DDB, 0xFEE7D708, 0xE4000DDF,
+/*0228*/ 0xFEE2B900, 0xFDB00207, 0x06E75000, 0x6C000225, 0x4930022E, 0x8530022A,
+/*022E*/ 0x0416C207, 0x06E75D40, 0x6C000225, 0x49300234, 0x99B00207, 0x4C00022F,
+/*0234*/ 0x09000000, 0xE4000DC7, 0xFEEE4DBF, 0xFE5AD000, 0xE4000D97, 0xFF9000CC,
+/*023A*/ 0x6C000092, 0xE4000000, 0xE9000000, 0x6C000227, 0x6BF27E0C, 0x1C72A228,
+/*0240*/ 0x6C0001E9, 0x18A75000, 0x4930023D, 0xAC240000, 0x4C000249, 0x6C65480C,
+/*0246*/ 0x57206F6C, 0x646C726F, 0xFFFFFF21, 0xE4000914, 0x39B00130, 0x6C00014A,
+/*024C*/ 0xE400000A, 0xE4000000, 0x2BF25A68, 0xF9B001AD, 0x6C000051, 0x4C00024F,
+/*0252*/ 0x09000000, 0x00000003, 0xFFFFF204, 0xFFFFF200, 0xFFFFF1F0, 0xFFFFF100,
+/*0258*/ 0x00000004, 0xFFFFF218, 0x0000000A, 0x0000A4BC, 0x00000970, 0xFFFFF338,
+/*025E*/ 0x00000006, 0xFFFFF22C, 0xFFFFF334, 0x000004F8, 0x00000001, 0x0000000C,
+/*0264*/ 0xFFFFF26C, 0x0000000C, 0x00000001, 0xFFFFF248, 0x001A0001, 0x00000001,
+/*026A*/ 0xFFFFF250, 0x1A000944, 0x00000003, 0xFFFFF25C, 0x0000A480, 0x00050003,
+/*0270*/ 0xFFFFF334, 0x00000001, 0xFFFFF334, 0x0000A498, 0x00000000, 0xFFFFF338,
+/*0276*/ 0xE400094C, 0x9A28899C, 0x9C329A28, 0x18140000, 0x4930027D, 0x6A619B70,
+/*027C*/ 0x4C000277, 0x1B900D97, 0xFE5AD000, 0xE4000DFF, 0xFFDE4EFF, 0xFF5E4E13,
+/*0282*/ 0xFEDE4D97, 0xFEE69000, 0xE4010000, 0xE4000DDF, 0xFE5AD000, 0xE4018000,
+/*0288*/ 0xE4000DE3, 0xFE5AC240, 0x6C000276, 0x6C000244, 0x4C000101, 0x6C000276,
+/*028E*/ 0x6C000244, 0x4C000101};
 //
 uint32_t FetchROM(uint32_t addr) {
 //
-  if (addr < 655) {
+  if (addr < 656) {
 //
     return InternalROM[addr];
 //
@@ -258,35 +260,40 @@ uint32_t FetchROM(uint32_t addr) {
 #endif // TRACEABLE
 
 // Generic fetch from ROM or RAM: ROM is at the bottom, RAM is in middle, ROM is at top
-static uint32_t FetchX (uint32_t addr, int shift, int mask) {
-    if (addr < ROMsize) {
+static uint32_t FetchX (int32_t addr, int shift, int32_t mask) {
+    uint32_t cell;
+    if (addr < 0) {
+        int addrmask = RAMsize-1;
+        cell = RAM[addr & addrmask];
+    } else if (addr >= ROMsize) {
+        cell = FlashRead(addr << 2);
+    } else {
 #ifdef EmbeddedROM
-        return (FetchROM(addr) >> shift) & mask;
+        cell = FetchROM(addr);
 #else
-        return (ROM[addr] >> shift) & mask;
+        cell = ROM[addr];
 #endif // EmbeddedROM
     }
-    if (addr < (ROMsize + RAMsize)) {
-        return (RAM[addr-ROMsize] >> shift) & mask;
-    }
-    return (FlashRead(addr*4) >> shift) & mask;
+    if (mask < 0) return cell;
+    uint32_t r = (cell >> shift) & mask;
+    return r;
 }
 
 // Generic store to RAM only.
-static void StoreX (uint32_t addr, uint32_t data, int shift, int mask) {
-    if ((addr<ROMsize) || (addr>=(ROMsize+RAMsize))) {
-        exception = -9;  return;
-    } // disallow ROM and SPI flash writing
-    int ra = addr - ROMsize;  // cell index
-    uint32_t temp = RAM[ra] & (~(mask << shift));
+static void StoreX (int32_t addr, uint32_t data, int shift, int32_t mask) {
+    if (addr < 0) {
+        int ra = addr & (RAMsize - 1);
+        uint32_t temp = RAM[ra] & (~(mask << shift));
 #ifdef TRACEABLE
-    temp = ((data & mask) << shift) | temp;
-    Trace(New, ra, RAM[ra], temp);  New=0;
-    RAM[ra] = temp;
+        temp = ((data & mask) << shift) | temp;
+        Trace(New, ra, RAM[ra], temp);  New=0;
+        RAM[ra] = temp;
 #else
-    RAM[ra] = ((data & mask) << shift) | temp;
+        RAM[ra] = ((data & mask) << shift) | temp;
 #endif // TRACEABLE
-//  printf("![%X]=%X ", ra, RAM[ra]);
+    } else {
+        exception = -9;
+    }
 }
 
 /// EXPORTS ////////////////////////////////////////////////////////////////////
@@ -304,9 +311,9 @@ void vmMEMinit(char * name){            // erase all ROM and flash,
         ProfileCounts = (uint32_t*) malloc(MaxROMsize * sizeof(uint32_t));
     }
   #endif
-    for (int i=0; i<ROMsize; i++) {
-        WriteROM(-1, i*4);
-    }
+    // initialize actual sizes
+    memset(ROM, -1, ROMsize*sizeof(uint32_t));
+    memset(RAM,  0, RAMsize*sizeof(uint32_t));
 #endif // EmbeddedROM
     FlashInit(LoadFlashFilename);
 };
@@ -326,7 +333,7 @@ int WriteROM(uint32_t data, uint32_t address) {
 }
 #else
 int WriteROM(uint32_t data, uint32_t address) {
-    uint32_t addr = address / 4;
+    uint32_t addr = address >> 2;
     if (address & 3) return -23;        // alignment problem
     if (addr >= (SPIflashBlocks<<10)) return -9;
     if (addr < ROMsize) {
@@ -340,11 +347,14 @@ int WriteROM(uint32_t data, uint32_t address) {
 }
 #endif // EmbeddedROM
 
-uint32_t FetchCell(uint32_t addr) {
+uint32_t FetchCell(int32_t addr) {
     if (addr & 3) {
         exception = -23;
     }
-	uint32_t ca = addr >> 2;
+	int32_t ca = addr>>2;  // if addr<0, "/4" <> ">>2". weird, huh?
+    if (addr < 0) {
+        return (RAM[ca & (RAMsize-1)]);
+    }
     if (ca < ROMsize) {
 #ifdef EmbeddedROM
         return (FetchROM(ca));
@@ -352,32 +362,37 @@ uint32_t FetchCell(uint32_t addr) {
         return (ROM[ca]);
 #endif // EmbeddedROM
     }
-	ca -= ROMsize;
-    if (ca < RAMsize) {
-        return (RAM[ca]);
-    }
     return (FlashRead(addr));
 }
+
 /*
-uint32_t FetchCell(uint32_t addr) {
+uint32_t FetchCell(int32_t addr) {
     if (addr & 3) {
         exception = -23;
     }
     return FetchX(addr>>2, 0, 0xFFFFFFFF);
 }
 */
-uint16_t FetchHalf(uint32_t addr) {
+
+uint16_t FetchHalf(int32_t addr) {
     if (addr & 1) {
         exception = -23;
     }
-    return FetchX(addr>>2, (addr&2)*8, 0xFFFF);
+    int shift = (addr & 2) << 3;
+    return FetchX(addr>>2, shift, 0xFFFF);
 }
-uint8_t FetchByte(uint32_t addr) {
-    return FetchX(addr>>2, (addr&3)*8, 0xFF);
+uint8_t FetchByte(int32_t addr) {
+    int shift = (addr & 3) << 3;
+    return FetchX(addr>>2, shift, 0xFF);
 }
-void StoreCell (uint32_t x, uint32_t addr) {
+
+void StoreCell (uint32_t x, int32_t addr) {
     if (addr & 3) {
         exception = -23;
+    }
+    if (addr < 0) {
+        StoreX(addr>>2, x, 0, 0xFFFFFFFF);
+        return;
     }
 #ifdef EmbeddedROM
     if ((addr < ROMsize*4) || (addr >= (ROMsize+RAMsize)*4)) {
@@ -403,14 +418,16 @@ void StoreCell (uint32_t x, uint32_t addr) {
     StoreX(addr>>2, x, 0, 0xFFFFFFFF);
 }
 
-void StoreHalf (uint16_t x, uint32_t addr) {
+void StoreHalf (uint16_t x, int32_t addr) {
     if (addr & 1) {
         exception = -23;
     }
-    StoreX(addr>>2, x, (addr&2)*8, 0xFFFF);
+    int shift = (addr & 2) << 3;
+    StoreX(addr>>2, x, shift, 0xFFFF);
 }
-void StoreByte (uint8_t x, uint32_t addr) {
-    StoreX(addr>>2, x, (addr&3)*8, 0xFF);
+void StoreByte (uint8_t x, int32_t addr) {
+    int shift = (addr & 3) << 3;
+    StoreX(addr>>2, x, shift, 0xFF);
 }
 
 
@@ -526,7 +543,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 			case opNOP:									break;	// nop
 			case opDUP: SDUP();							break;	// dup
 			case opEXIT:
-                M = RDROP() >> 2;
+                M = RDROP()/4;
 #ifdef TRACEABLE
                 Trace(New, RidPC, PC, M);  New=0;
                 if (!Paused) {
@@ -581,7 +598,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 #endif // TRACEABLE
                 T += 1;   SNIP();                       break;  // c!+
 			case opCfetchPlus:  SDUP();  /* ( a -- a' c ) */
-                M = FetchX(N>>2, (N&3) * 8, 0xFF);
+                M = FetchByte((signed)N);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
                 Trace(0, RidN, N, N+1);
@@ -616,7 +633,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 #endif // TRACEABLE
                 T += 2;   SNIP();                       break;  // w!+
 			case opWfetchPlus:  SDUP();  /* ( a -- a' c ) */
-                M = FetchHalf(N);
+                M = FetchHalf((signed)N);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
                 Trace(0, RidN, N, N+2);
@@ -659,7 +676,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 #endif // TRACEABLE
                 T = M;                                  break;  // 0=
 			case opWfetch:  /* ( a -- w ) */
-                M = FetchHalf(T);
+                M = FetchHalf((signed)T);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
 #endif // TRACEABLE
@@ -694,13 +711,13 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
                 CARRY = (uint32_t)(DX>>32);
                 SNIP();	                                break;	// c+
 			case opStorePlus:    /* ( n a -- a' ) */
-			    StoreCell(N, T);
+			    StoreCell(N, (signed)T);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, T+4);
 #endif // TRACEABLE
                 T += 4;   SNIP();                       break;  // !+
 			case opFetchPlus:  SDUP();  /* ( a -- a' c ) */
-                M = FetchCell(T);
+                M = FetchCell((signed)T);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
                 Trace(0, RidN, N, N+4);
@@ -737,7 +754,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 #endif // TRACEABLE
 			    RP = M;  SDROP();                       break;	// rp!
 			case opFetch:  /* ( a -- n ) */
-                M = FetchCell(T);
+                M = FetchCell((signed)T);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
 #endif // TRACEABLE
@@ -752,7 +769,7 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
 			case opSKIPGE: if ((signed)T < 0) break;            // -if:
                 goto ex;
 			case opSP: M = SP;                                  // sp
-GetPointer:     M = T + (M + ROMsize)*4;
+GetPointer:     M = T + (M - RAMsize)*4; // common for rp, sp, up
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
 #endif // TRACEABLE
@@ -767,7 +784,7 @@ GetPointer:     M = T + (M + ROMsize)*4;
                 // SP! does not post-drop
 			    SP = M;         	                    break;	// sp!
 			case opCfetch:  /* ( a -- w ) */
-                M = FetchX(T>>2, (T&3) * 8, 0xFF);
+                M = FetchByte((signed)T);
 #ifdef TRACEABLE
                 Trace(0, RidT, T, M);
 #endif // TRACEABLE
@@ -846,9 +863,9 @@ uint32_t vmRegRead(int ID) {
 	switch(ID) {
 		case 0: return T;
 		case 1: return N;
-		case 2: return (RP+ROMsize)*4;
-		case 3: return (SP+ROMsize)*4;
-		case 4: return (UP+ROMsize)*4;
+		case 2: return (RP-ROMsize)*4;
+		case 3: return (SP-ROMsize)*4;
+		case 4: return (UP-RAMsize)*4;
 		case 5: return PC*4;
 		default: return 0;
 	}

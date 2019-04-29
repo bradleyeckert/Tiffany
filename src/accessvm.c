@@ -76,14 +76,14 @@ void WipeTIB (void) {
     }
 }
 
-void FetchString(char *s, unsigned int address, uint8_t length){
+void FetchString(char *s, int32_t address, uint8_t length){
     int i;  char c;                     // Get a string from RAM
     for (i=0; i<length; i++) {
         c = FetchByte(address++);
         *s++ = c;
     }   *s++ = 0;                       // end in trailing zero
 }
-void StoreString(char *s, unsigned int address){
+void StoreString(char *s, int32_t address){
     char c;                             // Store a string to RAM,
     while ((c = *s++)){                 // not including trailing zero
         StoreByte(c, address++);
@@ -157,6 +157,10 @@ uint32_t WordFind (char *name) {        // a more C-friendly version}
 char *GetXtNameWID(uint32_t WID, uint32_t xt) {
     do {
         uint32_t xte = FetchCell(WID - 4) & 0xFFFFFF;
+/*      if (xte = 0xFFFFFF) {
+            return ("blank_xte")
+        }
+*/
         if (xte == xt) {
             uint8_t length = (uint8_t) FetchByte(WID + 4);
             FetchString(str, WID + 5, length & 0x1F);
@@ -222,6 +226,7 @@ void ReplaceXTs(void) {  // ( newXT oldXT -- )
 //   1    1    1    0
 
 void StoreROM (uint32_t data, uint32_t address) {
+//    printf("M[%X]=%X ", address, data);
     int ior = 0;
     if (address&3) {
         tiffIOR = -23;
@@ -231,8 +236,8 @@ void StoreROM (uint32_t data, uint32_t address) {
     uint32_t pgm = old & data;
     if (address < (ROMsize*4)) {
         ior = WriteROM(pgm, address);
-    }
-    if (address >= ((ROMsize+RAMsize)*4)) {
+    } else {
+        // already anding the bits
         ior = FlashWrite(data, address);
     }
     if (~(old|data)) {
@@ -275,7 +280,7 @@ uint32_t RegRead(int ID) {
         case 1: return VMreg[ID];   // T N
         case 2:
         case 3:
-        case 4: return 4*(VMreg[ID] + ROMsize);
+        case 4: return 4*(VMreg[ID] - RAMsize);
         case 5: return 4*VMreg[ID];
         default: return 0;
     }
@@ -735,7 +740,7 @@ void DumpRegs(void) {
     printf("\033[1J\033[H");            // erase to top of screen, home cursor
     ResetColor();
     printf("\033[4m");                  // hilight header
-    printf("Data Stack  ReturnStack Registers  Terminal Vars  ");
+    printf("Data Stack  ReturnStack Registers    Terminal Vars    ");
     printf("ROM at PC     Instruction Disassembly"); // ESC [ <n> m
     printf("\033[0m");                  // default FG/BG
 

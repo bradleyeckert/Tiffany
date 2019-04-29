@@ -15,7 +15,6 @@ static     char * SaveFlashFilename = NULL;
 static     char * BootFilename = NULL;
 static     int  testmode = 0;
 
-
 void TidyUp (void) {                    // stuff to do at exit
     ROMbye();
     FlashBye(SaveFlashFilename);
@@ -52,6 +51,7 @@ int main(int argc, char *argv[]) {
 #endif
     vmMEMinit(NULL);
     atexit(TidyUp);
+
 nextarg:
     while (argc>Arg) {                  // spin through the 2-character arguments
         if ((strlen(argv[Arg]) == 2) && (argv[Arg][0] == '-')) {   // starts with a "-?" command
@@ -96,12 +96,16 @@ nextarg:
                     SaveFlashFilename = argv[Arg++];
                     goto nextarg;
                 case 'c':
-                    if (argc == Arg) goto splain;
-                    BootFilename = argv[Arg++];
+                    if (argc == Arg) BootFilename = "mf.hex";
+                    else             BootFilename = argv[Arg++];
                     goto nextarg;
                 case 't':
                     testmode = 1;
                     goto nextarg;
+                case 'T':
+                    InitializeTermTCB();            // Test the basics
+//                    vmTEST();
+                    goto bye;
                 default:
 splain:             printf("Format: [cmds] [\"Forth Command Line\"]\n");
                     printf("cmds are optional 2-char commands starting with '-':\n");
@@ -113,7 +117,7 @@ splain:             printf("Format: [cmds] [\"Forth Command Line\"]\n");
                     printf("-b <n>         Change SPI flash 4k block count from {%d}\n", FlashBlksDefault);
                     printf("-i <filename>  Initialize flash image from file\n");
                     printf("-o <filename>  Save flash image upon exit\n");
-                    printf("-c <filename>  Hex file for cold booting (note save-hex)\n");
+                    printf("-c [filename]  Hex file for cold booting (note save-hex)\n");
                     printf("-t             Enable test mode if cold booting\n");
                     goto bye;
             }

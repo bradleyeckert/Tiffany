@@ -334,7 +334,7 @@ void CompCommaC (void){
 }
 // pointer is HP or CP
 // mode bits usage: 11:4 = flags, 2 = not-escaped, 1 = cell-align, 0 = counted
-void CompString(char *s, int mode, int pointer) {
+void CompString(char *s, int mode, int32_t pointer) {
     int length = strlen(s);
     uint32_t mark = FetchCell(pointer); // Address of byte to resolve
     char hex[4];
@@ -656,7 +656,7 @@ static void AddUserVar(int index, char *name) {
 }
 void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     InitIR();
-    memset(OpcodeCount, 0, 64);         // clear static opcode counters
+    memset(OpcodeCount, 0, sizeof(uint32_t)*64); // clear static opcode counters
     CommaHeader("|", ~4, ~8, 0, 0);     // skip to new opcode group
     AddImplicit(opNOP       , "nop");
     AddImplicit(opDUP       , "dup");

@@ -114,19 +114,19 @@ decimal
 
 hex
 : see  \ "name" --                      \ 15.6.1.2194
-   h' dup >r  cell- link>  dup
-   r@ 0C - w@
-   200 min  dasm
-   r> 0A - c@
+   h' dup >r  cell- link>  dup			( xte xte | ht )
+   r@ 0C - w@							\ get length
+   200 min  dasm						( xte | ht )
+   r> 0A - c@							\ get tag
    2 = if                               \ CREATEd word
-      @+ swap @                         ( <literal> <exit> )
-      FFFFF over invert over and  if    ( <literal> <exit> mask )
-         and swap  3FFFFFF and          ( xt addr )
+      _>body							( body link nocode )
+	  if    nip  						( body )
+		 ." BODY = " . cr
+	  else  swap						( link body )
          ."      CREATE value is "  ColorImm  @ .  ColorNone cr
          ."      DOES> action is:" cr
          cells 0A dasm exit
-      else  2drop
-      then
+	  then
    then  drop
 ;
 decimal
