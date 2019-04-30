@@ -26,9 +26,14 @@ Charles Ting's eP32 CPU. Uses 6-bit opcodes packed in a 32-bit word.
 - Design and ISA details are behind a paywall.
 - Has some more powerful instructions to support multiply and divide.
 
-Summary: Using RAM for stacks isn't much of a performance hit.
-It's convenient for Forth sandboxes on existing non-Forth CPUs.
-MISC-like opcodes provide an assembly language that mixes seamlessly with high level Forth.
+Mforth (this one)
+
+- 26-bit jumps/calls support 256MB apps.
+- 24-bit xts in header space span 64MB.
+- 6-bit opcodes packed in a 32-bit word.
+- Compatible with VM sandboxes in conventional computers.
+- Not eForth. Supports multiple search orders and wordlists.
+- Designed for arbitrarily large apps residing in and compiling to flash memory.
 
 ## The Virtual Machine
 
