@@ -20,6 +20,9 @@ include ../../forth/end.f               \ finish the app
 \ Make C files
 make ../../src/vm.c vm.c                \ vm.c is used as a template
 
+\ save a hex file you could `coldboot` from
+1 save-hex boot.hex                    \ only internal ROM
+
 \ theme=color
 
 \ bye

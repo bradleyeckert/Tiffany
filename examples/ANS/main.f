@@ -97,7 +97,7 @@ cp @  dup    16 !                       \ resolve internal ROM length
 0 swap crc32 12 !                       \ store CRC, which includes length
 
 HP @ . .( bytes in ROM, of which ) CP @ . .( is code and ) HP @ hp0 - . .( is head. )
-.( RAM = ) DP @ ROMsize - . .( of ) RAMsize .  cr
+.( RAM = ) RAMsize DP @ + . .( of ) RAMsize .  cr
 
 \ Make C demo files
 make ../../src/vm.c vm.c                \ vm.c is used as a template
@@ -155,5 +155,8 @@ include ../../forth/test/ttester.fs
 include ../../forth/test/coretest.fs
 include ../../forth/test/dbltest.fs
 [then]
+
+\ save a hex file you could `coldboot` from
+3 save-hex boot.hex                    \ save everything
 
 \ theme=color

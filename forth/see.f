@@ -4,14 +4,14 @@
 \ LOC instead of LOCATE
 
 cp @ equ opnames
-   ," ."     ," dup"  ," exit"  ," +"    ," user" ," 0<"   ," r>"  ," 2/"
-   ," ifc:"  ," 1+"   ," swap"  ," ?"    ," ?"    ," c!+"  ," c@+" ," u2/"
-   ," _"     ," ?"    ," ifz:"  ," jmp"  ," ?"    ," w!+"  ," w@+" ," and"
-   ," ?"     ," litx" ," >r"    ," call" ," ?"    ," 0="   ," w@"  ," xor"
-   ," reptc" ," 4+"   ," over"  ," c+"   ," ?"    ," !+"   ," @+"  ," 2*"
-   ," -rept" ," ?"    ," rp"    ," drop" ," ?"    ," rp!"  ," @"   ," 2*c"
-   ," -if:"  ," ?"    ," sp"    ," @as"  ," ?"    ," sp!"  ," c@"  ," port"
-   ," ?"     ," lit"  ," up"    ," !as"  ," ?"    ," up!"  ," r@"  ," com"
+   ," ."     ," dup"  ," exit"  ," +"    ," 2*"   ," port" ," r>"  ," ?"
+   ," no:"   ," 1+"   ," ?"     ," ?"    ," 2*c"  ," user" ," c@+" ," c!+"
+   ," ?"     ," rp"   ," ?"     ," and"  ," 2/"   ," jmp"  ," w@+" ," w!+"
+   ," ?"     ," sp"   ," ?"     ," xor"  ," u2/"  ," call" ," w@"  ," >r"
+   ," reptc" ," 4+"   ," ?"     ," c+"   ," 0="   ," litx" ," @+"  ," !+"
+   ," -rept" ," up"   ," ?"     ," ?"    ," 0<"   ," @as"  ," @"   ," rp!"
+   ," -if:"  ," ?"    ," ?"     ," ?"    ," com"  ," !as"  ," c@"  ," sp!"
+   ," ifc:"  ," over" ," ifz:"  ," drop" ," swap" ," lit"  ," r@"  ," up!"
    cp @ aligned cp !
 
 : opname  \ opcode -- c-addr u			\ type opcode name string

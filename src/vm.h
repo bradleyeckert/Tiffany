@@ -44,66 +44,64 @@ extern uint32_t OpCounter[64];              // dynamic instruction count
 
 //================================================================================
 
-#define opNOP        (000)
+#define opNOP        (000)  // nop
 #define opDUP        (001)  // dup
 #define opEXIT       (002)  // exit
 #define opADD        (003)  // +
-#define opUSER       (004)  // user
-#define opZeroLess   (005)  // 0<
+#define opTwoStar    (004)  // 2*
+#define opPORT       (005)  // port  ( n -- m ) swap T with port
 #define opPOP        (006)  // r>
-#define opTwoDiv     (007)  // 2/
 
-#define opSKIPNC     (010)  // ifc:  slot=end if no carry
+#define opSKIP       (010)  // no:  skip remaining slots
 #define opOnePlus    (011)  // 1+
-#define opSWAP       (012)  // swap
-#define opSUB        (013)  // -
-#define opCstorePlus (015)  // c!+  ( c a -- a+1 )
+#define opTwoStarC   (014)  // 2*c
+#define opUSER       (015)  // user
 #define opCfetchPlus (016)  // c@+  ( a -- a+1 c )
-#define opUtwoDiv    (017)  // u2/
+#define opCstorePlus (017)  // c!+  ( c a -- a+1 )
 
-#define opSKIP       (020)  // no:  skip remaining slots
-//#define opTwoPlus    (021)  // 2+
-#define opSKIPNZ     (022)  // ifz:
-#define opJUMP       (023)  // jmp
-#define opWstorePlus (025)  // w!+  ( n a -- a+2 )
+#define opRP         (021)  // rp
+#define opAND        (023)  // and
+#define opTwoDiv     (024)  // 2/
+#define opJUMP       (025)  // jmp
 #define opWfetchPlus (026)  // w@+  ( a -- a+2 n )
-#define opAND        (027)  // and
+#define opWstorePlus (027)  // w!+  ( n a -- a+2 )
 
-#define opLitX       (031)  // litx
-#define opPUSH       (032)  // >r
-#define opCALL       (033)  // call
-#define opZeroEquals (035)  // 0=
+#define opSP         (031)  // sp
+#define opXOR        (033)  // xor
+#define opUtwoDiv    (034)  // u2/
+#define opCALL       (035)  // call
 #define opWfetch     (036)  // w@  ( a -- n )
-#define opXOR        (037)  // xor
+#define opPUSH       (037)  // >r
 
 #define opREPTC      (040)  // rept  slot=0 if C=0
 #define opFourPlus   (041)  // 4+
-#define opOVER       (042)  // over
 #define opADDC       (043)  // c+  with carry in
-#define opStorePlus  (045)  // !+  ( n a -- a+4 )
+#define opZeroEquals (044)  // 0=
+#define opLitX       (045)  // litx
 #define opFetchPlus  (046)  // @+  ( a -- a+4 n )
-#define opTwoStar    (047)  // 2*
+#define opStorePlus  (047)  // !+  ( n a -- a+4 )
 
 #define opMiREPT     (050)  // -rept  slot=0 if T < 0
-#define opRP         (052)  // rp
-#define opDROP       (053)  // drop
-#define opSetRP      (055)  // rp!
+#define opUP         (051)  // up
+#define opZeroLess   (054)  // 0<
+#define opFetchAS    (055)  // @as
 #define opFetch      (056)  // @
-#define opTwoStarC   (057)  // 2*c
+#define opSetRP      (057)  // rp!
 
 #define opSKIPGE     (060)  // -if:  slot=end if T >= 0
-#define opSP         (062)  // sp
-#define opFetchAS    (063)  // @as
-#define opSetSP      (065)  // sp!
+#define opCOM        (064)  // invert
+#define opStoreAS    (065)  // !as
 #define opCfetch     (066)  // c@
-#define opPORT       (067)  // port  ( n -- m ) swap T with port
+#define opSetSP      (067)  // sp!
 
-#define opLIT        (071)  // lit
-#define opUP         (072)  // up
-#define opStoreAS    (073)  // !as
-#define opSetUP      (075)  // up!
+#define opSKIPNC     (070)  // ifc:  slot=end if no carry
+#define opOVER       (071)  // over
+#define opSKIPNZ     (072)  // ifz:
+#define opDROP       (073)  // drop
+#define opSWAP       (074)  // swap
+#define opLIT        (075)  // lit
 #define opRfetch     (076)  // r@
-#define opCOM        (077)  // com
+#define opSetUP      (077)  // up!
 
 #endif
 

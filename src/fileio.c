@@ -218,18 +218,23 @@ void GenHex (uint32_t begin, uint32_t end, FILE *fp) {
     }
 }
 
-void SaveHexImage (char *filename) {
+void SaveHexImage (int flags, char *filename) {
+    int32_t length;
     WipeTIB();                          // don't need to see TIB contents
-    int32_t length = ROMwords(ROMsize); // internal ROM
     FILE *ofp;
     ofp = fopen(filename, "wb");
     if (ofp == NULL) {
         tiffIOR = -198;                 // Can't create output file
         return;
     }
-    GenHex(0, length, ofp);
-    length = ROMwords(SPIflashBlocks<<10); // flash data
-    GenHex(ROMsize+RAMsize, length, ofp);
+    if (flags & 1) {                    // bit 0 = include internal ROM
+        length = ROMwords(ROMsize);
+        GenHex(0, length, ofp);
+    }
+    if (flags & 2) {                    // bit 1 = include flash memory
+        length = ROMwords(SPIflashBlocks<<10);
+        GenHex(ROMsize+RAMsize, length, ofp);
+    }
     fputs(":00000001FF\n", ofp);        // EOF marker
     fclose(ofp);
     free(rom);  rom = NULL;

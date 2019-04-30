@@ -97,45 +97,20 @@ There are a few rules regarding opcode numbering. They are:
 
 In the following table:
 
-- *opcode conditionally skips the rest of the slots*
-- **opcode uses the rest of the slots as signed immediate data**
+- *opcode skips or loops the slots*
+- **opcode uses the rest of the slots as unsigned immediate data**
+- Pops and reads (columns 2, 3, 6, 7) are delayed if a write is in progress to enable the use of single-port RAM.
 
 |         | 0         | 1          | 2         | 3         | 4         | 5         | 6         | 7         |
 |:-------:|:---------:|:----------:|:---------:|:---------:|:---------:|:---------:|:---------:|:---------:|
-| **0**   | nop       | dup        | exit      | +         | user      | 0<        | r>        | 2/        |
-| **1**   | ifc:      | 1+         | swap      |           |           | c!+       | c@+       | u2/       |
-| **2**   | no:       |            | ifz:      | **jmp**   |           | w!+       | w@+       | and       |
-| **3**   |           | **litx**   | >r        | **call**  |           | 0=        | w@        | xor       |
-| **4**   | reptc     | 4+         | over      | c+        |           | !+        | @+        | 2\*       |
-| **5**   | -rept     |            | rp        | drop      |           | rp!       | @         | 2\*c      |
-| **6**   | -if:      |            | sp        | **@as**   |           | sp!       | c@        | port      |
-| **7**   |           | **lit**    | up        | **!as**   |           | up!       | r@        | invert    |
-|:-------:|:---------:|:----------:|:---------:|:---------:|:---------:|:---------:|:---------:|:---------:|
-| *mux*   | *none*    | *T+offset* | *XP / N*  | *N +/- T* | *user*    | *0= / N*  | *mem bus* | *logic*   |
-
-The opcode map is optimized for LUT4 implementation. opcode[2:0] selects T from a 7:1 mux (column).
-opcode[5:3] selects the row within the column, sometimes with some decoding.
-There are 2 or 3 levels of logic between registers and the T mux.
-
-Group 1: 32-bit Adder
-
-Group 2: Level 1 is 10-bit adder and mux-select decode, level 2 is 2:1 mux {sum, imm}.
-
-Group 3: Levels 1&2 are a 4:1 mux {RP,SP,UP,N}.
-
-Group 4: User.
-
-Group 5: Level 1 is logic {and,xor,or,invert} and mux-select decode, level 2 is 4:1 mux: {logic, port, 2/, 2*}.
-
-Group 6: Levels 1&2 are T's zero test (2-bit result) and mux select decode, level 3 is 2:1 mux {0=, N}.
-
-Group 7: Memory read result
-
-```
-!+  ( n a -- a+4 )  T = T+4,  N = mem
-@+  ( a -- a+4 n )  T = mem,  N = T+4
-@   ( a -- n )      T = mem
-```
+| **0**   | nop       | dup        | exit      | +         | 2\*       | port      | r>        |           |
+| **1**   | *no:*     | 1+         |           |           | 2\*c      | **user**  | c@+       | c!+       |
+| **2**   |           | rp         |           | and       | 2/        | **jmp**   | w@+       | w!+       |
+| **3**   |           | sp         |           | xor       | u2/       | **call**  | w@        | >r        |
+| **4**   | *reptc*   | 4+         |           | c+        | 0=        | **litx**  | @+        | !+        |
+| **5**   | *-rept*   | up         |           |           | 0<        | **@as**   | @         | rp!       |
+| **6**   | *-if:*    |            |           |           | invert    | **!as**   | c@        | sp!       |
+| **7**   | *ifc:*    | over       | *ifz:*    | drop      | swap      | **lit**   | r@        | up!       |
 
 Branches compile a conditional skip past `jmp`.
 

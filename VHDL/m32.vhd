@@ -59,8 +59,8 @@ END COMPONENT;
   signal xrdata: std_logic_vector(31 downto 0); -- read data
 
 -- intermediate mux results
-  signal r_user, zeroequals: unsigned(31 downto 0);
-  signal r_sum:              unsigned(33 downto 0);
+  signal zeroequals: 	unsigned(31 downto 0);
+  signal TNsum:         unsigned(33 downto 0);
 
 -- CPU registers
   signal opcode:    	std_logic_vector(5 downto 0);
@@ -70,32 +70,36 @@ END COMPONENT;
   signal PC:  	      	unsigned(25 downto 0);
   signal DebugReg:  	unsigned(31 downto 0);
   signal CARRY:     	std_logic;
-  signal slot, nextslot: integer range 0 to 5;
+  signal slot: 			integer range 0 to 5;
 
-  type   state_t is (changed, stalled, execute, user);
+  type   state_t is (changed, stalled, execute, fetchc, fetchd, fetchsm, user);
   signal state: state_t;
 
   signal new_T:         std_logic;              -- load new T
-  type   T_src_t is (T_N, T_RAM, T_plus, T_plImm, T_lit, T_litx, T_div2, T_mul2, T_and, T_xor, T_not, T_ze, T_mi, T_user, T_port);
+  type   T_src_t is (T_N, T_RAM, T_plus, T_plImm, T_lit, T_litx, T_div2, T_mul2,
+                     T_and, T_xor, T_not, T_ze, T_mi, T_user, T_port, T_pack);
   signal T_src: T_src_t;                        -- T source
   signal carryin:       std_logic;
   signal immdata:   	unsigned(25 downto 0);
 
-  type   N_src_t is (N_none, N_T, N_RAM, N_plus, N_timm);
+  signal new_N:         std_logic;              -- load new N
+  type   N_src_t is (N_T, N_RAM, N_inc, N_Tplus);
   signal N_src: N_src_t;                        -- N source
-  signal Noffset:       unsigned(2 downto 0);   -- for N_plus
+  signal Noffset:       unsigned(2 downto 0);	-- offset for N_Tplus
 
   type   PC_src_t is (PC_inc, PC_imm, PC_RAM);
   signal PC_src: PC_src_t;                      -- PC source
 
   type   Port_src_t is (Port_none, Port_T);
-  signal Port_src: Port_src_t;                      -- PC source
+  signal Port_src: Port_src_t;                  -- DbgPort source
 
   type   WR_src_t is (WR_none, WR_T, WR_N, WR_PC);
   signal WR_src: WR_src_t;                      -- write source
   signal WR_addr:  	    unsigned(RAMsize-1 downto 0);
   signal WR_size, RD_size:   std_logic_vector(1 downto 0); -- 1/2/4
   signal WR_align, RD_align: std_logic_vector(1 downto 0); -- alignment
+  signal Tpacked:   	unsigned(31 downto 0);	-- packed read data
+
   signal RPinc, SPinc:  std_logic;              -- post-increment
   signal RPdec, SPdec:  std_logic;              -- post-decrement
   signal RPload, SPload, UPload: std_logic;     -- load from T
@@ -155,19 +159,19 @@ begin
       RP <= to_unsigned(64, RAMsize);   PC <= to_unsigned(0, 26);
       SP <= to_unsigned(32, RAMsize);    T <= to_unsigned(0, 32);
       UP <= to_unsigned(64, RAMsize);    N <= to_unsigned(0, 32);
-      DebugReg <= (others=>'0');                  CARRY <= '0';
+      DebugReg <= (others=>'0');   Tpacked <= to_unsigned(0, 32);
+	  CARRY <= '0';
       state <= stalled;              caddr <= (others=>'0');
       xen <= '0';   xwe <= '0';   xlanes <= x"0";   xwdata <= (others=>'0'); -- RAM
       bbout <= x"00";
-      new_T <= '0';  -- remove
-      T_src <= T_N;  immdata <= (others=>'0');  carryin <= '0';
-      N_src <= N_none;  Noffset <= to_unsigned(0, 3); -- N
+      new_T <= '0';  T_src <= T_N;  immdata <= (others=>'0');  carryin <= '0';
+	  new_N <= '0';  N_src <= N_T;  Noffset <= "000";
       Port_src <= Port_none;
       PC_src <= PC_inc; -- PC
       kack <= '0';  ereq <= '0';  edata_o <= x"00";
       RPinc <= '0';  SPinc <= '0';  RPdec <= '0';  SPdec <= '0';
       RPload <= '0';  SPload <= '0';  UPload <= '0';
-	  slot <= 0;  nextslot <= 0;
+	  slot <= 0;
       WR_src <= WR_none;  WR_addr <= to_unsigned(0, RAMsize);
       WR_size <= "00";  WR_align <= "00";
       RD_size <= "00";  RD_align <= "00";
@@ -179,7 +183,7 @@ begin
         case T_src is
         when T_N     => T <= N;
         when T_RAM   => T <= unsigned(xrdata);
-        when T_plus  => T <= r_sum(32 downto 1);                    CARRY <= r_sum(33);
+        when T_plus  => T <= TNsum(32 downto 1);                    CARRY <= TNsum(33);
         when T_plImm => T <= T + resize(immdata, 32);
         when T_lit   => T <=     resize(immdata, 32);
         when T_litx  => T <= T(7 downto 0) & immdata(23 downto 0);
@@ -192,16 +196,18 @@ begin
         when T_mi    => T <= (others => T(31));
         when T_user  => T <= N;
         when T_port  => T <= DebugReg;
+		when T_pack  => T <= unsigned(Tpacked);
         end case;
       end if;
 -- N:
-      case N_src is
-      when N_T    => N <= T;
-      when N_RAM  => N <= unsigned(xrdata);
-      when N_plus => N <= N + Noffset;
-      when N_timm => N <= T + resize(immdata, 32);
-      when others => null;
-      end case;
+      if new_N = '1' then
+        case N_src is
+        when N_T     => N <= T;
+        when N_RAM   => N <= unsigned(xrdata);
+        when N_inc   => N <= N + 1;
+        when N_Tplus => N <= T + Noffset;
+        end case;
+	  end if;
 -- port:
       case Port_src is
       when Port_T => DebugReg <= T;
@@ -292,6 +298,34 @@ begin
           caddr <= std_logic_vector(PC + 1);
           state <= execute;
         end if;
+	  when fetchc =>  -- fetchc is in progress with RD_align byte position, RD_size=0,1,2 cell,byte,half
+        if cready = '1' then
+		  Tpacked <= unsigned(cdata);			-- register input from the outside world
+		  case RD_size is
+		  when "01" | "10" => state <= fetchsm;	-- some shift-and-mask is needed
+		  when others => state <= execute;		-- cell-sized fetch
+		    new_T <= '1';  T_src <= T_pack;
+		  end case;
+        end if;
+	  when fetchd =>	
+		Tpacked <= unsigned(xrdata);			-- register input from the outside world
+		state <= fetchsm;
+	  when fetchsm =>  							-- Tpacked has byte or half data
+	    if RD_size(0) = '1' then
+		  case RD_align is
+		  when "00"   => Tpacked <= x"000000" & Tpacked(7 downto 0);
+		  when "01"   => Tpacked <= x"000000" & Tpacked(15 downto 8);
+		  when "10"   => Tpacked <= x"000000" & Tpacked(23 downto 16);
+		  when others => Tpacked <= x"000000" & Tpacked(31 downto 24);
+		  end case;
+		else
+		  if RD_align(1) = '1' then
+		    Tpacked <= x"0000" & Tpacked(31 downto 16);
+		  else
+		    Tpacked <= x"0000" & Tpacked(15 downto 0);
+		  end if;
+		end if;
+		state <= execute;  new_T <= '1';  T_src <= T_pack;
       when execute =>
 --------------------------------------------------------------------------------
 -- decoding pipeline stage
@@ -304,7 +338,7 @@ begin
           RPload <= '0';  SPload <= '0';  UPload <= '0';
           new_T <= '0';   T_src <= T_N;   carryin <= '0';
           xen <= '0';     xwe <= '0';     xlanes <= x"F";
-          N_src <= N_none;   Port_src <= Port_none;
+          new_N <= '0';   N_src <= N_T;   Port_src <= Port_none;
 -- slot:
 		  slot <= slot + 1;
 		  case slot is
@@ -328,9 +362,9 @@ begin
             case opcode(2 downto 0) is
             when "001" => state <= stalled;                                 -- no:
             when "100" => if CARRY='0' then  slot <= 0;  end if;            -- reptc
-                          N_src <= N_plus;  Noffset <= to_unsigned(1, 3);
+                          new_N <= '1';  N_src <= N_inc;
             when "101" => if N(16)='1' then  slot <= 0;  end if;            -- -rept
-                          N_src <= N_plus;  Noffset <= to_unsigned(1, 3);
+                          new_N <= '1';  N_src <= N_inc;
             when "110" => if T(31)='0' then  state <= stalled;  end if;     -- -if:
             when "111" => if CARRY='0' then  state <= stalled;  end if;     -- ifc:
             when others => null;                                            -- nop
@@ -346,7 +380,7 @@ begin
               immdata <= resize(unsigned(SP), 26);  T_src <= T_plImm;
             when "101" => new_T <= '1';                                     -- up
               immdata <= resize(unsigned(UP), 26);  T_src <= T_plImm;
-            when "111" => p_sdup;  new_T <= '1';  T_src <= T_N;             -- over
+            when "111" => p_sdup;    new_T <= '1';  T_src <= T_N;           -- over
             when others => null;
             end case;
           when "010" =>
@@ -375,92 +409,85 @@ begin
             when "001" => new_T <= '1';  T_src <= T_mul2;  carryin <= '1';  -- 2*c
             when "010" => new_T <= '1';  T_src <= T_div2;                   -- 2/
             when "011" => new_T <= '1';  T_src <= T_div2;  carryin <= '1';  -- u2/
-            when "101" => new_T <= '1';  T_src <= T_not;                    -- ~
-            when "110" => new_T <= '1';  T_src <= T_port;  Port_src <= Port_T; -- port
+            when "100" => new_T <= '1';  T_src <= T_mi;                     -- 0<
+            when "101" => new_T <= '1';  T_src <= T_ze;                     -- 0=
+            when "110" => new_T <= '1';  T_src <= T_not;                    -- invert
             when "111" => N_src <= N_T;  new_T <= '1';  T_src <= T_N;       -- swap
             when others => null;
             end case;
           when "101" =>
             case opcode(2 downto 0) is
-            when "000" => new_T <= '1';  T_src <= T_mi;                     -- 0<
-            when "001" => new_T <= '1';  T_src <= T_ze;                     -- 0=
+            when "000" => new_T <= '1';  T_src <= T_port;  Port_src <= Port_T; -- port
+			---- "001" => 													-- user
             when "010" => state <= changed;  PC_src <= PC_imm;              -- jmp
             when "011" => state <= changed;  PC_src <= PC_imm;              -- call
                           p_rdup;  WR_src <= WR_PC;
             when "100" => new_T <= '1';  T_src <= T_litx;                   -- litx
+			---- "101" => 													-- @as
+			---- "110" => 													-- !as
             when "111" => new_T <= '1';  T_src <= T_lit;                    -- lit
                           p_sdup;  WR_src <= WR_N;  N_src <= N_T;
             when others => null;
             end case;
           when "110" =>
             case opcode(2 downto 0) is
-            when "000" => p_rdrop;  new_T <= '1';  T_src <= T_N;            -- r>
-            when "111" => p_rdrop;  new_T <= '1';  T_src <= T_N;  RPinc <= '0'; -- r@
-            when others =>
-            -- not looking at ROM fetch yet...
+            when "011"  => RD_size <= "10";		-- map opcode[2:0] to RD_size
+            when "101"  => RD_size <= "00";		-- in:  0 1 2 3 4 5 6 7
+            when "110"  => RD_size <= "01";     -- out: x 1 2 2 0 0 1 x
+            when others => RD_size <= opcode(1 downto 0);
+			end case;
+            RD_align <= std_logic_vector(T(1 downto 0));
+            case opcode(2 downto 0) is
+            when "000" => p_rdrop;              -- r>
+			  new_T <= '1';  T_src <= T_N;
+			when "111" => p_rdrop;   			-- r@
+			  new_T <= '1';  T_src <= T_N;  RPinc <= '0';
+            when "001" | "010" | "100" =>   	-- ( a -- a+x n ) c@+, w@+, @+
+			  p_sdup;  Noffset <= unsigned(opcode(2 downto 0));
+              new_N <= '1';  N_src <= N_Tplus;
+			when others => null;				-- ( a -- n ) w@, @, c@
+			end case;
+			if T(31) = '0' then					-- ROM fetch
+			  caddr <= std_logic_vector(T(RAMsize+1 downto 2));
+			  state <= fetchc;
+			else								-- RAM fetch
               xaddr <= std_logic_vector(T(RAMsize+1 downto 2));
-              RD_align <= std_logic_vector(T(1 downto 0));
-              RD_size <= opcode(1 downto 0);
               xen <= '1';  xwe <= '0';
-              case opcode(2 downto 0) is
-              when "001" | "010" | "100" =>                 -- c@+, w@+, @+ ( a -- a+x, n )
-                p_sdup;
-                immdata <= resize(unsigned(opcode(2 downto 0)), 26);
-                N_src <= N_timm;  new_T <= '1';  T_src <= T_RAM;
-                -- enter a shift state if not cell: T will be corrected.
-              when others =>                                -- c@, w@, @  ( a -- n )
-                new_T <= '1';  T_src <= T_RAM;
-              end case;
-            end case;
-
--- type   T_src_t is (T_N, T_RAM, T_plus, T_plImm, T_lit, T_litx, T_div2, T_mul2, T_and, T_xor, T_not, T_ze, T_mi, T_user, T_port);
-
--- Reads, pops and drops should be grouped together. Use columns 2, 3, 6, and 7. They will wait until writes finish.
-
---|         | 0         | 1          | 2         | 3         | 4         | 5         | 6         | 7         |
---|:-------:|:---------:|:----------:|:---------:|:---------:|:---------:|:---------:|:---------:|:---------:|
---| **0**   | nop       | dup        | exit      | +         | 2\*       | 0<        | r>        |           |
---| **1**   | no:       | 1+         |           |           | 2\*c      | 0=        | c@+       | c!+       |
---| **2**   |           | rp         |           | and       | 2/        | **jmp**   | w@+       | w!+       |
---| **3**   |           | sp         |           | xor       | u2/       | **call**  | w@        | >r        |
---| **4**   | reptc     | 4+         |           | c+        | user      | **litx**  | @+        | !+        |
---| **5**   | -rept     | up         |           |           | invert    | **@as**   | @         | rp!       |
---| **6**   | -if:      |            |           |           | port      | **!as**   | c@        | sp!       |
---| **7**   | ifc:      | over       | ifz:      | drop      | swap      | **lit**   | r@        | up!       |
-
+			  case opcode(2 downto 0) is 		-- x c@+ w@+ w@ @+ @ c@ x
+			  when "100" | "101" =>				-- cell
+				new_T <= '1';  T_src <= T_RAM;
+			  when others =>					-- byte or half
+                state <= fetchd;			  
+			  end case;
+			end if;
           when others =>
             p_sdrop;  N_src <= N_RAM;
             case opcode(2 downto 0) is
-            when "001" | "010" | "100" =>                       -- c!+, w!+, !+
+            when "001" | "010" | "100" =>    	-- c!+, w!+, !+
               -- T = N+offset | mem[T] = N | N = sdrop
               immdata <= resize(unsigned(opcode(2 downto 0)), 26);
               new_T <= '1';  T_src <= T_plImm;
               WR_src <= WR_N;  WR_size <= opcode(1 downto 0);
               WR_addr <= T(RAMsize+1 downto 0);
               WR_align <= std_logic_vector(T(1 downto 0));
-            when "011" =>                                                   -- >r
+            when "011" =>                      	-- >r
               p_rdrop;  N_src <= N_RAM;  new_T <= '1';
               p_sdup;   WR_src <= WR_T;
-            when "101" | "110" | "111" =>                       -- rp!, sp!, up!
-              case opcode(1 downto 0) is
-              when "01"   => RPload <= '1';
-              when "10"   => SPload <= '1';
-              when others => UPload <= '1';
-              end case;
+            when "101" => RPload <= '1'; 		-- rp!
+            when "110" => SPload <= '1'; 		-- sp!
+            when "111" => UPload <= '1'; 		-- up!
             when others => null;
             end case;
           end case;
         end if;
       when user =>
         state <= execute;
-      when others =>
-        state <= changed; -- huh?
       end case;
     end if;
   end if;
 end process main;
 
 zeroequals <= x"FFFFFFFF" when T=to_unsigned(0,32) else x"00000000";
-r_sum <= ('0' & T & (carryin and CARRY)) + ('0' & N & '1');
+TNsum <= ('0' & T & (carryin and CARRY)) + ('0' & N & '1');
 
 END RTL;

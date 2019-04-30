@@ -458,9 +458,9 @@ static void iword_MAKE (void) {
     FollowingToken(name2, 80);          // generated file
     MakeFromTemplate(name, name2);      // fileio.c
 }
-static void iword_SaveHexImage (void) {
+static void iword_SaveHexImage (void) { // ( flags <filename> -- )
     FollowingToken(name, 80);           // binary image filename
-    SaveHexImage(name);                 // fileio.c
+    SaveHexImage(PopNum(), name);       // fileio.c
 }
 static void iword_LitChar (void) {
     FollowingToken(name, 32);
@@ -909,12 +909,10 @@ static void LoadKeywords(void) {        // populate the list of gator brain func
     AddEquate ("op_2/",    opTwoDiv);
     AddEquate ("op_1+",    opOnePlus);
     AddEquate ("op_swap",  opSWAP);
-    AddEquate ("op_-",     opSUB);
     AddEquate ("op_c!+",   opCstorePlus);
     AddEquate ("op_c@+",   opCfetchPlus);
     AddEquate ("op_u2/",   opUtwoDiv);
     AddEquate ("op_no:",   opSKIP);
-//    AddEquate ("op_2+",    opTwoPlus);
     AddEquate ("op_jmp",   opJUMP);
     AddEquate ("op_w!+",   opWstorePlus);
     AddEquate ("op_w@+",   opWfetchPlus);
