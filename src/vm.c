@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "config.h"
 #include "vm.h"
-#include "vmuser.h"
+#include "vmUser.h"
 #include "flash.h"
 #include <string.h>
 

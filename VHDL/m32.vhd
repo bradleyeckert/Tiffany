@@ -70,22 +70,20 @@ END COMPONENT;
   signal PC:  	      	unsigned(25 downto 0);
   signal DebugReg:  	unsigned(31 downto 0);
   signal CARRY:     	std_logic;
-  signal slot: 			integer range 0 to 5;
+  signal slot: 			integer range 0 to 7;
 
-  type   state_t is (changed, stalled, execute, fetchc, fetchd, fetchsm, user);
+  type   state_t is (changed, stalled, execute, fetchc, fetchd, fetchsm, userinit, user);
   signal state: state_t;
 
   signal new_T:         std_logic;              -- load new T
-  type   T_src_t is (T_N, T_RAM, T_plus, T_plImm, T_lit, T_litx, T_div2, T_mul2,
-                     T_and, T_xor, T_not, T_ze, T_mi, T_user, T_port, T_pack);
-  signal T_src: T_src_t;                        -- T source
+  signal T_src:  std_logic_vector(3 downto 0);  -- T source
   signal carryin:       std_logic;
   signal immdata:   	unsigned(25 downto 0);
+  signal userdata:   	unsigned(31 downto 0);
 
   signal new_N:         std_logic;              -- load new N
-  type   N_src_t is (N_T, N_RAM, N_inc, N_Tplus);
-  signal N_src: N_src_t;                        -- N source
-  signal Noffset:       unsigned(2 downto 0);	-- offset for N_Tplus
+  signal N_src: std_logic_vector(1 downto 0);   -- N source
+  signal Noffset:       unsigned(2 downto 0);	-- offset for "11"
 
   type   PC_src_t is (PC_inc, PC_imm, PC_RAM);
   signal PC_src: PC_src_t;                      -- PC source
@@ -103,6 +101,11 @@ END COMPONENT;
   signal RPinc, SPinc:  std_logic;              -- post-increment
   signal RPdec, SPdec:  std_logic;              -- post-decrement
   signal RPload, SPload, UPload: std_logic;     -- load from T
+
+  signal userFNsel:     unsigned(3 downto 0);   -- user function select
+  signal cycles:   	    unsigned(35 downto 0);  -- 16-cycle resolution counter
+  -- 2^36/100M = 687 seconds (10 minutes)
+  signal ereq_i:        std_logic;
 
 ---------------------------------------------------------------------------------
 BEGIN
@@ -157,55 +160,60 @@ begin
   if (rising_edge(clk)) then
     if (reset='1') then
       RP <= to_unsigned(64, RAMsize);   PC <= to_unsigned(0, 26);
-      SP <= to_unsigned(32, RAMsize);    T <= to_unsigned(0, 32);
-      UP <= to_unsigned(64, RAMsize);    N <= to_unsigned(0, 32);
-      DebugReg <= (others=>'0');   Tpacked <= to_unsigned(0, 32);
-	  CARRY <= '0';
-      state <= stalled;              caddr <= (others=>'0');
-      xen <= '0';   xwe <= '0';   xlanes <= x"0";   xwdata <= (others=>'0'); -- RAM
-      bbout <= x"00";
-      new_T <= '0';  T_src <= T_N;  immdata <= (others=>'0');  carryin <= '0';
-	  new_N <= '0';  N_src <= N_T;  Noffset <= "000";
-      Port_src <= Port_none;
-      PC_src <= PC_inc; -- PC
-      kack <= '0';  ereq <= '0';  edata_o <= x"00";
+      SP <= to_unsigned(32, RAMsize);    T <= x"00000000";
+      UP <= to_unsigned(64, RAMsize);    N <= x"00000000";
+      DebugReg <= (others=>'0');   Tpacked <= x"00000000";
+	  CARRY <= '0'; carryin <= '0'; cycles <= (others=>'0');
+      state <= changed;  slot <= 0;  caddr <= (others=>'0');
+      xen <= '0';  xlanes <= x"0";  xwdata <= x"00000000"; -- RAM
+      xwe <= '0';  PC_src <= PC_inc; xaddr <= (others=>'0');
+      new_T <= '0'; T_src <= x"0"; immdata <= (others=>'0');
+	  new_N <= '0'; N_src <= "00"; Noffset <= "000";
+      Port_src <= Port_none;      userdata <= x"00000000";
+      opcode <= "000000";               IR <= (others=>'0');
+      kack <= '0';  ereq_i <= '0';  edata_o <= x"00";
+      -- stack post-inc/dec strobes
       RPinc <= '0';  SPinc <= '0';  RPdec <= '0';  SPdec <= '0';
       RPload <= '0';  SPload <= '0';  UPload <= '0';
-	  slot <= 0;
+      -- read/write control
       WR_src <= WR_none;  WR_addr <= to_unsigned(0, RAMsize);
-      WR_size <= "00";  WR_align <= "00";
-      RD_size <= "00";  RD_align <= "00";
+      WR_size <= "00";  WR_align <= "00";  bbout <= x"00";
+      RD_size <= "00";  RD_align <= "00";  userFNsel <= x"0";
     else
 --------------------------------------------------------------------------------
+      cycles <= cycles + 1;
+      if eack = '1' then
+        ereq_i <= '0';
+      end if;
 -- execution pipeline stage
--- T:
+-- T: 16:1 mux
       if new_T = '1' then
         case T_src is
-        when T_N     => T <= N;
-        when T_RAM   => T <= unsigned(xrdata);
-        when T_plus  => T <= TNsum(32 downto 1);                    CARRY <= TNsum(33);
-        when T_plImm => T <= T + resize(immdata, 32);
-        when T_lit   => T <=     resize(immdata, 32);
-        when T_litx  => T <= T(7 downto 0) & immdata(23 downto 0);
-        when T_div2  => T <= (carryin and T(31)) & T(31 downto 1);  CARRY <= T(0);
-        when T_mul2  => T <= T(30 downto 0) & (carryin and CARRY);  CARRY <= T(31);
-        when T_and   => T <= T and N;
-        when T_xor   => T <= T xor N;
-        when T_not   => T <= not T;
-        when T_ze    => T <= zeroequals;
-        when T_mi    => T <= (others => T(31));
-        when T_user  => T <= N;
-        when T_port  => T <= DebugReg;
-		when T_pack  => T <= unsigned(Tpacked);
+        when "0000" => T <= N;
+        when "0001" => T <= T + resize(immdata, 32);
+        when "0010" => T <= T and N;
+        when "0011" => T <= T xor N;
+        when "0100" => T <= TNsum(32 downto 1);                    CARRY <= TNsum(33);
+        when "0101" => T <= zeroequals;
+        when "0110" => T <= unsigned(xrdata);
+        when "0111" => T <=   resize(immdata, 32);
+        when "1000" => T <= T(30 downto 0) & (carryin and CARRY);  CARRY <= T(31);
+        when "1001" => T <= (others => T(31));
+        when "1010" => T <= (carryin and T(31)) & T(31 downto 1);  CARRY <= T(0);
+        when "1011" => T <= userdata;
+        when "1100" => T <= T(7 downto 0) & immdata(23 downto 0);
+        when "1101" => T <= DebugReg;
+        when "1110" => T <= not T;
+		when others => T <= unsigned(Tpacked);
         end case;
       end if;
--- N:
+-- N: 4:1 mux
       if new_N = '1' then
         case N_src is
-        when N_T     => N <= T;
-        when N_RAM   => N <= unsigned(xrdata);
-        when N_inc   => N <= N + 1;
-        when N_Tplus => N <= T + Noffset;
+        when "00"   => N <= T;
+        when "01"   => N <= unsigned(xrdata);
+        when "10"   => N <= N + 1;
+        when others => N <= T + Noffset;
         end case;
 	  end if;
 -- port:
@@ -304,10 +312,10 @@ begin
 		  case RD_size is
 		  when "01" | "10" => state <= fetchsm;	-- some shift-and-mask is needed
 		  when others => state <= execute;		-- cell-sized fetch
-		    new_T <= '1';  T_src <= T_pack;
+		    new_T <= '1';  T_src <= "1111";
 		  end case;
         end if;
-	  when fetchd =>	
+	  when fetchd =>
 		Tpacked <= unsigned(xrdata);			-- register input from the outside world
 		state <= fetchsm;
 	  when fetchsm =>  							-- Tpacked has byte or half data
@@ -325,7 +333,28 @@ begin
 		    Tpacked <= x"0000" & Tpacked(15 downto 0);
 		  end if;
 		end if;
-		state <= execute;  new_T <= '1';  T_src <= T_pack;
+		state <= execute;  new_T <= '1';  T_src <= "1111";
+      when userinit =>                          -- T is still indeterminate
+        state <= user;  userFNsel <= immdata(3 downto 0);
+      when user =>                              -- calculate userdata
+        new_T <= '1';  T_src <= "1011";  userdata <= x"00000000";
+        state <= execute;  kack <= '0';         -- default is single-cycle operation
+        case userFNsel is
+        when "0000" => userdata(0) <= kreq;                             -- vmQkey
+        when "0001" => userdata(7 downto 0) <= unsigned(kdata_i);       -- vmKey
+          kack <= '1';
+        when "0010" => edata_o <= std_logic_vector(T(7 downto 0));      -- vmEmit
+          ereq_i <= '1';
+        when "0011" => userdata(0) <= not ereq_i;                       -- vmQemit
+        when "0100" => userdata <= cycles(35 downto 4);                 -- Counter
+        when "0101" =>                           -- bit-bang version of SPIflashXfer
+          userdata(0) <= bbin(to_integer(T(2 downto 0)));               -- read bbin
+          if T(3) = '1' then
+            bbout(to_integer(T(2 downto 0))) <= N(0);                   -- write bbout
+          end if;
+        when "0111" => userdata(2 downto 0) <= "101";
+        when others => null;
+        end case;
       when execute =>
 --------------------------------------------------------------------------------
 -- decoding pipeline stage
@@ -336,35 +365,39 @@ begin
           RPinc <= '0';   RPdec <= '0';
           SPinc <= '0';   SPdec <= '0';
           RPload <= '0';  SPload <= '0';  UPload <= '0';
-          new_T <= '0';   T_src <= T_N;   carryin <= '0';
+          new_T <= '0';   T_src <= x"0";   carryin <= '0';
           xen <= '0';     xwe <= '0';     xlanes <= x"F";
-          new_N <= '0';   N_src <= N_T;   Port_src <= Port_none;
+          new_N <= '0';   N_src <= "00";   Port_src <= Port_none;
 -- slot:
 		  slot <= slot + 1;
-		  case slot is
-		  when 0      => opcode <= IR(25 downto 20);
-		  when 1      => opcode <= IR(19 downto 14);
-		  when 2      => opcode <= IR(13 downto 8);
-		  when 3      => opcode <= IR(7 downto 2);
-		  when others => opcode <= "0000" & IR(1 downto 0);
-		  end case;
+          if slot = 5 then
+            state <= stalled;
+          else
+		    case slot is
+		    when 0      => opcode <= IR(25 downto 20);
+		    when 1      => opcode <= IR(19 downto 14);
+		    when 2      => opcode <= IR(13 downto 8);
+		    when 3      => opcode <= IR(7 downto 2);
+		    when others => opcode <= "0000" & IR(1 downto 0);
+		    end case;
 -- default immdata:
-		  case slot is
-		  when 0      => immdata <= unsigned ("11111111111111111111111111" and IR);
-		  when 1      => immdata <= unsigned ("00000011111111111111111111" and IR);
-		  when 2      => immdata <= unsigned ("00000000000011111111111111" and IR);
-		  when 3      => immdata <= unsigned ("00000000000000000011111111" and IR);
-		  when others => immdata <= unsigned ("00000000000000000000000011" and IR);
-		  end case;
+		    case slot is
+		    when 0      => immdata <= unsigned ("11111111111111111111111111" and IR);
+		    when 1      => immdata <= unsigned ("00000011111111111111111111" and IR);
+		    when 2      => immdata <= unsigned ("00000000000011111111111111" and IR);
+		    when 3      => immdata <= unsigned ("00000000000000000011111111" and IR);
+		    when others => immdata <= unsigned ("00000000000000000000000011" and IR);
+		    end case;
+          end if;
 -- decode:
           case opcode(5 downto 3) is
           when "000" => -- no stack depth or PC change, just slot stuff
             case opcode(2 downto 0) is
             when "001" => state <= stalled;                                 -- no:
             when "100" => if CARRY='0' then  slot <= 0;  end if;            -- reptc
-                          new_N <= '1';  N_src <= N_inc;
+                          new_N <= '1';  N_src <= "10";
             when "101" => if N(16)='1' then  slot <= 0;  end if;            -- -rept
-                          new_N <= '1';  N_src <= N_inc;
+                          new_N <= '1';  N_src <= "10";
             when "110" => if T(31)='0' then  state <= stalled;  end if;     -- -if:
             when "111" => if CARRY='0' then  state <= stalled;  end if;     -- ifc:
             when others => null;                                            -- nop
@@ -372,15 +405,15 @@ begin
           when "001" =>
             case opcode(2 downto 0) is
             when "000" => p_sdup;                                           -- dup
-            when "001" | "100" => new_T <= '1';  T_src <= T_plImm;          -- 1+, 4+
+            when "001" | "100" =>    new_T <= '1';  T_src <= "0001";        -- 1+, 4+
               immdata <= resize(unsigned(opcode(2 downto 0)), 26);
-            when "010" => new_T <= '1';                                     -- rp
-              immdata <= resize(unsigned(RP), 26);  T_src <= T_plImm;
-            when "011" => new_T <= '1';                                     -- sp
-              immdata <= resize(unsigned(SP), 26);  T_src <= T_plImm;
-            when "101" => new_T <= '1';                                     -- up
-              immdata <= resize(unsigned(UP), 26);  T_src <= T_plImm;
-            when "111" => p_sdup;    new_T <= '1';  T_src <= T_N;           -- over
+            when "010" => new_T <= '1';             T_src <= "0001";        -- rp
+              immdata <= resize(unsigned(RP), 26);
+            when "011" => new_T <= '1';             T_src <= "0001";        -- sp
+              immdata <= resize(unsigned(SP), 26);
+            when "101" => new_T <= '1';             T_src <= "0001";        -- up
+              immdata <= resize(unsigned(UP), 26);
+            when "111" => p_sdup;    new_T <= '1';                          -- over
             when others => null;
             end case;
           when "010" =>
@@ -388,45 +421,46 @@ begin
             when "000" =>                                                   -- exit
               p_rdrop;  PC_src <= PC_RAM;
             when "111" =>                                                   -- ifz:
-              p_sdrop;  N_src <= N_RAM;  new_T <= '1';  T_src <= T_N;
+              p_sdrop;  new_N <= '1';  N_src <= "01";  new_T <= '1';
               if (T /= x"00000000") then
                 state <= stalled;
               end if;
             when others => null;
             end case;
           when "011" =>
-            p_sdrop;  N_src <= N_RAM;
+            p_sdrop;  new_N <= '1';  N_src <= "01";
             case opcode(2 downto 0) is
-            when "000" | "001" =>          new_T <= '1';  T_src <= T_plus;  -- +
-            when "100" => carryin <= '1';  new_T <= '1';  T_src <= T_plus;  -- c+
-            when "010" =>                  new_T <= '1';  T_src <= T_and;   -- and
-            when "011" =>                  new_T <= '1';  T_src <= T_xor;   -- xor
+            when "000" =>                  new_T <= '1';  T_src <= "0100";  -- +
+            when "100" => carryin <= '1';  new_T <= '1';  T_src <= "0100";  -- c+
+            when "010" =>                  new_T <= '1';  T_src <= "0010";  -- and
+            when "011" =>                  new_T <= '1';  T_src <= "0011";  -- xor
             when others => null;                                            -- drop
             end case;
           when "100" =>
             case opcode(2 downto 0) is
-            when "000" => new_T <= '1';  T_src <= T_mul2;                   -- 2*
-            when "001" => new_T <= '1';  T_src <= T_mul2;  carryin <= '1';  -- 2*c
-            when "010" => new_T <= '1';  T_src <= T_div2;                   -- 2/
-            when "011" => new_T <= '1';  T_src <= T_div2;  carryin <= '1';  -- u2/
-            when "100" => new_T <= '1';  T_src <= T_mi;                     -- 0<
-            when "101" => new_T <= '1';  T_src <= T_ze;                     -- 0=
-            when "110" => new_T <= '1';  T_src <= T_not;                    -- invert
-            when "111" => N_src <= N_T;  new_T <= '1';  T_src <= T_N;       -- swap
+            when "000" => new_T <= '1';  T_src <= "1000";                   -- 2*
+            when "001" => new_T <= '1';  T_src <= "1000";  carryin <= '1';  -- 2*c
+            when "010" => new_T <= '1';  T_src <= "1010";                   -- 2/
+            when "011" => new_T <= '1';  T_src <= "1010";  carryin <= '1';  -- u2/
+            when "100" => new_T <= '1';  T_src <= "1001";                   -- 0<
+            when "101" => new_T <= '1';  T_src <= "0101";                   -- 0=
+            when "110" => new_T <= '1';  T_src <= "1110";                   -- invert
+            when "111" => new_N <= '1';  new_T <= '1';                      -- swap
             when others => null;
             end case;
           when "101" =>
             case opcode(2 downto 0) is
-            when "000" => new_T <= '1';  T_src <= T_port;  Port_src <= Port_T; -- port
-			---- "001" => 													-- user
+            when "000" => new_T <= '1';  T_src <= "1101";                   -- port
+                          Port_src <= Port_T;
+			when "001" => state <= userinit;                				-- user
             when "010" => state <= changed;  PC_src <= PC_imm;              -- jmp
             when "011" => state <= changed;  PC_src <= PC_imm;              -- call
                           p_rdup;  WR_src <= WR_PC;
-            when "100" => new_T <= '1';  T_src <= T_litx;                   -- litx
+            when "100" => new_T <= '1';  T_src <= "1100";                   -- litx
 			---- "101" => 													-- @as
 			---- "110" => 													-- !as
-            when "111" => new_T <= '1';  T_src <= T_lit;                    -- lit
-                          p_sdup;  WR_src <= WR_N;  N_src <= N_T;
+            when "111" => new_T <= '1';  T_src <= "0111";                   -- lit
+                          p_sdup;  WR_src <= WR_N;  new_N <= '1';
             when others => null;
             end case;
           when "110" =>
@@ -438,50 +472,48 @@ begin
 			end case;
             RD_align <= std_logic_vector(T(1 downto 0));
             case opcode(2 downto 0) is
-            when "000" => p_rdrop;              -- r>
-			  new_T <= '1';  T_src <= T_N;
-			when "111" => p_rdrop;   			-- r@
-			  new_T <= '1';  T_src <= T_N;  RPinc <= '0';
-            when "001" | "010" | "100" =>   	-- ( a -- a+x n ) c@+, w@+, @+
+            when "000" => p_rdrop;  p_sdup;                                 -- r>
+			  new_T <= '1';
+			when "111" => p_rdrop;  p_sdup;                                 -- r@
+			  new_T <= '1';  RPinc <= '0';
+            when "001" | "010" | "100" =>   	-- ( a -- a+x n )           -- c@+, w@+, @+
 			  p_sdup;  Noffset <= unsigned(opcode(2 downto 0));
-              new_N <= '1';  N_src <= N_Tplus;
-			when others => null;				-- ( a -- n ) w@, @, c@
+              new_N <= '1';  N_src <= "11";
+			when others => null;				-- ( a -- n )               -- w@, @, c@
 			end case;
 			if T(31) = '0' then					-- ROM fetch
-			  caddr <= std_logic_vector(T(RAMsize+1 downto 2));
+			  caddr <= std_logic_vector(T(27 downto 2));
 			  state <= fetchc;
 			else								-- RAM fetch
               xaddr <= std_logic_vector(T(RAMsize+1 downto 2));
               xen <= '1';  xwe <= '0';
 			  case opcode(2 downto 0) is 		-- x c@+ w@+ w@ @+ @ c@ x
 			  when "100" | "101" =>				-- cell
-				new_T <= '1';  T_src <= T_RAM;
+				new_T <= '1';  T_src <= "0110";
 			  when others =>					-- byte or half
-                state <= fetchd;			  
+                state <= fetchd;
 			  end case;
 			end if;
           when others =>
-            p_sdrop;  N_src <= N_RAM;
+            p_sdrop;  new_N <= '1';  N_src <= "01";
             case opcode(2 downto 0) is
-            when "001" | "010" | "100" =>    	-- c!+, w!+, !+
+            when "001" | "010" | "100" =>    	                            -- c!+, w!+, !+
               -- T = N+offset | mem[T] = N | N = sdrop
               immdata <= resize(unsigned(opcode(2 downto 0)), 26);
-              new_T <= '1';  T_src <= T_plImm;
+              new_T <= '1';  T_src <= "0001";
               WR_src <= WR_N;  WR_size <= opcode(1 downto 0);
-              WR_addr <= T(RAMsize+1 downto 0);
+              WR_addr <= T(RAMsize+1 downto 2);
               WR_align <= std_logic_vector(T(1 downto 0));
-            when "011" =>                      	-- >r
-              p_rdrop;  N_src <= N_RAM;  new_T <= '1';
+            when "011" =>                      	                            -- >r
+              p_rdrop;  N_src <= "01";  new_T <= '1';
               p_sdup;   WR_src <= WR_T;
-            when "101" => RPload <= '1'; 		-- rp!
-            when "110" => SPload <= '1'; 		-- sp!
-            when "111" => UPload <= '1'; 		-- up!
+            when "101" => RPload <= '1'; 		                            -- rp!
+            when "110" => SPload <= '1'; 		                            -- sp!
+            when "111" => UPload <= '1'; 		                            -- up!
             when others => null;
             end case;
           end case;
         end if;
-      when user =>
-        state <= execute;
       end case;
     end if;
   end if;
@@ -489,5 +521,13 @@ end process main;
 
 zeroequals <= x"FFFFFFFF" when T=to_unsigned(0,32) else x"00000000";
 TNsum <= ('0' & T & (carryin and CARRY)) + ('0' & N & '1');
+ereq <= ereq_i;
+
+spram: spram32
+GENERIC MAP (Size => RAMsize)
+PORT MAP (
+  clk => clk,  en => xen,  we => xwe,  addr => xaddr,
+  data_i => xwdata,  lanes => xlanes,  data_o => xrdata
+);
 
 END RTL;
