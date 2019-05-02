@@ -2,7 +2,7 @@
 
 defer coldboot
 defer safemode
-defer errorISR
+:noname coldboot ; drop                 \ error reboots
 
 include ../../forth/core.f
 : pause ;  \ include ../../forth/tasker.f \ no multitasker
@@ -17,12 +17,16 @@ include ../../forth/comma.f             \ smart comma
 
 include ../../forth/end.f               \ finish the app
 
-\ Make C files
+
+\ Make C file
 make ../../src/vm.c vm.c                \ vm.c is used as a template
 
-\ save a hex file you could `coldboot` from
-1 save-hex boot.hex                    \ only internal ROM
+\ Make VHDL ROM file
+\ make ../../templates/rom.vhd  ../../VHDL/rom32.vhd
 
-\ theme=color
+\ save a hex file you can `coldboot` from
+1 save-hex boot.hex                     \ only internal ROM
+
+\ theme=color  \ looks better in color, if your terminal isn't dumb.
 
 \ bye

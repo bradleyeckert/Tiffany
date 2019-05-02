@@ -5,6 +5,9 @@ equ IdataTable        					\ compile idata table to ROM
 
 hex
 : initialize                            \ ? -- | R: ? a --
+    [ status ] literal                  \ start of RAM
+    dup negate                          \ status to FFFFFFFF
+    erase                               \ is 0 by default
 	IdataTable
 	begin
 		@+ 2dup 1+ cells + -rot         ( list' asrc length )
@@ -29,6 +32,6 @@ decimal
 
 :noname                                 \ enter bootloader/terminal without app
 	initialize
-	main         \ not implemented yet
+	main                                \ not implemented yet
 	bye
 ; is safemode

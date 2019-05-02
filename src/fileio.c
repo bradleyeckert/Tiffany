@@ -140,15 +140,14 @@ case 12:                                // 12: Assembler syntax for 8051
 case 13:                                // 13: VHDL syntax internal ROM dump
     length = ROMwords(ROMsize);
     for (int i=0; i<length; i++) {
-        fprintf(ofp, "when %d => ROMdata <= x""%08X"";\n", i, rom[i]);
+        fprintf(ofp, "      when %3d => data_o <= x\"%08X\";\n", i, rom[i]);
     }
-    fprintf(ofp, "when others => ROMdata <= x""FFFFFFFF"";\n");
     free(rom);  rom = NULL;
     break;
 case 20:                                // 20: C syntax stepping
     MakeTestVectors(ofp, PopNum(), 1);
     break;
-case 21:                                // 21: VHDL syntax stepping
+case 21:                                // 21: VHDL syntax stepping (not tested)
     MakeTestVectors(ofp, PopNum(), 2);
     break;
 

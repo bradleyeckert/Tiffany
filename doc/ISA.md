@@ -15,7 +15,7 @@ James Bowman's J1 and J1B. The J1 is about 10 years old. J1B is the 32-bit versi
 Very small, very awesome. I didn't copy it because:
 
 - Small address range. 13-bit calls and jumps, cover a 16KB address space.
-- Stacks are not in memory, so multitasking is not as tidy.
+- Stacks are not in memory, so multitasking is limited.
 - It simulates slowly. I wanted a sandbox that would run on ARM.
 
 Richard James Howe's H2 is a J1-like CPU. It has a Forth implementation.
@@ -44,6 +44,32 @@ Automated test vector generation creates a testbench that can be used to test ve
 Typically this means assembly. The assembly function is called from C for inclusion in the testbench.
 The testbench can run on a small MCU, listing errors so that you can go back and see which opcode had problems.
 It can also run in a VHDL testbench to verify hardware versions of the ISA.
+
+The VM uses a 64-way jump to execute one of (up to) 64 stack instructions.
+Most of them are 6-bit instructions. Some, such as CALL and JMP, use the rest of the instruction group as data.
+The VM can be coded in assembly. The overhead added by the VM causes Forth code to run slower than native machine code.
+Perhaps a 1:10 speed difference. This is where integration with C comes into play. Any bottlenecks can be cleared that way.
+Also note that modern software routinely pisses away 2 or 3 orders of magnitude of CPU performance,
+so it's surprising how much inefficiency you can actually get away with.
+
+The VM, when implemented software, is a sandbox. No amount of abose will crash the host. You can only hang the VM.
+The `main.c` app for a simple "hello world" app is:
+
+```
+#include <stdio.h>
+#include "vm.h"
+
+uint32_t FetchROM(uint32_t addr);
+
+int main() {
+    uint32_t PC = 0;
+    VMpor();
+    while (1) {
+        uint32_t IR = FetchROM(PC);
+        PC = VMstep(IR, 0);
+    }
+}
+```
 
 ## ISA Licensing
 
@@ -101,7 +127,7 @@ In the following table:
 - **opcode uses the rest of the slots as unsigned immediate data**
 - Pops and reads (columns 2, 3, 6, 7) are delayed if a write is in progress to enable the use of single-port RAM.
 
-|         | 0         | 1          | 2         | 3         | 4         | 5         | 6         | 7         |
+| 5:3\2:0 | 0         | 1          | 2         | 3         | 4         | 5         | 6         | 7         |
 |:-------:|:---------:|:----------:|:---------:|:---------:|:---------:|:---------:|:---------:|:---------:|
 | **0**   | nop       | dup        | exit      | +         | 2\*       | port      | r>        |           |
 | **1**   | *no:*     | 1+         |           |           | 2\*c      | **user**  | c@+       | c!+       |
