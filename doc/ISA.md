@@ -129,14 +129,14 @@ In the following table:
 
 | 5:3\2:0 | 0         | 1          | 2         | 3         | 4         | 5         | 6         | 7         |
 |:-------:|:---------:|:----------:|:---------:|:---------:|:---------:|:---------:|:---------:|:---------:|
-| **0**   | nop       | dup        | exit      | +         | 2\*       | port      | r>        |           |
-| **1**   | *no:*     | 1+         |           |           | 2\*c      | **user**  | c@+       | c!+       |
-| **2**   |           | rp         |           | and       | 2/        | **jmp**   | w@+       | w!+       |
+| **0**   | nop       | dup        | exit      | +         | 2\*       | port      |           |           |
+| **1**   | *no:*     | 1+         | r>        |           | 2\*c      | **user**  | c@+       | c!+       |
+| **2**   |           | rp         | r@        | and       | 2/        | **jmp**   | w@+       | w!+       |
 | **3**   |           | sp         |           | xor       | u2/       | **call**  | w@        | >r        |
 | **4**   | *reptc*   | 4+         |           | c+        | 0=        | **litx**  | @+        | !+        |
 | **5**   | *-rept*   | up         |           |           | 0<        | **@as**   | @         | rp!       |
 | **6**   | *-if:*    |            |           |           | invert    | **!as**   | c@        | sp!       |
-| **7**   | *ifc:*    | over       | *ifz:*    | drop      | swap      | **lit**   | r@        | up!       |
+| **7**   | *ifc:*    | over       | *ifz:*    | drop      | swap      | **lit**   |           | up!       |
 
 Branches compile a conditional skip past `jmp`.
 

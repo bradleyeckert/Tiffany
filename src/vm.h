@@ -50,16 +50,17 @@ extern uint32_t OpCounter[64];              // dynamic instruction count
 #define opADD        (003)  // +
 #define opTwoStar    (004)  // 2*
 #define opPORT       (005)  // port  ( n -- m ) swap T with port
-#define opPOP        (006)  // r>
 
 #define opSKIP       (010)  // no:  skip remaining slots
 #define opOnePlus    (011)  // 1+
+#define opPOP        (012)  // r>
 #define opTwoStarC   (014)  // 2*c
 #define opUSER       (015)  // user
 #define opCfetchPlus (016)  // c@+  ( a -- a+1 c )
 #define opCstorePlus (017)  // c!+  ( c a -- a+1 )
 
 #define opRP         (021)  // rp
+#define opRfetch     (022)  // r@
 #define opAND        (023)  // and
 #define opTwoDiv     (024)  // 2/
 #define opJUMP       (025)  // jmp
@@ -100,7 +101,6 @@ extern uint32_t OpCounter[64];              // dynamic instruction count
 #define opDROP       (073)  // drop
 #define opSWAP       (074)  // swap
 #define opLIT        (075)  // lit
-#define opRfetch     (076)  // r@
 #define opSetUP      (077)  // up!
 
 #endif
