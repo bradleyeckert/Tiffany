@@ -22,7 +22,7 @@ include ../../forth/end.f               \ finish the app
 make ../../src/vm.c vm.c                \ vm.c is used as a template
 
 \ Make VHDL ROM file
-\ make ../../templates/rom.vhd  ../../VHDL/rom32.vhd
+ make ../../templates/rom.vhd  ../../VHDL/rom32.vhd
 
 \ save a hex file you can `coldboot` from
 1 save-hex boot.hex                     \ only internal ROM

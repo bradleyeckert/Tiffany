@@ -141,13 +141,27 @@
 
 : fill  \ a1 n c --                     \ 6.1.1540
    over if
-      swap negate                       \ a c n
-      1+ swap >r swap                   \ n a | c
-      | r@ swap c!+ -rept               \ n a' | c
+      swap negate                       \ a c -n
+      1+ swap >r swap                   \ -n a | c
+      | r@ swap c!+ -rept               \ -n' a' | c
       r> 3drop exit
    then  3drop
 ;
-: erase     0 fill ;                    \ 6.2.1350  --
+
+\ Is a 4x speedup worth it? Maybe if large RAM needs erased.
+\ A 60 MHz CPU erases 10 cells (40 bytes) per microsecond.
+\ A large 64KB RAM would erase in 1.64 ms.
+
+: erase  \ a n --                       \ 6.2.1350  --
+   dup ifz: 2drop exit |                \ no length
+   2dup or 3 and if \ cell address and cell length
+     0 fill  exit   \ no, do it a byte at a time
+   then
+   dup dup xor >r   \ more compact "0 >r"
+   2/ 2/ negate 1+  swap                ( -n a )
+   | r@ swap !+ -rept
+   r> 3drop
+;
 
 \ Software versions of math functions
 \ May be replaced by user functions.

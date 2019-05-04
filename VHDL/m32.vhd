@@ -81,7 +81,7 @@ END COMPONENT;
   signal skip: skip_t;                          -- skip type
   type   rept_t is (rept_none, rept_nc, rept_n);
   signal rept: rept_t;                          -- repeat type
-  signal skipping:      std_logic;              -- don't execute
+  signal skipping, repeating: std_logic;        -- don't decode
 
   signal new_T:         std_logic;              -- load new T
   signal T_src:  std_logic_vector(3 downto 0);  -- T source
@@ -101,25 +101,28 @@ END COMPONENT;
 
   type   WR_src_t is (WR_none, WR_T, WR_N, WR_PC);
   signal WR_src: WR_src_t;                      -- write source
-  signal WR_addr:  	    unsigned(RAMsize-1 downto 0);
+  type   WR_dest_t is (WR_miSP, WR_miRP, WR_aT);
+  signal WR_dest: WR_dest_t;                    -- write address
   signal WR_size, RD_size:   std_logic_vector(1 downto 0); -- 1/2/4
   signal WR_align, RD_align: std_logic_vector(1 downto 0); -- alignment
   signal Tpacked:   	unsigned(31 downto 0);	-- packed read data
 
   signal RPinc, SPinc:  std_logic;              -- post-increment
-  signal RPdec, SPdec:  std_logic;              -- post-decrement
   signal RPload, SPload, UPload: std_logic;     -- load from T
 
   signal userFNsel:     unsigned(3 downto 0);   -- user function select
   signal cycles:   	    unsigned(35 downto 0);  -- 16-cycle resolution counter
   -- 2^36/100M = 687 seconds (10 minutes)
   signal ereq_i:        std_logic;
-  signal row:           std_logic_vector(2 downto 0);
+  signal held:          std_logic;
 
 -- read and writes share access to single-port RAM
   signal RAM_raddr:     unsigned(RAMsize-1 downto 0);
   signal RAM_waddr:     unsigned(RAMsize-1 downto 0);
   signal RAM_read:      std_logic;
+
+  signal name: string(1 to 5); -- look at this in a waveform viewer
+
 
 ---------------------------------------------------------------------------------
 BEGIN
@@ -157,7 +160,7 @@ begin
     end if;
   when execute =>
     case opcode is
-    when "000010" | "001010" | "010010" => -- exit, r>, r@
+    when o"02" | o"12" | o"22" =>  -- exit, r>, r@
       if RPinc = '1' then
         RAM_raddr <= RP + 1;
       else
@@ -180,44 +183,25 @@ main: process(clk)
 procedure p_sdup is -- write setup: mem[--SP]=N
 begin
   WR_src <= WR_N;
-  if SPinc = '1' then
-    WR_addr <= SP;
-  else
-    WR_addr <= SP - 1;
-    SPdec <= '1';
-  end if;
+  WR_dest <= WR_miSP;
   new_N <= '1';
 end procedure p_sdup;
 
 procedure p_rdup is -- write setup: mem[--RP]=?
 begin
-  if RPinc = '1' then
-    WR_addr <= RP;
-  else
-    WR_addr <= RP - 1;
-    RPdec <= '1';
-  end if;
+  WR_dest <= WR_miRP;
 end procedure p_rdup;
 
-procedure p_rdrop is -- read mem[RP++], could be T or PC
+-- No writes to stack space are pending.
+-- Pops trigger an increment in the execute phase.
+
+procedure p_rdrop is -- read mem[RP++]
 begin
-  if RPinc='1' then
-    RAM_addr <= std_logic_vector(RP + 1);
-  else
-    RAM_addr <= std_logic_vector(RP);
-  end if;
-  RAM_en <= '1';  RAM_we <= '0';  RAMlanes <= x"F";
   RPinc <= '1';
 end procedure p_rdrop;
 
 procedure p_sdrop is -- read N = mem[SP++]
 begin
-  if SPinc='1' then
-    RAM_addr <= std_logic_vector(SP + 1);
-  else
-    RAM_addr <= std_logic_vector(SP);
-  end if;
-  RAM_en <= '1';  RAM_we <= '0';  RAMlanes <= x"F";
   SPinc <= '1';
   new_N <= '1';  N_src <= "01";
 end procedure p_sdrop;
@@ -225,24 +209,21 @@ end procedure p_sdrop;
 begin
   if (rising_edge(clk)) then
     if (reset='1') then
-      RP <= to_unsigned(64, RAMsize);     PC <= to_unsigned(0, 26);
-      SP <= to_unsigned(32, RAMsize);      T <= x"00000000";
-      UP <= to_unsigned(64, RAMsize);      N <= x"00000000";
-      DebugReg <= (others=>'0');     Tpacked <= x"00000000";
-      CARRY <= '0';  carryin <= '0';  cycles <= (others=>'0');
-      state <= changed;   slot <= 0;   caddr <= (others=>'0');
-      RAM_en <= '0';  RAMlanes <= x"0";   RAM_d <= x"00000000"; -- RAM
-      RAM_we <= '0';  PC_src <= PC_inc;  RAM_addr <= (others=>'0');
+      RP <= to_unsigned(64, RAMsize);     PC <= to_unsigned(0, 26);   slot <= 0;
+      SP <= to_unsigned(32, RAMsize);      T <= x"00000000";     carryin <= '0';
+      UP <= to_unsigned(64, RAMsize);      N <= x"00000000";       CARRY <= '0';
+      DebugReg <= (others=>'0');     Tpacked <= x"00000000";   state <= changed;
+      cycles <= (others=>'0');         RAM_d <= x"00000000";   RAMlanes <= x"0";
+      caddr <= (others=>'0');             IR <= x"00000000"; opcode <= "000000";
+      RAM_we <= '0';                userdata <= x"00000000";   PC_src <= PC_inc;
       new_T <= '0';  T_src <= x"0";  immdata <= (others=>'0');
-      new_N <= '0';  N_src <= "00";  Noffset <= "000";
-      Port_src <= Port_none;        userdata <= x"00000000";
-      opcode <= "000000";                 IR <= (others=>'0');
+      new_N <= '0';  N_src <= "00";  Noffset <= "000";    Port_src <= Port_none;
       kack <= '0';  ereq_i <= '0';   edata_o <= x"00";  bye <= '0';
       -- stack post-inc/dec strobes
-      RPinc <= '0';  RPdec <= '0';  RPload <= '0';
-      SPinc <= '0';  SPdec <= '0';  SPload <= '0';  UPload <= '0';
+      RPinc <= '0';  RPload <= '0';  WR_dest <= WR_miSP;
+      SPinc <= '0';  SPload <= '0';  UPload <= '0';
       -- read/write control
-      WR_src <= WR_none;  WR_addr <= to_unsigned(0, RAMsize);
+      WR_src <= WR_none;
       WR_size <= "00";  WR_align <= "00";  bbout <= x"00";
       RD_size <= "00";  RD_align <= "00";  userFNsel <= x"0";
       skip <= skip_none;  rept <= rept_none;
@@ -291,7 +272,17 @@ begin
 -- write:
       if WR_src /= WR_none then
         RAM_we <= '1';  RAMlanes <= x"F";
-        RAM_waddr <= WR_addr;
+        case WR_dest is
+        when WR_miSP => RAM_waddr <= SP - 1;
+          if SPinc = '0' then
+            SP <= SP - 1;
+          end if;
+        when WR_miRP => RAM_waddr <= RP - 1;
+          if RPinc = '0' then
+            RP <= RP - 1;
+          end if;
+        when WR_aT =>   RAM_waddr <= T(RAMsize+1 downto 2);
+        end case;
         case WR_src is
         when WR_T =>
           RAM_d <= std_logic_vector(T);
@@ -323,32 +314,20 @@ begin
         when others => null;
         end case;
       else
-        RAM_en <= '0';  RAM_we <= '0';
+        RAM_we <= '0';
       end if;
 -- RP:
       if RPinc = '1' then
-        if RPdec = '0' then
-          RP <= RP + 1;
-        end if;
-      else
-        if RPdec = '1' then
-          RP <= RP - 1;
-        end if;
+        RP <= RP + 1;
       end if;
-      if RPload = '1' then                      -- override
+      if RPload = '1' then
         RP <= T(RAMsize-1 downto 0);
       end if;
 -- SP:
       if SPinc = '1' then
-        if SPdec = '0' then
-          SP <= SP + 1;
-        end if;
-      else
-        if SPdec = '1' then
-          SP <= SP - 1;
-        end if;
+        SP <= SP + 1;
       end if;
-      if SPload = '1' then                      -- override
+      if SPload = '1' then
         SP <= T(RAMsize-1 downto 0);
       end if;
 -- UP:
@@ -359,8 +338,8 @@ begin
       new_T <= '0';   T_src <= "0000";
       new_N <= '0';   N_src <= "00";
       Port_src <= Port_none;
-      RPload <= '0';  RPinc <= '0';  RPdec <= '0';
-      SPload <= '0';  SPinc <= '0';  SPdec <= '0';
+      RPload <= '0';  RPinc <= '0';
+      SPload <= '0';  SPinc <= '0';
       UPload <= '0';  WR_src <= WR_none;
 
 --------------------------------------------------------------------------------
@@ -374,6 +353,8 @@ begin
                      caddr <= RAM_q(25 downto 0);
         when others => null;
         end case;
+        PC_src <= PC_inc;
+        skip <= skip_none;
         state <= stalled;
       when stalled =>  -- `caddr` is new: wait for data from ROM[PC].
         if cready = '1' then
@@ -392,18 +373,20 @@ begin
             state <= fetchd;                    -- next state gets the unaligned data
           end if;
         else
+          caddr <= std_logic_vector(T(27 downto 2));
+          state <= fetchc;
         end if;
-      when fetchc =>  -- fetchc is in progress with RD_align byte position, RD_size=0,1,2 cell,byte,half
+      when fetchc =>  -- RD_align byte position, RD_size=0,1,2 {cell,byte,half}
         if cready = '1' then
           Tpacked <= unsigned(cdata);			-- register input from the outside world
           case RD_size is
           when "01" | "10" => state <= fetchsm;	-- some shift-and-mask is needed
           when others => state <= execute;		-- cell-sized fetch
-            new_T <= '1';  T_src <= "1111";
+            new_T <= '1';  T_src <= "1111";     -- T gets Tpacked
           end case;
         end if;
       when fetchd =>
-        Tpacked <= unsigned(RAM_q);			-- register input from the outside world
+        Tpacked <= unsigned(RAM_q);             -- non-cell RAM fetch needs alignment
         state <= fetchsm;
       when fetchsm =>  							-- Tpacked has byte or half data
         if RD_size(0) = '1' then
@@ -449,8 +432,12 @@ begin
 -- 2,3,6,7 = 010 011 110 111, if bit 1 is set wait for write to finish
         if skipping = '1' then
           state <= stalled;
+          skip <= skip_none;
+        elsif repeating = '1' then
+          slot <= 0;  state <= execute;  opcode <= IR(31 downto 26);
+          rept <= rept_none;
         else
-          if (opcode(1) = '0') or ((WR_src = WR_none) and (RAM_we = '0')) then
+          if held = '0' then
 -- strobes:
             WR_size <= "00";  RD_size <= "00";
 -- slot:
@@ -476,7 +463,6 @@ begin
             end if;
 -- decode:
             rept <= rept_none;
-            skip <= skip_none;
             carryin <= '0';
 
 --|   | 0        | 1        | 2        | 3        | 4        | 5        | 6        | 7        |
@@ -491,99 +477,72 @@ begin
 --| 7 | *ifc:*   | over     | *ifz:*   | drop     | swap     | **lit**  |          | up!      |
 
             case opcode is
-            when "000001" => p_sdup;                                        -- dup
-            when "000010" => p_rdrop;  PC_src <= PC_RAM;                    -- exit
-            when "000011" => p_sdrop;  new_T <= '1';  T_src <= "0100";      -- +
-            when "000100" => new_T <= '1';  T_src <= "1000";                -- 2*
-            when "000101" => new_T <= '1';  T_src <= "1101";                -- port
-                             Port_src <= Port_T;
-            when "001000" => state <= stalled;  -- no need to wait          -- no:
-            when "001001" | "100001" => new_T <= '1';  T_src <= "0001";     -- 1+, 4+
-                             immdata <= resize(unsigned(opcode(5 downto 3)), 26);
-            when "001010" => p_rdrop;  p_sdup;  new_T <= '1';               -- r>
-            when "001100" => new_T <= '1'; T_src <= "1000"; carryin <= '1'; -- 2*c
-            when "001101" => state <= userinit;                				-- user
-            when "001110" => p_sdup;  RD_size <= "01";  state <= fetch;     -- c@+
-                new_N <= '1';  N_src <= "11";  Noffset <= "001";
-            when "001111" | "010111" | "100111" =>                          -- c!+, w!+, !+
-                -- T = N+offset | mem[T] = N | N = sdrop
-                p_sdrop; immdata <= resize(unsigned(opcode(5 downto 3)), 26);
-                new_T <= '1';  T_src <= "0001";
-                WR_src <= WR_N;  WR_size <= opcode(1 downto 0);
-                WR_addr <= T(RAMsize+1 downto 2);
+            when o"01" => p_sdup;                                       -- dup
+            when o"02" => p_rdrop;  state <= changed; PC_src <= PC_RAM; -- exit
+            when o"03" => p_sdrop;  new_T <= '1';  T_src <= "0100";     -- +
+            when o"04" => new_T <= '1';  T_src <= "1000";               -- 2*
+            when o"05" => new_T <= '1';  T_src <= "1101";               -- port
+                          Port_src <= Port_T;
+            when o"10" => state <= stalled;  -- no need to wait         -- no:
+            when o"11" | o"41" => new_T <= '1';  T_src <= "0001";       -- 1+, 4+
+                          immdata <= resize(unsigned(opcode(5 downto 3)), 26);
+            when o"12" => p_rdrop;  p_sdup;  new_T <= '1';  T_src <= "0110"; -- r>
+            when o"14" => new_T <= '1'; T_src <= "1000"; carryin <= '1';-- 2*c
+            when o"15" => state <= userinit;                			-- user
+            when o"16" => p_sdup;  RD_size <= "01";  state <= fetch;    -- c@+
+                          new_N <= '1';  N_src <= "11";  Noffset <= "001";
+            when o"17" | o"27" | o"47" =>                       -- c!+, w!+, !+
+                immdata <= resize(unsigned(opcode(5 downto 3)), 26);
+                p_sdrop;                                        -- N = sdrop
+                new_T <= '1';  T_src <= "0001";                 -- T = N+offset
+                WR_src <= WR_N;  WR_size <= opcode(4 downto 3); -- mem[T] = N
+                WR_dest <= WR_aT;
                 WR_align <= std_logic_vector(T(1 downto 0));
-            when "010001" => new_T <= '1';             T_src <= "0001";     -- rp
-                             immdata <= resize(unsigned(RP), 26);
-            when "010010" => p_rdrop;  p_sdup;  new_T <= '1'; RPinc <= '0'; -- r@
-            when "010011" => p_sdrop;       new_T <= '1';  T_src <= "0010"; -- and
-            when "010100" => new_T <= '1';  T_src <= "1010";                -- 2/
-            when "010101" => state <= changed;  PC_src <= PC_imm;           -- jmp
-            when "010110" => p_sdup;  RD_size <= "10";  state <= fetch;     -- w@+
-                             new_N <= '1';  N_src <= "11";  Noffset <= "010";
-            when "011001" => new_T <= '1';             T_src <= "0001";     -- sp
-                             immdata <= resize(unsigned(SP), 26);
-            when "011011" => p_sdrop;       new_T <= '1';  T_src <= "0011"; -- xor
-            when "011100" => new_T <= '1'; T_src <= "1010"; carryin <= '1'; -- u2/
-            when "011101" => state <= changed;  PC_src <= PC_imm;           -- call
-                             p_rdup;   WR_src <= WR_PC;
-            when "011110" => RD_size <= "10";  state <= fetch;              -- w@
-            when "011111" => p_sdrop;  new_T <= '1';                    	-- >r
-                             p_rdup;   WR_src <= WR_T;  -- N=mem[SP++]; T=N; mem[--RP]=T;
-            when "100000" => rept <= rept_nc;  new_N <= '1'; N_src <= "10"; -- reptc
-            when "100011" => p_sdrop;  new_T <= '1';  T_src <= "0100";      -- c+
-                             carryin <= '1';
-            when "100100" => new_T <= '1';  T_src <= "1001";                -- 0<
-            when "100101" => new_T <= '1';  T_src <= "1100";                -- litx
-            when "100110" => p_sdup;  RD_size <= "00";  state <= fetch;     -- @+
-                             new_N <= '1';  N_src <= "11";  Noffset <= "100";
-            when "101000" => rept <= rept_n;  new_N <= '1';  N_src <= "10"; -- -rept
-            when "101001" => new_T <= '1';  T_src <= "0001";                -- up
-                             immdata <= resize(unsigned(UP), 26);
-            when "101100" => new_T <= '1';  T_src <= "0101";                -- 0=
-            ---- "101101" => state <= stalled;							    -- @as
-            when "101110" => RD_size <= "00";  state <= fetch;              -- @
-            when "101111" => p_sdrop;  RPload <= '1'; 		                -- rp!
-            when "110000" => skip <= skip_ge;                               -- -if:
-            when "110100" => new_T <= '1';  T_src <= "1110";                -- invert
-            ---- "110101" => state <= stalled;								-- !as
-            when "110110" => RD_size <= "01";  state <= fetch;              -- c@
-            when "110111" => p_sdrop;  SPload <= '1'; 		                -- sp!
-            when "111000" => skip <= skip_nc;                               -- ifc:
-            when "111001" => p_sdup;   new_T <= '1';                        -- over
-            when "111010" => p_sdrop;  new_T <= '1';  skip <= skip_if;      -- ifz:
-            when "111011" => p_sdrop;                                       -- drop
-            when "111100" => new_N <= '1';  new_T <= '1';                   -- swap
-            when "111101" => state <= stalled;  p_sdup;                     -- lit
-                             new_T <= '1';  T_src <= "0111";
-            when "111111" => p_sdrop;  UPload <= '1'; 		                -- up!
-            when others => null;
-            end case;
--- repeats:
-            case rept is                          -- able to override slot
-            when rept_n  =>
-              if N(16)='0' then
-                slot <= 0;  state <= execute;  opcode <= IR(31 downto 26);
-              end if;
-            when rept_nc  =>
-              if CARRY='0' then
-                slot <= 0;  state <= execute;  opcode <= IR(31 downto 26);
-              end if;
-            when others => null;
-            end case;
--- skips:
-            case skip is                          -- conditional skips
-            when skip_if  =>
-              if T /= x"00000000" then
-                state <= stalled;
-              end if;
-            when skip_nc  =>
-              if CARRY='0' then
-                state <= stalled;
-              end if;
-            when skip_ge  =>
-              if T(31)='0' then
-                state <= stalled;
-              end if;
+            when o"21" => new_T <= '1';             T_src <= "0001";    -- rp
+                          immdata <= resize(unsigned(RP), 26);
+            when o"22" => p_rdrop;  p_sdup;  RPinc <= '0';              -- r@
+                          new_T <= '1';  T_src <= "0110";
+            when o"23" => p_sdrop;       new_T <= '1';  T_src <= "0010";-- and
+            when o"24" => new_T <= '1';  T_src <= "1010";               -- 2/
+            when o"25" => state <= changed;  PC_src <= PC_imm;          -- jmp
+            when o"26" => p_sdup;  RD_size <= "10";  state <= fetch;    -- w@+
+                          new_N <= '1';  N_src <= "11";  Noffset <= "010";
+            when o"31" => new_T <= '1';             T_src <= "0001";    -- sp
+                          immdata <= resize(unsigned(SP), 26);
+            when o"33" => p_sdrop;       new_T <= '1';  T_src <= "0011";-- xor
+            when o"34" => new_T <= '1'; T_src <= "1010"; carryin <= '1';-- u2/
+            when o"35" => state <= changed;  PC_src <= PC_imm;          -- call
+                          p_rdup;   WR_src <= WR_PC;
+            when o"36" => RD_size <= "10";  state <= fetch;             -- w@
+            when o"37" => p_sdrop;  new_T <= '1';                    	-- >r
+                          p_rdup;   WR_src <= WR_T;  -- N=mem[SP++]; T=N; mem[--RP]=T;
+            when o"40" => rept <= rept_nc;  new_N <= '1'; N_src <= "10";-- reptc
+            when o"43" => p_sdrop;  new_T <= '1';  T_src <= "0100";     -- c+
+                          carryin <= '1';
+            when o"44" => new_T <= '1';  T_src <= "1001";               -- 0<
+            when o"45" => new_T <= '1';  T_src <= "1100";  state <= stalled; -- litx
+            when o"46" => p_sdup;  RD_size <= "00";  state <= fetch;    -- @+
+                          new_N <= '1';  N_src <= "11";  Noffset <= "100";
+            when o"50" => rept <= rept_n;  new_N <= '1';  N_src <= "10";-- -rept
+            when o"51" => new_T <= '1';  T_src <= "0001";               -- up
+                          immdata <= resize(unsigned(UP), 26);
+            when o"54" => new_T <= '1';  T_src <= "0101";               -- 0=
+            ---- o"55" => state <= stalled;							    -- @as
+            when o"56" => RD_size <= "00";  state <= fetch;             -- @
+            when o"57" => p_sdrop;  RPload <= '1'; 		                -- rp!
+            when o"60" => skip <= skip_ge;                              -- -if:
+            when o"64" => new_T <= '1';  T_src <= "1110";               -- invert
+            ---- o"65" => state <= stalled;								-- !as
+            when o"66" => RD_size <= "01";  state <= fetch;             -- c@
+            when o"67" => p_sdrop;  SPload <= '1'; 		                -- sp!
+            when o"70" => skip <= skip_nc;                              -- ifc:
+            when o"71" => p_sdup;   new_T <= '1';                       -- over
+            when o"72" => p_sdrop;  new_T <= '1';  skip <= skip_if;     -- ifz:
+            when o"73" => p_sdrop;  new_T <= '1';                       -- drop
+            when o"74" => new_N <= '1';  new_T <= '1';                  -- swap
+            when o"75" => state <= stalled;  p_sdup;                    -- lit
+                          new_T <= '1';  T_src <= "0111";
+            when o"77" => p_sdrop;  UPload <= '1'; 		                -- up!
             when others => null;
             end case;
           end if;
@@ -593,22 +552,26 @@ begin
   end if;
 end process main;
 
-process(skip, T, CARRY) is
+process(skip, T, CARRY) is -- skips don't decode the current opcode
 begin
   skipping <= '0';
   case skip is                                  -- conditional skips
-  when skip_if  =>
+  when skip_if =>
     if T /= x"00000000" then
       skipping <= '1';
     end if;
-  when skip_nc  =>
-    if CARRY='0' then
-      skipping <= '1';
-    end if;
-  when skip_ge  =>
-    if T(31)='0' then
-      skipping <= '1';
-    end if;
+  when skip_nc => skipping <= not CARRY;
+  when skip_ge => skipping <= not T(31);
+  when others => null;
+  end case;
+end process;
+
+process(rept, N, CARRY) is -- repeats don't decode the current opcode
+begin
+  repeating <= '0';
+  case rept is
+  when rept_n  => repeating <= N(16);
+  when rept_nc => repeating <= not CARRY;
   when others => null;
   end case;
 end process;
@@ -617,7 +580,9 @@ end process;
 zeroequals <= x"FFFFFFFF" when T=to_unsigned(0,32) else x"00000000";
 TNsum <= ('0' & T & (carryin and CARRY)) + ('0' & N & '1');
 ereq <= ereq_i;
-row <= opcode(5 downto 3);
+
+held <= opcode(1) and RAM_we when WR_src = WR_none
+   else opcode(1);
 
 spram: spram32
 GENERIC MAP (Size => RAMsize)
@@ -626,5 +591,66 @@ PORT MAP (
   en => RAM_en,  we => RAM_we,  addr => RAM_addr,
   data_i => RAM_d,  lanes => RAMlanes,  data_o => RAM_q
 );
+
+process(opcode, state, held) begin
+  if (state = execute) and (held = '0') then
+    case opcode is
+    when "000000" => name <= ".    ";
+    when "000001" => name <= "dup  ";
+    when "000010" => name <= "exit ";
+    when "000011" => name <= "+    ";
+    when "000100" => name <= "2*   ";
+    when "000101" => name <= "port ";
+    when "001000" => name <= "no:  ";
+    when "001001" => name <= "1+   ";
+    when "001010" => name <= "r>   ";
+    when "001100" => name <= "2*c  ";
+    when "001101" => name <= "user ";
+    when "001110" => name <= "c@+  ";
+    when "001111" => name <= "c!+  ";
+    when "010001" => name <= "rp   ";
+    when "010010" => name <= "r@   ";
+    when "010011" => name <= "and  ";
+    when "010100" => name <= "2/   ";
+    when "010101" => name <= "jmp  ";
+    when "010110" => name <= "w@+  ";
+    when "010111" => name <= "w!+  ";
+    when "011001" => name <= "sp   ";
+    when "011011" => name <= "xor  ";
+    when "011100" => name <= "u2/  ";
+    when "011101" => name <= "call ";
+    when "011110" => name <= "w@   ";
+    when "011111" => name <= ">r   ";
+    when "100000" => name <= "reptc";
+    when "100001" => name <= "4+   ";
+    when "100011" => name <= "c+   ";
+    when "100100" => name <= "0=   ";
+    when "100101" => name <= "litx ";
+    when "100110" => name <= "@+   ";
+    when "100111" => name <= "!+   ";
+    when "101000" => name <= "-rept";
+    when "101001" => name <= "up   ";
+    when "101100" => name <= "0<   ";
+    when "101101" => name <= "@as  ";
+    when "101110" => name <= "@    ";
+    when "101111" => name <= "rp!  ";
+    when "110000" => name <= "-if: ";
+    when "110100" => name <= "com  ";
+    when "110101" => name <= "!as  ";
+    when "110110" => name <= "c@   ";
+    when "110111" => name <= "sp!  ";
+    when "111000" => name <= "ifc: ";
+    when "111001" => name <= "over ";
+    when "111010" => name <= "ifz: ";
+    when "111011" => name <= "drop ";
+    when "111100" => name <= "swap ";
+    when "111101" => name <= "lit  ";
+    when "111111" => name <= "up!  ";
+    when others   => name <= "?????";
+    end case;
+  else
+    name <= "-----";
+  end if;
+end process;
 
 END RTL;

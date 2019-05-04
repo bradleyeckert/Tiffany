@@ -19,13 +19,13 @@ static void FlushLit (void);            // forward reference
 uint32_t OpcodeCount[64];               // static instruction count
 
 static char names[64][6] = {
-    ".",     "dup",  "exit",  "+",    "2*",   "port", "?",   "?",
+    ".",     "dup",  "exit",  "+",    "2*",   "?",    "?",   "?",
     "_",     "1+",   "r>",    "?",    "2*c",  "user", "c@+", "c!+",
     "?",     "rp",   "r@",    "and",  "2/",   "jmp",  "w@+", "w!+",
     "?",     "sp",   "?",     "xor",  "u2/",  "call", "w@",  ">r",
     "reptc", "4+",   "?",     "c+",   "0=",   "litx", "@+",  "!+",
     "-rept", "up",   "?",     "?",    "0<",   "@as",  "@",   "rp!",
-    "-if:",  "?",    "?",     "?",    "com",  "!as",  "c@",  "sp!",
+    "-if:",  "port", "?",     "?",    "com",  "!as",  "c@",  "sp!",
     "ifc:",  "over", "ifz:",  "drop", "swap", "lit",  "?",   "up!"
 };
 

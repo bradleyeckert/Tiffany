@@ -25,33 +25,40 @@ ARCHITECTURE RTL OF SPRAM32 IS
   type memtype is array (0 to 2**Size-1) of std_logic_vector(7 downto 0);
   signal lane0, lane1, lane2, lane3: memtype;
 
-  -- RAM early-read cache
-  signal er_addr:       std_logic_vector(Size-1 downto 0);
-  signal er_data:       std_logic_vector(31 downto 0);
+  -- RAM read-through cache
+  signal rt_addr:       std_logic_vector(Size-1 downto 0);
+  signal rt_data:       std_logic_vector(31 downto 0);
   signal rddata:        std_logic_vector(31 downto 0);
+  signal early:         std_logic;
 
 ---------------------------------------------------------------------------------
 BEGIN
 
--- RAM early read: If reading from an address just written, use the cached value.
+-- RAM read-through: If reading from an address just written, use the cached value.
 -- Simulates read-through, which some Block RAM doesn't support.
--- Any write clears indeterminate cache.
 
 earlyrd: process(clk)
 begin
   if (rising_edge(clk)) then
     if (reset='1') then
-      er_addr <= (others=>'0');
-      er_data <= (others=>'0');
+      rt_addr <= (others=>'1');
+      rt_data <= (others=>'0');
+      early <= '0';
     elsif (en = '1') and (we = '1') then
-      er_addr <= addr;
-      er_data <= data_i;
+      rt_addr <= addr;
+      rt_data <= data_i;
+    end if;
+    if (en = '1') and (we = '0') and (addr = rt_addr) then
+      early <= '1';
+    else
+      early <= '0';
     end if;
   end if;
 end process earlyrd;
 
-data_o <= er_data when (addr = er_addr) else rddata;
+data_o <= rt_data when early = '1' else rddata;
 
+-- read or write, not both at the same time
 
 mem_proc: process(clk)
 begin

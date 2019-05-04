@@ -3,6 +3,7 @@
 cp @  idata,
 equ IdataTable        					\ compile idata table to ROM
 
+
 hex
 : initialize                            \ ? -- | R: ? a --
     [ status ] literal                  \ start of RAM
