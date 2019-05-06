@@ -4,7 +4,7 @@ cp @  idata,
 equ IdataTable        					\ compile idata table to ROM
 
 
-\ hex
+hex
 : initialize                            \ ? -- | R: ? a --
     [ status ] literal                  \ start of RAM
     dup negate                          \ status to FFFFFFFF
@@ -20,7 +20,6 @@ equ IdataTable        					\ compile idata table to ROM
 	[ sp0 @ ]     literal sp!           \ empty data stack
 	[ rp0 @ 4 - ] literal rp!           \ empty return stack
 	hld @ >r
-	[ hex ]
     10000  cp !                         \ a place to put new code
     18000  hp !                         \ a place to put new headers
 ; call-only

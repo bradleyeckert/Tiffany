@@ -121,8 +121,6 @@ Slot 5 only fits 4 opcodes. Immediate data is registered, so there is time to si
 Immediate data is taken from the remainder of the IR. IMM = IR[?:1]; IR[0]: sign of data, 1s complement if '1'.
 The number of bits depends on the slot position or the opcode. It can be 26, 20, 14, 8, or 2 bits.
 
-ALU operations take their operands from registers for minimum input delay. Since the RAM is synchronous read/write, the opcode must be pre-decoded. The pre-decoder initiates reads. The main decoder has a registered opcode to work with, so the decode delay isn’t so bad. The pre-read stage of the pipeline allows time for immediate data to be registered, so the execute stage sees no delay. Opcodes have time to add the immediate data to registers, for more complex operations. One can index into the stack, for example.
-
 ### Opcodes
 
 There are a few rules regarding opcode numbering. They are:

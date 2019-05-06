@@ -406,6 +406,12 @@ static void iword_EQU (void) {
     CommaHeader(name, ~0, ~1, 0, 0);
 }
 
+static void AlignDP (int bytes) {       // force DP alignment
+    uint32_t dp = FetchCell(DP);
+    dp = (dp + bytes - 1) & (-bytes);   // all C targets are 2s complement
+    StoreCell(dp, DP);
+}
+
 static void iword_BUFFER (void) {       // allot space in data space
     FollowingToken(name, 32);
     uint32_t dp = FetchCell(DP);
@@ -417,8 +423,16 @@ static void iword_BUFFER (void) {       // allot space in data space
     CommaH(dp);
     CommaHeader(name, ~0, ~1, 0, 0);
 }
-static void iword_VAR (void) {
-    PushNum(4);
+static void iword_VAR (void) {          // cell variable
+    PushNum(4);  AlignDP(4);
+    iword_BUFFER();
+}
+static void iword_VARH (void) {         // halfword variable
+    PushNum(2);  AlignDP(2);
+    iword_BUFFER();
+}
+static void iword_VARC (void) {         // byte variable
+    PushNum(1);
     iword_BUFFER();
 }
 
@@ -836,6 +850,8 @@ static void LoadKeywords(void) {        // populate the list of gator brain func
     AddKeyword("equ",           iword_EQU);
     AddKeyword("constant",      iword_EQU);     // non-tickable constant
     AddKeyword("variable",      iword_VAR);     // non-tickable variable
+    AddKeyword("wvariable",     iword_VARH);
+    AddKeyword("cvariable",     iword_VARC);
 
     AddKeyword("words",         iword_WORDS);
     AddKeyword("xwords",        iword_XWORDS);
@@ -898,6 +914,19 @@ static void LoadKeywords(void) {        // populate the list of gator brain func
     AddEquate ("RAMsize",       RAMsize*4);
     AddEquate ("ROMsize",       ROMsize*4);
     AddEquate ("SPIflashBlocks", SPIflashBlocks);
+
+    // even are reads, odd are writes (or write-reads)
+    AddEquate ("fn#qkey",      0x00000); // ( -- u )
+    AddEquate ("fn#emit",      0x10000); // ( c -- )
+    AddEquate ("fn#key",       0x20000); // ( -- c )
+    AddEquate ("fn#spixfer",   0x30000); // ( n -- c )
+    AddEquate ("fn#keyformat", 0x40000); // ( -- u )
+    AddEquate ("fn#spirate",   0x50000); // ( u -- )
+    AddEquate ("fn#qemit",     0x60000); // ( -- u )
+    AddEquate ("fn#uartrate",  0x70000); // ( u -- )
+    AddEquate ("fn#uarterror", 0x80000); // ( -- u )
+    AddEquate ("fn#bbin",      0x90000); // ( a -- u )
+    AddEquate ("fn#bbout",     0xB0000); // ( a|n -- u )
 
     // CPU opcode names
     AddEquate ("op_dup",   opDUP);

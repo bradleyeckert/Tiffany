@@ -1,13 +1,13 @@
-\ SPI flash access through `5 user`.
+\ SPI flash access through user function.
 
-\ In Tiff, a SPI flash chip is simulated in tiffUser.c.
+\ In mf, a SPI flash chip is simulated in flash.c.
 \ Real hardware will have an actual SPI flash chip that uses the same commands.
 \ This code must run in internal ROM:.
 \ It also trashes HLD, so you don't want to compile or write to flash in the
 \ middle of numeric output. But that would be weird.
 
 : SPIxfer     \ command -- result
-   5 user                               \ Flash, a-ah, king of the impossible
+   fn#spixfer io11                      \ Flash, a-ah, king of the impossible
 ;
 
 : SPIaddr  \ addr command final --      \ initiate a command with 24-bit address

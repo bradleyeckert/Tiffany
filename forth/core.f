@@ -247,7 +247,7 @@
 ;
 : */mod  >r m* r> m/mod ;               \ 6.1.0110  n1 n2 n3 -- remainder n1*n2/n3
 : */     */mod swap drop ;              \ 6.1.0100  n1 n2 n3 -- n1*n2/n3
-: bye    6 user begin again ;           \ 15.6.2.0830  exit to OS if there is one
+: bye    1 user begin again ;           \ 15.6.2.0830  exit to OS if there is one
 
 hex
 : crc32  \ c-addr u -- crc              \ CRC32 of string, about 160 cycles per byte

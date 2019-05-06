@@ -4,6 +4,8 @@ use ieee.std_logic_arith.all;
 use ieee.std_logic_unsigned.all;
 USE ieee.numeric_std.ALL;
 
+-- kind of a lousy testbench. somebody please improve.
+
 ENTITY uart_tb IS
 END uart_tb;
 

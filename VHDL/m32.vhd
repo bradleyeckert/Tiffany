@@ -16,17 +16,14 @@ port (
   caddr	  : out std_logic_vector(25 downto 0);		-- Flash memory address
   cready  : in	std_logic;							-- Flash memory data ready
   cdata	  : in	std_logic_vector(31 downto 0);		-- Flash memory read data
-  -- Bit-banged I/O
-  bbout	  : out std_logic_vector(7 downto 0);
-  bbin	  : in	std_logic_vector(7 downto 0);
-  -- Stream in
-  kreq	  : in	std_logic;							-- KEY request
-  kdata_i : in	std_logic_vector(7 downto 0);
-  kack	  : out std_logic;							-- KEY is finished
-  -- Stream out
-  ereq	  : out std_logic;							-- EMIT request
-  edata_o : out std_logic_vector(7 downto 0);
-  eack	  : in	std_logic;							-- EMIT is finished
+  -- DPB: Dumb Peripheral Bus, compare to APB (Advanced Peripheral Bus)
+  paddr   : out	std_logic_vector(8 downto 0);       -- address
+  pwrite  : out std_logic;							-- write strobe
+  psel    : out std_logic;							-- start the cycle
+  penable : out std_logic;							-- delayed psel
+  pwdata  : out std_logic_vector(15 downto 0);      -- write data
+  prdata  : in  std_logic_vector(15 downto 0);      -- read data
+  pready  : in  std_logic;							-- ready to continue
   -- Powerdown
   bye	  : out std_logic							-- BYE encountered
 );
@@ -74,7 +71,8 @@ END COMPONENT;
   signal CARRY:			std_logic;
   signal slot:			integer range 0 to 7;
 
-  type	 state_t is (changed, stalled, execute, fetch, fetchc, fetchd, fetchsm, userinit, user);
+  type	 state_t is (changed, stalled, execute, fetch, fetchc, fetchd, fetchsm,
+                     userinit, user, pwait);
   signal state: state_t;
 
   type	 skip_t is (skip_none, skip_nc, skip_ge, skip_if);
@@ -113,7 +111,6 @@ END COMPONENT;
   signal userFNsel:		unsigned(3 downto 0);		-- user function select
   signal cycles:		unsigned(35 downto 0);		-- 16-cycle resolution counter
   -- 2^36/100M = 687 seconds (10 minutes)
-  signal ereq_i:		std_logic;
   signal held:			std_logic;
 
 -- read and writes share access to single-port RAM
@@ -217,21 +214,19 @@ begin
 	  RAM_we <= '0';				userdata <= x"00000000";   PC_src <= PC_inc;
 	  new_T <= '0';	 T_src <= x"0";	 immdata <= x"00000000";
 	  new_N <= '0';	 N_src <= "00";	 Noffset <= "000";	  Port_src <= Port_none;
-	  kack <= '0';	ereq_i <= '0';	 edata_o <= x"00";	bye <= '0';
+	  bye <= '0';
 	  -- stack post-inc/dec strobes
 	  RPinc <= '0';	 RPload <= '0';	 WR_dest <= WR_miSP;
 	  SPinc <= '0';	 SPload <= '0';	 UPload <= '0';
 	  -- read/write control
 	  WR_src <= WR_none;
-	  WR_size <= "00";	bbout <= x"00";
+	  WR_size <= "00";
 	  RD_size <= "00";	RD_align <= "00";  userFNsel <= x"0";
-	  skip <= skip_none;  rept <= rept_none;
+	  skip <= skip_none;  rept <= rept_none;         paddr <= (others=>'0');
+      pwrite <= '0';  psel <= '0';  penable <= '0';  pwdata <= x"0000";
 	else
 --------------------------------------------------------------------------------
 	  cycles <= cycles + 1;
-	  if eack = '1' then
-		ereq_i <= '0';
-	  end if;
 -- execution pipeline stage
 -- T: 16:1 mux
 	  if new_T = '1' then
@@ -411,24 +406,25 @@ begin
 		state <= user;	userFNsel <= immdata(3 downto 0);
 	  when user =>								-- calculate userdata
 		new_T <= '1';  T_src <= "1011";	 userdata <= x"00000000";
-		state <= stalled;  kack <= '0';			-- default is single-cycle operation
+		state <= stalled;           			-- default is single-cycle operation
 		case userFNsel is
-		when "0000" => userdata(0) <= kreq;								-- vmQkey
-		when "0001" => userdata(7 downto 0) <= unsigned(kdata_i);		-- vmKey
-		  kack <= '1';
-		when "0010" => edata_o <= std_logic_vector(T(7 downto 0));		-- vmEmit
-		  ereq_i <= '1';
-		when "0011" => userdata(0) <= not ereq_i;						-- vmQemit
-		when "0100" => userdata <= cycles(35 downto 4);					-- Counter
-		when "0101" =>							 -- bit-bang version of SPIflashXfer
-		  userdata(0) <= bbin(to_integer(T(2 downto 0)));				-- read bbin
-		  if T(3) = '1' then
-			bbout(to_integer(T(2 downto 0))) <= N(0);					-- write bbout
-		  end if;
-		when "0110" => bye <= '1';
-		when "0111" => userdata(2 downto 0) <= "101";
+		when "0000" => pwrite <= T(16);		    -- peripheral bus
+              paddr <= std_logic_vector(T(25 downto 17));  psel <= '1';
+              if T(16) = '1' then
+                pwdata <= std_logic_vector(T(15 downto 0));
+              end if;  state <= pwait;          -- bus cycle instead
+              new_T <= '0';
+		when "0001" => bye <= '1';
+		when "0010" => userdata <= cycles(35 downto 4);	-- Counter
 		when others => null;
 		end case;
+      when pwait =>
+        penable <= '1';
+        if pready = '1' then                    -- cycle is finished
+          penable <= '1';  psel <= '0';
+          new_T <= '1';  T_src <= "1011";  state <= stalled;
+          userdata <= unsigned(x"0000" & prdata);
+        end if;
 	  when execute =>
 --------------------------------------------------------------------------------
 -- decoding pipeline stage
@@ -585,7 +581,6 @@ end process;
 
 zeroequals <= x"FFFFFFFF" when T=to_unsigned(0,32) else x"00000000";
 TNsum <= ('0' & T & (carryin and CARRY)) + ('0' & N & '1');
-ereq <= ereq_i;
 
 held <= opcode(1) and RAM_we when WR_src = WR_none
    else opcode(1);

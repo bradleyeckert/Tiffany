@@ -1,8 +1,8 @@
 : counter       \ -- timer
-   dup 4 user
+   dup 2 user
 ;
 : ms            \ ms --
-   10 * counter +
+   33 * counter +
    begin pause
       dup counter <
    until drop

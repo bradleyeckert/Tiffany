@@ -1,9 +1,18 @@
 \ Numeric conversion and text I/O
 
-\ EMIT pauses for the task loop. User functions 2 and 3 are for text output.
+: io11  ( n1 fn -- n2 )
+   swap 65535 and +                     \ fn format is 0xN0000
+   0 user
+;
+\ "fn 0 user" = ( fn -- n )
+: io10  ( n fn -- )
+   io11  drop
+;
+
+\ EMIT pauses for the task loop.
 : term_emit                             \ xchar --
-   begin pause dup 3 user until         \ wait until emit is ready
-   2 user  drop                         \ send it
+   begin  pause  fn#qemit 0 user  until \ wait until emit is ready
+   fn#emit io10                         \ send it
 ;
 defer type
 
@@ -17,9 +26,9 @@ cp @  4 c, 27 c, char [ c, char 2 c, char J c,  equ string_pg  \ VT100 CLS
 cp @ aligned cp !
 : term_cr    string_cr $type ;          \ --
 : term_page  string_pg $type ;          \ --
-: term_key?  dup 0 user  pause ;        \ -- flag
+: term_key?  fn#qkey  0 user  pause ;   \ -- flag
 : term_key   begin term_key? until
-			 dup 1 user ;               \ -- char
+			 fn#key   0 user ;          \ -- char
 
 \ `personality` is an execution table for I/O.
 \ The default personality is the following table in ROM:

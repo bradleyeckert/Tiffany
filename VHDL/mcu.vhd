@@ -2,31 +2,29 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
--- MCU
--- probably want put Wishbone bus on M32 user I/O
+-- A synthesizable MCU
+-- ROMsize probably doesn't matter: excess '0's in ROM will be pruned.
 
 ENTITY MCU IS
 generic (
-  ROMsize:  integer := 13                       	-- log2 (ROM cells) 2^13 = 32 KB
+  ROMsize:  integer := 13;                      	-- log2 (ROM cells) 2^13 = 32 KB
+  clk_Hz:   integer := 100000000                    -- default clk in Hz
 );
 port (
   clk	  : in	std_logic;							-- System clock
   reset	  : in	std_logic;							-- Active high, synchronous reset
-  -- Bit-banged I/O
-  bbout	  : out std_logic_vector(7 downto 0);
-  bbin	  : in	std_logic_vector(7 downto 0);
+  bye	  : out	std_logic;							-- BYE encountered
   -- UART
   rxd	  : in	std_logic;
-  txd	  : out std_logic 
+  txd	  : out std_logic
 );
 END MCU;
 
-
 ARCHITECTURE RTL OF MCU IS
 
-COMPONENT M32
+component m32
 generic (
-  RAMsize:	integer := 10							-- log2 (RAM cells)
+  RAMsize:  integer := 10                           -- log2 (RAM cells)
 );
 port (
   clk	  : in	std_logic;							-- System clock
@@ -35,36 +33,66 @@ port (
   caddr	  : out std_logic_vector(25 downto 0);		-- Flash memory address
   cready  : in	std_logic;							-- Flash memory data ready
   cdata	  : in	std_logic_vector(31 downto 0);		-- Flash memory read data
-  -- Bit-banged I/O
-  bbout	  : out std_logic_vector(7 downto 0);
-  bbin	  : in	std_logic_vector(7 downto 0);
-  -- Stream in
-  kreq	  : in	std_logic;							-- KEY request
-  kdata_i : in	std_logic_vector(7 downto 0);
-  kack	  : out std_logic;							-- KEY is finished
-  -- Stream out
-  ereq	  : out std_logic;							-- EMIT request
-  edata_o : out std_logic_vector(7 downto 0);
-  eack	  : in	std_logic;							-- EMIT is finished
+  -- DPB: Dumb Peripheral Bus, compare to APB (Advanced Peripheral Bus)
+  paddr   : out	std_logic_vector(8 downto 0);       -- address
+  pwrite  : out std_logic;							-- write strobe
+  psel    : out std_logic;							-- start the cycle
+  penable : out std_logic;							-- delayed psel
+  pwdata  : out std_logic_vector(15 downto 0);      -- write data
+  prdata  : in  std_logic_vector(15 downto 0);      -- read data
+  pready  : in  std_logic;							-- ready to continue
   -- Powerdown
-  bye	  : out std_logic							-- BYE encountered
+  bye     : out std_logic                           -- BYE encountered
 );
-END COMPONENT;
+end component;
+
+component rom32
+generic (
+  Size:  integer := 10                              -- log2 (cells)
+);
+port (
+  clk:    in  std_logic;                            -- System clock
+  addr:   in  std_logic_vector(Size-1 downto 0);
+  data_o: out std_logic_vector(31 downto 0)         -- read data
+);
+end component;
 
   signal now_addr:  std_logic_vector(25 downto 0) := (others=>'1');
-  signal bye:       std_logic;
 
   signal cready:    std_logic := '0';
   signal caddr:     std_logic_vector(25 downto 0);
   signal cdata:     std_logic_vector(31 downto 0);
 
-  signal kreq:      std_logic := '0';
-  signal kack:      std_logic;
-  signal kdata_i:   std_logic_vector(7 downto 0) := x"27";
+  signal paddr:     std_logic_vector(8 downto 0);
+  signal pwrite:    std_logic;
+  signal psel:      std_logic;
+  signal penable:   std_logic;
+  signal pwdata:    std_logic_vector(15 downto 0);
+  signal prdata:    std_logic_vector(15 downto 0);
+  signal pready:    std_logic;
 
-  signal ereq:      std_logic;
-  signal eack:      std_logic := '0';
-  signal edata_o:   std_logic_vector(7 downto 0);
+  signal keyready:  std_logic;
+  signal emitready: std_logic;
+  signal emit_stb:  std_logic;
+  signal key_stb:   std_logic;
+  signal keydata:   std_logic_vector(7 downto 0);
+  signal bitperiod: std_logic_vector(15 downto 0);
+
+component UART
+  port(
+    clk:       in std_logic;                    	-- CPU clock
+    reset:     in std_logic;                    	-- sync reset
+    ready:    out std_logic;                    	-- Ready for next byte to send
+    wstb:      in std_logic;                    	-- Send strobe
+    wdata:     in std_logic_vector(7 downto 0); 	-- Data to send
+    rxfull:   out std_logic;                    	-- RX buffer is full, okay to accept
+    rstb:      in std_logic;                    	-- Accept RX byte
+    rdata:    out std_logic_vector(7 downto 0); 	-- Received data
+    bitperiod: in std_logic_vector(15 downto 0);	-- Clocks per serial bit
+    rxd:       in std_logic;
+    txd:      out std_logic
+  );
+end component;
 
 ---------------------------------------------------------------------------------
 BEGIN
@@ -73,6 +101,7 @@ main: process (clk) is
 begin
   if (rising_edge(clk)) then
 	if (reset='1') then
+
 	else
 	end if;
   end if;
@@ -83,15 +112,22 @@ GENERIC MAP ( RAMsize => 10 )
 PORT MAP (
   clk => clk,  reset => reset,  bye => bye,
   caddr => caddr,  cready => cready,  cdata => cdata,
-  bbout => bbout,  bbin => bbin,
-  kreq => kreq,  kdata_i => kdata_i,  kack => kack,
-  ereq => ereq,  edata_o => edata_o,  eack => eack
+  paddr => paddr,  pwrite => pwrite,  psel => psel,  penable => penable,
+  pwdata => pwdata,  prdata => prdata,  pready => pready
 );
 
 rom: rom32
 GENERIC MAP ( Size => ROMsize )
 PORT MAP (
   clk => clk,  addr => caddr(ROMsize-1 downto 0),  data_o => cdata
+);
+
+urt: uart
+PORT MAP (
+  clk => clk,  reset => reset,
+  ready => emitready,  wstb => emit_stb,  wdata => pwdata(7 downto 0),
+  rxfull => keyready,  rstb => key_stb,   rdata => keydata,
+  bitperiod => bitperiod,  rxd => rxd,  txd => txd
 );
 
 cready <= '1' when caddr = now_addr else '0';
@@ -107,5 +143,42 @@ begin
     end if;
   end if;
 end process rom_process;
+
+-- decode the DPB
+DPB_process: process (clk) is
+begin
+  if rising_edge(clk) then
+    if reset='1' then
+      emit_stb <= '0';
+      key_stb <= '0';
+      bitperiod <= std_logic_vector(to_unsigned(clk_Hz/115200, 16));
+    else
+      emit_stb <= '0';
+      key_stb <= '0';
+      pready <= psel;                   -- usual case: no wait states
+      if (psel='1') and (pready='0') then
+        case paddr(3 downto 0) is
+        when "0000" =>                  -- R=qkey, W=emit
+          prdata <= "000000000000000" & keyready;
+          emit_stb <= pwrite;
+        when "0001" =>                  -- R=key, W=spixfer
+          if pwrite='0' then
+            prdata <= x"00" & keydata;
+            key_stb <= '1';
+          end if;
+        when "0010" =>                  -- R=keyformat, W=spirate
+          prdata <= x"0001";
+        when "0011" =>                  -- R=qemit, W=uartrate
+          prdata <= "000000000000000" & emitready;
+          if pwrite='1' then
+            bitperiod <= pwdata;
+          end if;
+        when others =>
+          prdata <= x"0000";
+        end case;
+      end if;
+    end if;
+  end if;
+end process DPB_process;
 
 END RTL;

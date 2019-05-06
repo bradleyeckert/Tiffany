@@ -74,11 +74,15 @@ include ../../forth/double.f		    \ double math
 		 THEN
 	DROP 1 ;
 
+: toms  \ count -- ms*10                \ multiply by 0.32768
+   [ 0 32768 100000 um/mod nip ] literal
+   um* nip
+;
 : bench  \ --                           \ benchmark
 	counter >r
 	30  fib drop \ note run-time limit in Mforth. Use cold.
 	." 30 fib executes in "
-	counter r> - 0 <# # [char] . hold #s #> type ."  msec "
+	counter r> - toms  0 <# # [char] . hold #s #> type ."  msec "
 ;
 
 : ff1d  \ d -- d' shift                 \ normalize a 64-bit mantissa, dropping the MSB
