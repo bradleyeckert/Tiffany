@@ -116,10 +116,14 @@ The use of C to leverage MCU development flows and libraries.
 
 A C console application provides a minimal Forth that has a built-in VM model for executing code.
 This VM model simulates the instruction set of the FPGA or other versions of the CPU so that
-if a full Forth system is built up in that environment, a text file in C, assembly, Verilog, or VHDL
+if a full Forth system can be built up in that environment, a text file in C, assembly, Verilog, or VHDL
 can be generated to provide the same system on embedded hardware.
 This is simpler than traditional cross complation because the host runs target code at compile time.
 Code that's binary compatible with the target can be tested on the desktop.
+
+The VHDL folder contains a Forth processor that runs in ModelSIM. You can run the examples.
+With a little modification, the "hello world" example could be made fully synthesizable. 
+RAMs and ROMs will be inferred with FPGA tools. No need for anything vendor specific.  
 
 ## What's programming in Mforth like?
 

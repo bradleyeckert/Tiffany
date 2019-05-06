@@ -9,8 +9,7 @@ use STD.textio.all;
 
 ENTITY m32_tb IS
 generic (
-  features: std_logic_vector(3 downto 0) := "0000"; -- feature set
-  ROMsize:  integer := 12                       -- log2 (ROM cells)
+  ROMsize:  integer := 13                       -- log2 (ROM cells) 2^13 = 32 KB
 );
 END m32_tb;
 
@@ -117,60 +116,52 @@ end process clk_process;
 emit_process: process is
 file outfile: text;
 variable f_status: FILE_OPEN_STATUS;
-variable buf_out: LINE; -- buffers between the program and file
+variable buf_out: LINE; -- EMIT fills, CR dumps
 begin
   file_open(f_status, outfile, "STD_OUTPUT", write_mode);
   while bye /= '1' loop
     wait until rising_edge(clk);
-    if ereq = '1' then
-      write (buf_out, character'val(to_integer(unsigned(edata_o))));
-      writeline (output, buf_out);
+    if (ereq = '1') and (eack = '0') then
+	  case edata_o is
+	  when x"0A" => writeline (output, buf_out); 	-- LF
+	  when others =>
+	    if edata_o(7 downto 5) /= "000" then
+          write (buf_out, character'val(to_integer(unsigned(edata_o))));
+	    end if;
+	  end case;
       eack <= '1';
     else
       eack <= '0';
-    end if;
-  end loop;
-  assert bye /= '1' report "BYE encountered" severity error;
+    end if;  end loop;
+  report "BYE encountered" severity failure;
   wait;
 end process emit_process;
 
--- KEY stream generation uses cooked input from console
-
-key_process: process is
-file infile: text;
-variable f_status: FILE_OPEN_STATUS;
-variable buf_in: LINE; -- buffers between the program and file
-variable S : string(1 to 1024);
-variable ptr: integer := 0;
-begin
-  if features(0) = '1' then
-    file_open(f_status, infile, "STD_INPUT", read_mode);
-    while bye /= '1' loop
-      readline(infile, buf_in);
-      assert buf_in'length < S'length;  -- make sure S is big enough
-      ptr := 0;
-      if buf_in'length > 0 then
-        read(buf_in, S(1 to buf_in'length));
-      end if;
-      while ptr < buf_in'length loop
-        wait until rising_edge(clk);
-        kreq <= '1';
-        if kack = '1' then
-          kdata_i <= std_logic_vector(to_unsigned(character'pos(S(ptr)), 8));
-          ptr := ptr + 1;
-          kreq <= '0';
-        end if;
-      end loop;
-    end loop;
-  end if;
-  wait;
-end process key_process;
-
-
 
 main_process: process
+
+procedure KeyChar(c: std_logic_vector(7 downto 0)) is
+begin
+  kdata_i <= c;
+  kreq <= '1';
+  wait until kack = '1';
+  wait for clk_period;
+  kreq <= '0';
+  wait for clk_period;
+end procedure;
+
+procedure Keyboard(S: string) is
+begin
+  for i in 1 to S'length loop
+    KeyChar (std_logic_vector(to_unsigned(character'pos(S(i)), 8)));
+  end loop;
+  KeyChar (x"0D");
+  KeyChar (x"0A");
+end procedure;
+
 begin
   wait for clk_period*2.2;  reset <= '0';
+  Keyboard ("see see");
   wait;
 end process main_process;
 

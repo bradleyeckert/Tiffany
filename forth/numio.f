@@ -45,36 +45,10 @@ equ term_personality               		\ terminal personality
 : key?    3 personality_exec ;          \  check for key
 : key     4 personality_exec ;          \ 6.1.1750  -- c
 
-\ TYPE accepts a UTF8 string where len is the length in bytes.
-\ There could be fewer than len glyphs. EMIT takes a UTF code point.
-
-\ UTF-8 encoding:
-\ 0zzzzzzz                                0000-007F
-\ 110yyyyy 10zzzzzz                       0080-07FF
-\ 1110xxxx 10yyyyyy 10zzzzzz              0800-FFFF
-\ 11110www 10xxxxxx 10yyyyyy 10zzzzzz     over FFFF
-
-: char@u  \ addr len -- addr' len' c    \ get the next byte
-   over >r 1- swap 1+ swap r> c@
-;
-: char@6  \ addr len n -- addr' len' n'
-   6 lshift >r  char@u 63 and  r> +
-;
-: utf8@   \ addr len -- addr' len' utf  \ get next UTF8 character
-   begin char@u dup 192 and 128 = while drop repeat \ 10xxxxxx not supported
-   dup 128 and if
-   dup 32 and if
-   dup 16 and if
-    7 and char@6 char@6 char@6 exit then \ 11110xxx
-   15 and char@6 char@6        exit then \ 1110xxxx
-   31 and char@6               exit then \ 110xxxxx
-                                         \ 0xxxxxxx
-;
-
 :noname \ addr len --                   \ 6.1.2310  send chars
-   begin dup 1- 0< invert while
-      utf8@ emit
-   repeat 2drop
+   dup ifz: 2drop exit | negate
+   begin 1+ >r  count emit  r> +until
+   2drop
 ; is type
 
 : space   bl emit ;                     \ 6.1.2220  --
@@ -85,12 +59,19 @@ equ term_personality               		\ terminal personality
 \ Output is built starting at the end of a fixed `pad` of `|pad|` bytes.
 \ Many Forths use RAM ahead of HERE (RAM scope) for PAD.
 
-: digit   9 over < 7 and + [char] 0 + ;
+: digit   dup -10 + 0< -7 and + [char] 7 + ;
 : <#      [ pad |pad| + ] literal       \ 6.1.0490
           hld ! ;
-: hold    hld @ 1- dup hld ! c! ;       \ 6.1.1670
-: #       0 base @ um/mod >r            \ 6.1.0030
-            base @ um/mod swap digit hold r> ;
+: hold    hld dup >r @ 1- dup r> ! c! ; \ 6.1.1670
+
+: #    \ ud -- ud/base
+    dup  base @ >r  if
+		0 r@ um/mod r> swap             \ 6.1.0030
+          >r um/mod swap digit hold r> exit
+	then  r> um/mod swap digit hold  	\ ud is 32-bit number
+	dup dup xor
+;
+
 : #s      begin # 2dup or 0= until ;    \ 6.1.0050
 : sign    0< if [char] - hold then ;    \ 6.1.2210
 : #>      2drop hld @ [ pad |pad| + ] literal over - ; \ 6.1.0040

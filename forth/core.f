@@ -4,12 +4,12 @@
 -1 equ true                             \ 6.2.2298
 32 equ bl                               \ 6.1.0770
 
-: -             invert 1+ + ; macro     \ replace - opcode
+: -             invert 1+ + ; macro     \ replace "-" opcode
 : !                 !+ drop ; macro     \ 6.1.0010  x addr --
 : c!               c!+ drop ; macro     \ 6.1.0850  c addr --
 : w!               w!+ drop ; macro     \           w addr --
 : +!        dup >r @ + r> ! ;           \ 6.1.0130  x addr --
-: c+!     dup >r c@ + r> c! ;           \           c addr -- addr+1
+: c+!     dup >r c@ + r> c! ;           \           c addr --
 : negate          invert 1+ ; macro     \ 6.1.1910  n -- -n
 : 1-       invert 1+ invert ; macro     \ 6.1.0300  n -- n-1
 : cell- invert cell+ invert ; macro     \           n -- n-4
@@ -99,11 +99,8 @@
    r> invert and >r
 ; call-only
 
-: u<  2dup xor 0<                       \ 6.1.2340  u1 u2 -- flag
-    |ifz - 0< exit |
-    swap drop 0<
-;
-: u> swap u< ;                          \ 6.2.2350  u1 u2 -- flag
+: u<  - 2*c 1 and 1- ;                	\ 6.1.2340  u1 u2 -- flag
+: u>  swap u< ;                         \ 6.2.2350  u1 u2 -- flag
 : < 2dup xor 0<                         \ 6.1.0480  n1 n2 -- flag
     |ifz - 0< exit |
     drop 0<
@@ -192,7 +189,7 @@
     ifnc
         -32  u2/ 2*                     \ clear carry
         begin
-            >r >r  >r 2*c r> 2*c        \ dividend64 | count divisor32
+            >r >r  swap 2*c swap 2*c    \ dividend64 | count divisor32
             ifnc
                 dup r@  - drop          \ test subtraction
                 |ifc r@ - |             \ keep it  (carry is inverted)
@@ -250,7 +247,7 @@
 ;
 : */mod  >r m* r> m/mod ;               \ 6.1.0110  n1 n2 n3 -- remainder n1*n2/n3
 : */     */mod swap drop ;              \ 6.1.0100  n1 n2 n3 -- n1*n2/n3
-: bye    6 user ;                       \ 15.6.2.0830  exit to OS if there is one
+: bye    6 user begin again ;           \ 15.6.2.0830  exit to OS if there is one
 
 hex
 : crc32  \ c-addr u -- crc              \ CRC32 of string, about 160 cycles per byte

@@ -1,6 +1,6 @@
 # MachineForth ISA
 
-The MachineForth paradigm, discovered by the late Jeff Fox,
+The MachineForth paradigm, discovered by Chuck Moore and Jeff Fox,
 is a method for programming Forth stack machines in the most direct way possible,
 by making machine opcodes a part of the high level language.
 The programmer is writing to an actual machine rather than a virtual one.
@@ -26,6 +26,13 @@ Charles Ting's eP32 CPU. Uses 6-bit opcodes packed in a 32-bit word.
 - Design and ISA details are behind a paywall.
 - Has some more powerful instructions to support multiply and divide.
 
+Brad Eckert's SC20. Uses 8-bit opcodes packed into 16-bit, 32-bit, or 48-bit instruction groups.
+I wrote that one in 2010 and ported SwiftForth to it.
+
+- Stacks have small caches to allow conventional Forth multitasking.
+- The ISA has a CISC look and feel. Code is very compact.
+- With the stack cache, simulation of the ISA using C or assembly wasn't fast.
+
 Mforth (this one)
 
 - 26-bit jumps/calls support 256MB apps.
@@ -34,6 +41,9 @@ Mforth (this one)
 - Compatible with VM sandboxes in conventional computers.
 - Not eForth. Supports multiple search orders and wordlists.
 - Designed for arbitrarily large apps residing in and compiling to flash memory.
+- Built around synchronous Block RAM. Which has some minor drawbacks:
+- Keeping stacks in data memory increases power consumption, but FPGAs are power hogs anyway.
+- Synchronous RAM means reads have to be started even earlier so sometimes wait states must be inserted.
 
 ## The Virtual Machine
 
@@ -105,7 +115,7 @@ The ISA uses 6-bit opcodes in a 32-bit instruction group. Opcodes that use immed
 | 2    | 19:14 | 0 to 63 |
 | 3    | 13:8  | 0 to 63 |
 | 4    | 7:2   | 0 to 63 |
-| 5    | 1:0   | 0 to 3 |
+| 5    | 1:0   | 0 to 3  |
 
 Slot 5 only fits 4 opcodes. Immediate data is registered, so there is time to sign it.
 Immediate data is taken from the remainder of the IR. IMM = IR[?:1]; IR[0]: sign of data, 1s complement if '1'.

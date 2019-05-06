@@ -98,33 +98,8 @@ uint32_t vmKeyFormat(uint32_t dummy) {
 #error Unknown OS for console I/O
 #endif
 
-uint32_t vmEmit(uint32_t xchar) {
-    char c[5];
-    if (xchar<0xC0) {
-        c[0] = (char)xchar;
-        c[1]=0;
-    } else {
-        if (xchar<0x800) {
-            c[0] = (char)((xchar>>6) + 0xC0);
-            c[1] = (char)((xchar&63) + 0x80);
-            c[2]=0;
-        } else {
-            if (xchar<0x10000) {
-                c[0] = (char) ((xchar >> 12) + 0xE0);
-                c[1] = (char) (((xchar >> 6) & 63) + 0x80);
-                c[2] = (char) ((xchar & 63) + 0x80);
-                c[3] = 0;
-            } else {
-                c[0] = (char) ((xchar >> 18) + 0xF0);
-                c[1] = (char) (((xchar >> 12) & 63) + 0x80);
-                c[2] = (char) (((xchar >> 6) & 63) + 0x80);
-                c[3] = (char) ((xchar & 63) + 0x80);
-                c[4] = 0;
-            }
-        }
-    }
-    char *s = c;  char b;
-    while ((b = *s++)) putchar(b);
+uint32_t vmEmit(uint32_t c) {
+    putchar(c);
 #ifdef __linux__
     fflush(stdout);
     usleep(1000);

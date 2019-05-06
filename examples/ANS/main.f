@@ -103,6 +103,9 @@ HP @ . .( bytes in ROM, of which ) CP @ . .( is code and ) HP @ hp0 - . .( is he
 make ../../src/vm.c vm.c                \ vm.c is used as a template
 make ../../src/flash.c flash.c          \ flash.c is used as a template
 
+\ Make VHDL ROM file
+make ../../templates/rom.vhd  ../../VHDL/rom32.vhd
+
 \ ------------------------------------------------------------------------------
 
 \ TEST STUFF: The demo doesn't use anything after this...

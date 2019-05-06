@@ -60,7 +60,7 @@
     [char] ) parse type                 \ parse to output
 ;
 : char  \ "char" -- n                   \ 6.1.0895
-   parse-name utf8@  nip nip            \ handle utf8 chars
+   parse-name drop c@
 ;
 
 \ A version of FIND that accepts a counted string and returns a header token.

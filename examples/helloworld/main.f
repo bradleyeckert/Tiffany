@@ -12,7 +12,7 @@ include ../../forth/comma.f             \ smart comma
 
 : main
 	." Hello World!" cr
-	10 0 do i . loop
+	10 0 do i . loop cr
 ;
 
 include ../../forth/end.f               \ finish the app
