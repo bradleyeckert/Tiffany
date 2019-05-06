@@ -6,7 +6,7 @@
 /*
     Console I/O.
 
-    Exports: vmEmit, vmQemit, vmKey, vmQkey, vmKeyFormat
+    Exports: vmEmit, vmKey, vmQkey, vmKeyFormat
         If Linux: RawMode, CookedMode
 
     vmKeyFormat = 0 for Windows, 1 for Linux. The escape sequences are different.
@@ -84,7 +84,7 @@ uint32_t vmKey(uint32_t dummy)
 
 uint32_t vmQkey(uint32_t dummy) {
     Sleep(1);   // don't hog the CPU
-    return _kbhit();
+    return (_kbhit() != 0); // 0 or 1
 }
 
 uint32_t vmKey(uint32_t dummy) {
@@ -105,7 +105,4 @@ uint32_t vmEmit(uint32_t c) {
     usleep(1000);
 #endif
     return 0;
-}
-uint32_t vmQemit(uint32_t dummy) {
-    return 1;           // always ready to emit
 }
