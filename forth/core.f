@@ -110,14 +110,14 @@
 : umove  \ a1 a2 n --                   \ move cells, assume cell aligned
    1- +if
       negate  swap >r swap
-      | @+ r> !+ >r -rept               \ n a1' | a2'
+      | @+ r> !+ >r -rept nop           \ n a1' | a2'
       r> 3drop exit
    then  3drop
 ;
 : cmove  \ a1 a2 n --                   \ 17.6.1.0910
    1- +if
       negate  swap >r swap
-      | c@+ r> c!+ >r -rept             \ n a1' | a2'
+      | c@+ r> c!+ >r -rept nop         \ n a1' | a2'
       r> 3drop exit
    then  3drop
 ;
@@ -140,7 +140,7 @@
    over if
       swap negate                       \ a c -n
       1+ swap >r swap                   \ -n a | c
-      | r@ swap c!+ -rept               \ -n' a' | c
+      | r@ swap c!+ -rept nop           \ -n' a' | c
       r> 3drop exit
    then  3drop
 ;
@@ -156,7 +156,7 @@
    then
    dup dup xor >r   \ more compact "0 >r"
    2/ 2/ negate 1+  swap                ( -n a )
-   | r@ swap !+ -rept
+   | r@ swap !+ -rept nop
    r> 3drop
 ;
 
@@ -166,13 +166,13 @@
 : lshift  \ x count -- x'               \ 6.1.1805
    1- -if: drop exit |
    63 and   negate  swap
-   | 2* -rept swap drop ;
+   | 2* -rept nop swap drop ;
 ;
 
 : rshift  \ x count                     \ 6.1.2162
    1- -if: drop exit |
    63 and   negate  swap
-   | u2/ -rept swap drop ;
+   | u2/ -rept nop swap drop ;
 ;
 
 : um*  \ u1 u2 -- ud                    \ 6.1.2360

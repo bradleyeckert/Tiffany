@@ -194,6 +194,8 @@ Control Flow
 - `-rept` ( n ? -- n' ? ) Go back to slot 0 if N<0; N=N+1.
 - `-if:`  ( n -- n ) Skip remaining slots if T>=0.
 
+Note: `nop` must immediately follow a `-rept` or `reptc`.
+
 Memory
 - `!+`    ( n a -- a+4 ) 32-bit
 - `@+`    ( a -- a+4 n )
