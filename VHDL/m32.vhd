@@ -11,7 +11,7 @@ generic (
 );
 port (
   clk	  : in	std_logic;							-- System clock
-  reset	  : in	std_logic;							-- Active high, synchronous reset
+  reset	  : in	std_logic;							-- Asynchronous reset
   -- Flash word-read
   caddr	  : out std_logic_vector(25 downto 0);		-- Flash memory address
   cready  : in	std_logic;							-- Flash memory data ready
@@ -37,7 +37,7 @@ generic (
 );
 port (
   clk:	  in  std_logic;							-- System clock
-  reset:  in  std_logic;							-- sync reset
+  reset:  in  std_logic;							-- async reset
   en:	  in  std_logic;							-- Memory Enable
   we:	  in  std_logic;							-- Write Enable (0=read, 1=write)
   addr:	  in  std_logic_vector(Size-1 downto 0);
@@ -203,30 +203,29 @@ begin
 end procedure p_sdrop;
 
 begin
-  if (rising_edge(clk)) then
-	if (reset='1') then
-	  RP <= to_unsigned(64, RAMsize);	  PC <= to_unsigned(0, 26);	  slot <= 0;
-	  SP <= to_unsigned(32, RAMsize);	   T <= x"00000000";	 carryin <= '0';
-	  UP <= to_unsigned(64, RAMsize);	   N <= x"00000000";	   CARRY <= '0';
-	  DebugReg <= (others=>'0');	 Tpacked <= x"00000000";   state <= changed;
-	  cycles <= (others=>'0');		   RAM_d <= x"00000000";   RAMlanes <= x"0";
-	  caddr <= (others=>'0');			  IR <= x"00000000"; opcode <= "000000";
-	  RAM_we <= '0';				userdata <= x"00000000";   PC_src <= PC_inc;
-	  new_T <= '0';	 T_src <= x"0";	 immdata <= x"00000000";
-	  new_N <= '0';	 N_src <= "00";	 Noffset <= "000";	  Port_src <= Port_none;
-	  bye <= '0';
-	  -- stack post-inc/dec strobes
-	  RPinc <= '0';	 RPload <= '0';	 WR_dest <= WR_miSP;
-	  SPinc <= '0';	 SPload <= '0';	 UPload <= '0';
-	  -- read/write control
-	  WR_src <= WR_none;
-	  WR_size <= "00";
-	  RD_size <= "00";	RD_align <= "00";  userFNsel <= x"0";
-	  skip <= skip_none;  rept <= rept_none;         paddr <= (others=>'0');
-      pwrite <= '0';  psel <= '0';  penable <= '0';  pwdata <= x"0000";
-	else
+  if (reset='1') then
+	RP <= to_unsigned(64, RAMsize);	  PC <= to_unsigned(0, 26);	  slot <= 0;
+	SP <= to_unsigned(32, RAMsize);	   T <= x"00000000";	 carryin <= '0';
+	UP <= to_unsigned(64, RAMsize);	   N <= x"00000000";	   CARRY <= '0';
+	DebugReg <= (others=>'0');	 Tpacked <= x"00000000";   state <= changed;
+	cycles <= (others=>'0');		   RAM_d <= x"00000000";   RAMlanes <= x"0";
+	caddr <= (others=>'0');			  IR <= x"00000000"; opcode <= "000000";
+	RAM_we <= '0';				userdata <= x"00000000";   PC_src <= PC_inc;
+	new_T <= '0';	 T_src <= x"0";	 immdata <= x"00000000";
+	new_N <= '0';	 N_src <= "00";	 Noffset <= "000";	  Port_src <= Port_none;
+	bye <= '0';
+	-- stack post-inc/dec strobes
+	RPinc <= '0';	 RPload <= '0';	 WR_dest <= WR_miSP;
+	SPinc <= '0';	 SPload <= '0';	 UPload <= '0';
+	-- read/write control
+	WR_src <= WR_none;
+	WR_size <= "00";
+	RD_size <= "00";	RD_align <= "00";  userFNsel <= x"0";
+	skip <= skip_none;  rept <= rept_none;         paddr <= (others=>'0');
+    pwrite <= '0';  psel <= '0';  penable <= '0';  pwdata <= x"0000";
+  elsif (rising_edge(clk)) then
 --------------------------------------------------------------------------------
-	  cycles <= cycles + 1;
+	cycles <= cycles + 1;
 -- execution pipeline stage
 -- T: 16:1 mux
 	  if new_T = '1' then
@@ -479,8 +478,7 @@ begin
 			when o"02" => p_rdrop;	state <= changed; PC_src <= PC_RAM; -- exit
 			when o"03" => p_sdrop;	new_T <= '1';  T_src <= "0100";		-- +
 			when o"04" => new_T <= '1';	 T_src <= "1000";				-- 2*
-			when o"05" => new_T <= '1';	 T_src <= "1101";				-- port
-						  Port_src <= Port_T;
+			when o"05" => state <= stalled;								-- unused
 			when o"10" => state <= stalled;	 -- no need to wait			-- no:
 			when o"11" | o"41" => new_T <= '1';	 T_src <= "0001";		-- 1+, 4+
 						  immdata <= resize(unsigned(opcode(5 downto 3)), 32);
@@ -533,6 +531,8 @@ begin
 			when o"56" => RD_size <= "00";	state <= fetch;				-- @
 			when o"57" => p_sdrop;	RPload <= '1';						-- rp!
 			when o"60" => skip <= skip_ge;								-- -if:
+			when o"61" => new_T <= '1';	 T_src <= "1101";				-- port
+						  Port_src <= Port_T;
 			when o"64" => new_T <= '1';	 T_src <= "1110";				-- invert
 			when o"65" => state <= stalled;								-- !as
 			when o"66" => RD_size <= "01";	state <= fetch;				-- c@
@@ -550,7 +550,6 @@ begin
 		  end if;
 		end if;
 	  end case;
-	end if;
   end if;
 end process main;
 
@@ -602,7 +601,6 @@ PORT MAP (
 --	   when "000010" => name <= "exit ";
 --	   when "000011" => name <= "+	  ";
 --	   when "000100" => name <= "2*	  ";
---	   when "000101" => name <= "port ";
 --	   when "001000" => name <= "no:  ";
 --	   when "001001" => name <= "1+	  ";
 --	   when "001010" => name <= "r>	  ";
@@ -637,6 +635,7 @@ PORT MAP (
 --	   when "101110" => name <= "@	  ";
 --	   when "101111" => name <= "rp!  ";
 --	   when "110000" => name <= "-if: ";
+--	   when "110001" => name <= "port ";
 --	   when "110100" => name <= "com  ";
 --	   when "110101" => name <= "!as  ";
 --	   when "110110" => name <= "c@	  ";

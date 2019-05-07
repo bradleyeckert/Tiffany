@@ -10,7 +10,7 @@ generic (
 );
 port (
   clk:    in  std_logic;                        -- System clock
-  reset:  in  std_logic;                        -- sync reset
+  reset:  in  std_logic;                        -- async reset
   en:     in  std_logic;                        -- Memory Enable
   we:     in  std_logic;                        -- Write Enable (0=read, 1=write)
   addr:   in  std_logic_vector(Size-1 downto 0);
@@ -37,14 +37,14 @@ BEGIN
 -- RAM read-through: If reading from an address just written, use the cached value.
 -- Simulates read-through, which some Block RAM doesn't support.
 
-earlyrd: process(clk)
+earlyrd: process(clk, reset)
 begin
-  if (rising_edge(clk)) then
-    if (reset='1') then
-      rt_addr <= (others=>'1');
-      rt_data <= (others=>'0');
-      early <= '0';
-    elsif (en = '1') and (we = '1') then
+  if reset = '1' then
+    rt_addr <= (others=>'1');
+    rt_data <= (others=>'0');
+    early <= '0';
+  elsif (rising_edge(clk)) then
+    if (en = '1') and (we = '1') then
       rt_addr <= addr;
       rt_data <= data_i;
     end if;

@@ -7,12 +7,12 @@ use IEEE.NUMERIC_STD.ALL;
 
 ENTITY MCU IS
 generic (
-  ROMsize:  integer := 13;                      	-- log2 (ROM cells) 2^13 = 32 KB
+  ROMsize:  integer := 10;                      	-- log2 (ROM cells)
   clk_Hz:   integer := 100000000                    -- default clk in Hz
 );
 port (
   clk	  : in	std_logic;							-- System clock
-  reset	  : in	std_logic;							-- Active high, synchronous reset
+  reset	  : in	std_logic;							-- Asynchronous reset
   bye	  : out	std_logic;							-- BYE encountered
   -- UART
   rxd	  : in	std_logic;
@@ -28,7 +28,7 @@ generic (
 );
 port (
   clk	  : in	std_logic;							-- System clock
-  reset	  : in	std_logic;							-- Active high, synchronous reset
+  reset	  : in	std_logic;							-- Asynchronous reset
   -- Flash word-read
   caddr	  : out std_logic_vector(25 downto 0);		-- Flash memory address
   cready  : in	std_logic;							-- Flash memory data ready
@@ -59,7 +59,7 @@ end component;
 
   signal now_addr:  std_logic_vector(25 downto 0) := (others=>'1');
 
-  signal cready:    std_logic := '0';
+  signal cready:    std_logic;
   signal caddr:     std_logic_vector(25 downto 0);
   signal cdata:     std_logic_vector(31 downto 0);
 
@@ -77,6 +77,8 @@ end component;
   signal key_stb:   std_logic;
   signal keydata:   std_logic_vector(7 downto 0);
   signal bitperiod: std_logic_vector(15 downto 0);
+
+  signal reset_a, reset_i: std_logic;               -- reset synchronization
 
 component UART
   port(
@@ -97,20 +99,24 @@ end component;
 ---------------------------------------------------------------------------------
 BEGIN
 
-main: process (clk) is
+-- Create a clean async reset_a signal for the modules.
+-- Synchronize the falling edge to the clock.
+process(clk, reset)
 begin
-  if (rising_edge(clk)) then
-	if (reset='1') then
-
-	else
-	end if;
+  if (reset = '1') then
+    reset_a <= '1';
+    reset_i <= '1';
+  elsif rising_edge(clk) then
+    reset_a <= reset_i;
+    reset_i <= '0';
   end if;
-end process main;
+end process;
 
+-- Instantiate the components of the MCU: CPU, ROM, and UART
 cpu: m32
 GENERIC MAP ( RAMsize => 10 )
 PORT MAP (
-  clk => clk,  reset => reset,  bye => bye,
+  clk => clk,  reset => reset_a,  bye => bye,
   caddr => caddr,  cready => cready,  cdata => cdata,
   paddr => paddr,  pwrite => pwrite,  psel => psel,  penable => penable,
   pwdata => pwdata,  prdata => prdata,  pready => pready
@@ -124,7 +130,7 @@ PORT MAP (
 
 urt: uart
 PORT MAP (
-  clk => clk,  reset => reset,
+  clk => clk,  reset => reset_a,
   ready => emitready,  wstb => emit_stb,  wdata => pwdata(7 downto 0),
   rxfull => keyready,  rstb => key_stb,   rdata => keydata,
   bitperiod => bitperiod,  rxd => rxd,  txd => txd
@@ -133,50 +139,46 @@ PORT MAP (
 cready <= '1' when caddr = now_addr else '0';
 
 -- generate the `cready` signal
-rom_process: process (clk) is
+rom_process: process (clk, reset_a) is
 begin
-  if rising_edge(clk) then
-    if reset = '1' then
-      now_addr <= (others => '1');
-	else
-      now_addr <= caddr;
-    end if;
+  if reset_a = '1' then
+    now_addr <= (others => '1');
+  elsif rising_edge(clk) then
+    now_addr <= caddr;
   end if;
 end process rom_process;
 
 -- decode the DPB
-DPB_process: process (clk) is
+DPB_process: process (clk, reset_a) is
 begin
-  if rising_edge(clk) then
-    if reset='1' then
-      emit_stb <= '0';
-      key_stb <= '0';
-      bitperiod <= std_logic_vector(to_unsigned(clk_Hz/115200, 16));
-    else
-      emit_stb <= '0';
-      key_stb <= '0';
-      pready <= psel;                   -- usual case: no wait states
-      if (psel='1') and (pready='0') then
-        case paddr(3 downto 0) is
-        when "0000" =>                  -- R=qkey, W=emit
-          prdata <= "000000000000000" & keyready;
-          emit_stb <= pwrite;
-        when "0001" =>                  -- R=key, W=spixfer
-          if pwrite='0' then
-            prdata <= x"00" & keydata;
-            key_stb <= '1';
-          end if;
-        when "0010" =>                  -- R=keyformat, W=spirate
-          prdata <= x"0001";
-        when "0011" =>                  -- R=qemit, W=uartrate
-          prdata <= "000000000000000" & emitready;
-          if pwrite='1' then
-            bitperiod <= pwdata;
-          end if;
-        when others =>
-          prdata <= x"0000";
-        end case;
-      end if;
+  if reset_a = '1' then
+    emit_stb <= '0';
+    key_stb <= '0';
+    bitperiod <= std_logic_vector(to_unsigned(clk_Hz/115200, 16));
+  elsif rising_edge(clk) then
+    emit_stb <= '0';
+    key_stb <= '0';
+    pready <= psel;                   -- usual case: no wait states
+    if (psel='1') and (pready='0') then
+      case paddr(3 downto 0) is
+      when "0000" =>                  -- R=qkey, W=emit
+        prdata <= "000000000000000" & keyready;
+        emit_stb <= pwrite;
+      when "0001" =>                  -- R=key, W=spixfer
+        if pwrite='0' then
+          prdata <= x"00" & keydata;
+          key_stb <= '1';
+        end if;
+      when "0010" =>                  -- R=keyformat, W=spirate
+        prdata <= x"0001";
+      when "0011" =>                  -- R=qemit, W=uartrate
+        prdata <= "000000000000000" & emitready;
+        if pwrite='1' then
+          bitperiod <= pwdata;
+        end if;
+      when others =>
+        prdata <= x"0000";
+      end case;
     end if;
   end if;
 end process DPB_process;
