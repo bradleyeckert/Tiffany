@@ -3,11 +3,14 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
 -- A synthesizable MCU
--- ROMsize probably doesn't matter: excess '0's in ROM will be pruned.
+-- Example:  ANS    HelloWorld
+-- ROMsize    13    10
+-- RAMsize    10     8
 
 ENTITY MCU IS
 generic (
   ROMsize:  integer := 10;                      	-- log2 (ROM cells)
+  RAMsize:  integer :=  8;                      	-- log2 (RAM cells)
   clk_Hz:   integer := 100000000                    -- default clk in Hz
 );
 port (
@@ -114,7 +117,7 @@ end process;
 
 -- Instantiate the components of the MCU: CPU, ROM, and UART
 cpu: m32
-GENERIC MAP ( RAMsize => 10 )
+GENERIC MAP ( RAMsize => RAMsize )
 PORT MAP (
   clk => clk,  reset => reset_a,  bye => bye,
   caddr => caddr,  cready => cready,  cdata => cdata,
