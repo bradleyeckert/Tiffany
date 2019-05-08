@@ -220,7 +220,8 @@ int WriteROM(uint32_t data, uint32_t address) {
         return 0;
     }
     tiffIOR = FlashWrite(data, address);
-    printf("FlashWrite to %X, you should be using SPI flash write (ROM! etc) instead\n", address);  // writing above ROM space
+    printf("FlashWrite to %X, you should be using SPI flash write (ROM! etc) instead\n", address);
+    // writing above ROM space
            tiffIOR = -20;
     return tiffIOR;
 }

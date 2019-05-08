@@ -7,7 +7,7 @@ Programming the flash is via a SPI control word. Port groups include:
 - Clock and reset
 - Code memory read port
 - Peripherals port
-- AXI4 busses, for streaming via `!as` and `@as`
+- AXI4 busses, for streaming via `!as` and `@as` (not implemented)
 
 ### Clock and reset
 
@@ -86,4 +86,20 @@ Although you could use the ANS Forth's synthesizable ROM in a real system,
 a 32KB ROM is a lot of memory in an FPGA.
 It would be better to save the ROM image as a hex file and flash it into a SPI flash chip.
 Although you could execute exclusively from flash, it would be better to cache the bottom 2K or 4K bytes in a block RAM to run faster.
+
+### Synthesis results for MAX 10
+
+I synthesized the HelloWorld example into a 10M08SCE144C8G using Quartus Prime Lite.
+It took 3506 LEs and had a Fmax of 115 MHz in the "slow 85C" model.
+The synchronous-read code ROM synthesized using 1966 LEs, so the MCU without ROM would be 1540 LEs.
+This MAX10 doesn't do instantiated block RAM. You would initialize from user flash or SPI flash.
+There was also a EBR "read during write" warning when inferring RAM in `spram32.vhd`.
+
+I tried synthesis with a Cyclone 10 LP target. The Cyclone 10 LP seems to be a MAX10 without flash.
+
+### Synthesis results for Cyclone V
+
+The ANS example has bigger ROM and RAM. Synthesized into 5CEBA2F17C6 using Quartus Prime Lite.
+There was no EBR warning this time.
+Logic was 708 ALMs. Fmax of 145 MHz in the "slow 85C" model.
 

@@ -58,7 +58,7 @@ end process earlyrd;
 
 data_o <= rt_data when early = '1' else rddata;
 
--- read or write, not both at the same time
+-- hopefully will infer
 
 mem_proc: process(clk)
 begin

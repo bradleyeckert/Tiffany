@@ -28,7 +28,7 @@ architecture RTL of UART is
   signal txstate, rxstate:    std_logic_vector(7 downto 0);
   signal txreg, rxbuf, rxreg: std_logic_vector(7 downto 0);
   signal tnext, error:  std_logic;
-  signal rxdi, rxda:  std_logic;
+  signal rxdi, rxda, rxdb:  std_logic;
 
 begin ------------------------------------------------------------------------
 
@@ -47,10 +47,11 @@ process (clk, reset) begin
     rxreg   <= (others=>'0');
     txreg   <= (others=>'0');
     rxbuf   <= (others=>'0');
-    rxdi <= '1';  rxda <= '1';
+    rxdi <= '1';  rxda <= '1';  rxdb <= '1';
     ready <= '1';
   elsif (rising_edge(clk)) then
-    rxdi <= rxda;                               -- synchronize incoming RXD
+    rxdi <= rxdb;                               -- synchronize incoming RXD
+    rxdb <= rxda;                               -- with 3-flop CDC
     rxda <= rxd;
     if baudint = 0 then
       if (baudfrac0 > baudfrac) then            -- fractional divider:

@@ -144,6 +144,13 @@ case 13:                                // 13: VHDL syntax internal ROM dump
     }
     free(rom);  rom = NULL;
     break;
+case 14:                                // 14: Quartus ROM syntax internal ROM dump
+    length = ROMwords(ROMsize);
+    for (int i=0; i<length; i++) {
+        fprintf(ofp, "    mem(%d) := x\"%08X\";\n", i, rom[i]);
+    }
+    free(rom);  rom = NULL;
+    break;
 case 20:                                // 20: C syntax stepping
     MakeTestVectors(ofp, PopNum(), 1);
     break;
@@ -217,6 +224,18 @@ void GenHex (uint32_t begin, uint32_t end, FILE *fp) {
     }
 }
 
+/* Save in Free Model Foundation byte-wide format */
+void GenFMF (uint32_t begin, uint32_t end, FILE *fp) {
+    fprintf(fp, "@%X\n", begin << 2);
+    for (int i=begin; i<end; i++) {
+        uint32_t x = rom[i];
+        for (int i = 0; i < 4; i++) {   // unpack little-endian
+            uint8_t b = (uint8_t)(x >> (8 * i));
+            fprintf(fp, "%02X\n", b);
+        }
+    }
+}
+
 void SaveHexImage (int flags, char *filename) {
     int32_t length;
     WipeTIB();                          // don't need to see TIB contents
@@ -228,13 +247,23 @@ void SaveHexImage (int flags, char *filename) {
     }
     if (flags & 1) {                    // bit 0 = include internal ROM
         length = ROMwords(ROMsize);
-        GenHex(0, length, ofp);
+        if (flags & 4) {
+            GenFMF(0, length, ofp);
+        } else {
+            GenHex(0, length, ofp);
+        }
     }
     if (flags & 2) {                    // bit 1 = include flash memory
         length = ROMwords(SPIflashBlocks<<10);
-        GenHex(ROMsize+RAMsize, length, ofp);
+        if (flags & 4) {
+            GenFMF(ROMsize+RAMsize, length, ofp);
+        } else {
+            GenHex(ROMsize+RAMsize, length, ofp);
+        }
     }
-    fputs(":00000001FF\n", ofp);        // EOF marker
+    if (!(flags & 4)) {
+        fputs(":00000001FF\n", ofp);    // EOF marker
+    }
     fclose(ofp);
     free(rom);  rom = NULL;
 }

@@ -9,8 +9,8 @@ use IEEE.NUMERIC_STD.ALL;
 
 ENTITY MCU IS
 generic (
-  ROMsize:  integer := 10;                      	-- log2 (ROM cells)
-  RAMsize:  integer :=  8;                      	-- log2 (RAM cells)
+  ROMsize:  integer := 13;                      	-- log2 (ROM cells)
+  RAMsize:  integer := 10;                      	-- log2 (RAM cells)
   clk_Hz:   integer := 100000000                    -- default clk in Hz
 );
 port (
@@ -69,7 +69,7 @@ end component;
   signal paddr:     std_logic_vector(8 downto 0);
   signal pwrite:    std_logic;
   signal psel:      std_logic;
-  signal penable:   std_logic;
+--  signal penable:   std_logic;
   signal pwdata:    std_logic_vector(15 downto 0);
   signal prdata:    std_logic_vector(15 downto 0);
   signal pready:    std_logic;
@@ -81,7 +81,7 @@ end component;
   signal keydata:   std_logic_vector(7 downto 0);
   signal bitperiod: std_logic_vector(15 downto 0);
 
-  signal reset_a, reset_i: std_logic;               -- reset synchronization
+  signal reset_a, reset_b, reset_i: std_logic;      -- reset synchronization
 
 component UART
   port(
@@ -107,10 +107,10 @@ BEGIN
 process(clk, reset)
 begin
   if (reset = '1') then
-    reset_a <= '1';
+    reset_a <= '1';  reset_b <= '1';
     reset_i <= '1';
   elsif rising_edge(clk) then
-    reset_a <= reset_i;
+    reset_a <= reset_b;  reset_b <= reset_i;
     reset_i <= '0';
   end if;
 end process;
@@ -121,7 +121,7 @@ GENERIC MAP ( RAMsize => RAMsize )
 PORT MAP (
   clk => clk,  reset => reset_a,  bye => bye,
   caddr => caddr,  cready => cready,  cdata => cdata,
-  paddr => paddr,  pwrite => pwrite,  psel => psel,  penable => penable,
+  paddr => paddr,  pwrite => pwrite,  psel => psel,  penable => open,
   pwdata => pwdata,  prdata => prdata,  pready => pready
 );
 

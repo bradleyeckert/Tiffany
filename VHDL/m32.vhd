@@ -57,7 +57,7 @@ END COMPONENT;
   signal RAMlanes:  std_logic_vector(3 downto 0);
   signal RAM_q:     std_logic_vector(31 downto 0);  -- read data
 
--- intermediate mux results
+-- intermediate T mux results
   signal zeroequals:    unsigned(31 downto 0);
   signal TNsum:         unsigned(33 downto 0);      -- T + N with carrt in and out
 
@@ -75,10 +75,8 @@ END COMPONENT;
                      userinit, user, pwait);
   signal state: state_t;
 
-  type   skip_t is (skip_none, skip_nc, skip_ge, skip_if);
-  signal skip: skip_t;                              -- skip type
-  type   rept_t is (rept_none, rept_nc, rept_n);
-  signal rept: rept_t;                              -- repeat type
+  signal skip_if, skip_nc, skip_ge: std_logic;      -- skip type
+  signal rept_mi, rept_nc: std_logic;               -- repeat type
   signal skipping, repeating: std_logic;            -- don't decode
   signal noexecute: std_logic;                      -- don't execute
 
@@ -113,13 +111,15 @@ END COMPONENT;
   signal cycles:        unsigned(41 downto 0);      -- hardware counter
   -- COUNTER increments at Fclk/1024.
   signal held:          std_logic;
+  signal error:         std_logic;                  -- signal an error
+  signal errorcode:     integer range 0 to 31;
 
 -- read and writes share access to single-port RAM
   signal RAM_raddr:     unsigned(RAMsize-1 downto 0);
   signal RAM_waddr:     unsigned(RAMsize-1 downto 0);
   signal RAM_read:      std_logic;
 
-  signal name: string(1 to 5); -- look at this in a waveform viewer
+-- signal name: string(1 to 5); -- show opcode name in the waveform viewer
 
 ---------------------------------------------------------------------------------
 BEGIN
@@ -166,7 +166,7 @@ begin
     when others => null;
     end case;
     case opcode(2 downto 0) is
-    when "010" | "011" | "111" => -- columns 2, 3, 7
+    when "010" | "011" | "111" =>  -- columns 2, 3, 7
       RAM_read <= '1';
     when others => null;
     end case;
@@ -175,7 +175,7 @@ begin
 end process a_read;
 
 
-main: process(clk)
+main: process(clk, reset)
 
 procedure p_sdup is -- write setup: mem[--SP]=N
 begin
@@ -219,9 +219,10 @@ begin
     RPinc <= '0';    RPload <= '0';  WR_dest <= WR_miSP;
     SPinc <= '0';    SPload <= '0';  UPload <= '0';
     -- read/write control
-    WR_size <= "00";   WR_src <= WR_none;  noexecute <= '0';
+    WR_size <= "00";   WR_src <= WR_none;  error <= '0';  errorcode <= 19;
     RD_size <= "00";   RD_align <= "00";   userFNsel <= x"0";
-    skip <= skip_none;  rept <= rept_none;         paddr <= (others=>'0');
+    skip_nc <= '0';  skip_if <= '0';  skip_ge <= '0';
+    rept_mi <= '0';  rept_nc <= '0';  noexecute <= '0';  paddr <= (others=>'0');
     pwrite <= '0';  psel <= '0';  penable <= '0';  pwdata <= x"0000";
   elsif (rising_edge(clk)) then
 --------------------------------------------------------------------------------
@@ -276,7 +277,17 @@ begin
           if RPinc = '0' then
             RP <= RP - 1;
           end if;
-        when WR_aT => RAM_waddr <= T(RAMsize+1 downto 2);
+        when WR_aT =>
+          RAM_waddr <= T(RAMsize+1 downto 2);
+          if T(31) = '0' then
+            error <= '1';  errorcode <= 19;   -- writing to ROM
+          end if;
+          errorcode <= 22;                    -- misaligned write
+          case WR_size is
+          when "00" => error <= T(0) or T(1);
+          when "10" => error <= T(0);
+          when others => null;
+          end case;
         end case;
         case WR_src is
         when WR_T =>
@@ -351,7 +362,7 @@ begin
       when others => null;
       end case;
       PC_src <= PC_inc;
-      skip <= skip_none;
+      skip_if <= '0';  skip_nc <= '0';  skip_ge <= '0';
       state <= stalled;
     when stalled =>  -- `caddr` is new: wait for data from ROM[PC].
       if cready = '1' then
@@ -359,14 +370,25 @@ begin
         IR <= cdata;  slot <= 0;              -- save the whole IR for repeats
         PC    <= PC + 1;                      -- bump the PC
         caddr <= std_logic_vector(PC + 1);
-        skip <= skip_none;
-        state <= execute;
+        skip_if <= '0';  skip_nc <= '0';  skip_ge <= '0';
+        if error = '1' then                   -- not so fast...
+          state <= changed;  PC_src <= PC_imm;
+          p_rdup;   WR_src <= WR_PC;
+          immdata <= x"00000002";             -- error code is in port
+          DebugReg <= not (to_unsigned(errorcode, 32));
+        else
+          state <= execute;
+        end if;
+        error <= '0';
       end if;
     when fetch =>  -- T is now available for use as a read address
       RD_align <= std_logic_vector(T(1 downto 0));
       if T(31) = '1' then
         if RD_size="00" then
           new_T <= '1';  T_src <= "0110";     -- cell from RAM, ready now
+          if T(1 downto 0) /= "00" then
+            error <= '1';  errorcode <= 22;   -- misaligned read
+          end if;
           state <= execute;
         else
           state <= fetchd;                    -- next state gets the unaligned data
@@ -383,6 +405,9 @@ begin
         when "01" | "10" => state <= fetchsm; -- some shift-and-mask is needed
         when others => state <= execute;      -- cell-sized fetch
           new_T <= '1';  T_src <= "1111";     -- T gets Tpacked
+          if RD_align /= "00" then
+            error <= '1';  errorcode <= 22;
+          end if;
         end case;
       end if;
     when fetchd =>
@@ -401,6 +426,9 @@ begin
           Tpacked <= x"0000" & Tpacked(31 downto 16);
         else
           Tpacked <= x"0000" & Tpacked(15 downto 0);
+        end if;
+        if RD_align(0) = '1' then
+          error <= '1';  errorcode <= 22;
         end if;
       end if;
       state <= execute;  new_T <= '1';  T_src <= "1111";
@@ -430,10 +458,9 @@ begin
     when execute =>
 --------------------------------------------------------------------------------
 -- decoding pipeline stage
--- 2,3,6,7 = 010 011 110 111, if bit 1 is set wait for write to finish
-      skip <= skip_none;
-      rept <= rept_none;
-      if held = '0' then
+      skip_if <= '0';  skip_nc <= '0';  skip_ge <= '0';
+      rept_mi <= '0';  rept_nc <= '0';
+      if held = '0' then -- waiting for RAM write to finish
 -- strobes:
         RD_size <= "00";
 -- slot:
@@ -512,7 +539,7 @@ begin
         when o"36" => RD_size <= "10";  state <= fetch;             -- w@
         when o"37" => p_sdrop;  new_T <= '1';                       -- >r
                       p_rdup;   WR_src <= WR_T;
-        when o"40" => rept <= rept_nc;  new_N <= '1'; N_src <= "10";-- reptc
+        when o"40" => rept_nc <= '1';  new_N <= '1'; N_src <= "10"; -- reptc
         when o"43" => p_sdrop;  new_T <= '1';  T_src <= "0100";     -- c+
                       carryin <= '1';
         when o"44" => new_T <= '1';  T_src <= "0101";               -- 0=
@@ -520,7 +547,7 @@ begin
                       state <= stalled;
         when o"46" => p_sdup;  RD_size <= "00";  state <= fetch;    -- @+
                       new_N <= '1';  N_src <= "11";  Noffset <= "100";
-        when o"50" => rept <= rept_n;  new_N <= '1';  N_src <= "10";-- -rept
+        when o"50" => rept_mi <= '1';  new_N <= '1';  N_src <= "10";-- -rept
         when o"51" => new_T <= '1';  T_src <= "0001";               -- up
                       immdata(RAMsize+1 downto 0) <= UP & "00";
                       immdata(31 downto RAMsize+2) <= (others => '1');
@@ -528,16 +555,16 @@ begin
         when o"55" => state <= stalled;                             -- @as
         when o"56" => RD_size <= "00";  state <= fetch;             -- @
         when o"57" => p_sdrop;  RPload <= '1';                      -- rp!
-        when o"60" => skip <= skip_ge;                              -- -if:
+        when o"60" => skip_ge <= '1';                               -- -if:
         when o"61" => new_T <= '1';  T_src <= "1101";               -- port
                       Port_src <= Port_T;
         when o"64" => new_T <= '1';  T_src <= "1110";               -- invert
         when o"65" => state <= stalled;                             -- !as
         when o"66" => RD_size <= "01";  state <= fetch;             -- c@
         when o"67" => p_sdrop;  SPload <= '1';                      -- sp!
-        when o"70" => skip <= skip_nc;                              -- ifc:
+        when o"70" => skip_nc <= '1';                               -- ifc:
         when o"71" => p_sdup;   new_T <= '1';                       -- over
-        when o"72" => p_sdrop;  new_T <= '1';  skip <= skip_if;     -- ifz:
+        when o"72" => p_sdrop;  new_T <= '1';  skip_if <= '1';      -- ifz:
         when o"73" => p_sdrop;  new_T <= '1';                       -- drop
         when o"74" => new_N <= '1';  new_T <= '1';                  -- swap
         when o"75" => state <= stalled;  p_sdup;                    -- lit
@@ -556,32 +583,35 @@ begin
   end if;
 end process main;
 
-process(skip, T, CARRY) is
+process(skip_nc, skip_ge, skip_if, T, CARRY) is
 begin
-  skipping <= '0';
-  case skip is                                  -- conditional skips
-  when skip_if =>
-    if T /= x"00000000" then
+  if skip_if = '1' then
+    if T = x"00000000" then
+      skipping <= '0';
+    else
       skipping <= '1';
     end if;
-  when skip_nc => skipping <= not CARRY;
-  when skip_ge => skipping <= not T(31);
-  when others => null;
-  end case;
+  elsif skip_ge = '1' then
+    skipping <= not T(31);
+  elsif skip_nc = '1' then
+    skipping <= not CARRY;
+  else
+    skipping <= '0';
+  end if;
 end process;
 
-process(rept, N, CARRY) is                      -- conditional repeats
+process(rept_mi, rept_nc, N, CARRY) is
 begin
-  repeating <= '0';
-  case rept is
-  when rept_n  => repeating <= N(16);
-  when rept_nc => repeating <= not CARRY;
-  when others => null;
-  end case;
+  if rept_nc = '1' then
+    repeating <= not CARRY;
+  elsif rept_mi = '1' then
+    repeating <= N(16);
+  else
+    repeating <= '0';
+  end if;
 end process;
 
-
-zeroequals <= x"FFFFFFFF" when T=to_unsigned(0,32) else x"00000000";
+zeroequals <= x"FFFFFFFF" when T=x"00000000" else x"00000000";
 TNsum <= ('0' & T & (carryin and CARRY)) + ('0' & N & '1');
 
 held <= opcode(1) and RAM_we when WR_src = WR_none
