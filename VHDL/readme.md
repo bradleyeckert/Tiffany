@@ -44,7 +44,9 @@ Similar to ARM's APB but a little looser and dumber.
 
 ### AXI4 busses
 
-Basic streaming busses as described by Xilinx. To Be Implemented.
+Basic streaming busses as described by Xilinx/ARM. To Be Implemented.
+The idea is to interface to IP ecosystems in a standard kind of way.
+The DPB bus is for simple stuff.
 
 ### Other
 
@@ -73,9 +75,12 @@ There should be a better option than waiting. It doesn't look obvious, though.
 Generic options (bit 0) enable hardware multiply and divide to be synthesized.
 That makes the CPU a little bigger and a little slower.
 Multiplication uses a 16x16 hardware multiplier, which is reasonably fast in an FPGA.
-The software-only versions of UM* and UM/MOD take about 700 and 1800 cycles respectively.
-At 100 MHz, that's 7 usec and 18 usec. Maybe all you need unless there's a lot of number crunching going on.
+The software-only versions of UM\* and UM/MOD take about 700 and 1800 cycles respectively.
+At 100 MHz, that's 7 usec and 18 usec.
+Maybe it's all you need unless there's a lot of number crunching going on.
 But then, why isn't the FPGA fabric doing that?
+The `options` are in `main.f` as well as `mcu.vhd`.
+Change both to switch between HW and SW multiply and divide.
 
 ## Usage
 
@@ -86,10 +91,8 @@ something that simulates keyboard input, runs the CPU, and directs output to the
 The ANS example (make.bat) compiles a large ROM.
 The testbench "types" "see see" into the Forth interpreter.
 ModelSIM chugs along disassembling about one line per second in real time (on a fast PC).
-Using hardware UM* and UM/MOD (options bit 0) doubles the speed.
+Using hardware UM\* and UM/MOD (options bit 0) doubles the speed.
 You can also run `make.bat` in the `helloworld` example to generate a smaller ROM.
-The `options` are in `main.f` as well as `mcu.vhd`.
-Change both to switch between HW and SW multiply and divide.
 
 Although you could use the ANS Forth's synthesizable ROM in a real system,
 a 32KB ROM is a lot of memory in an FPGA.
@@ -102,7 +105,7 @@ it would be better to cache the bottom 2K or 4K bytes in a block RAM to run fast
 I synthesized the HelloWorld example into a 10M08SCE144C8G using Quartus Prime Lite.
 It took 3506 LEs and had a Fmax of 115 MHz in the "slow 85C" model.
 The synchronous-read code ROM synthesized using 1966 LEs, so the MCU without ROM would be 1540 LEs.
-This MAX10 doesn't do instantiated block RAM. You would initialize from user flash or SPI flash.
+This MAX10 doesn't do initialized block RAM. You would initialize from user flash or SPI flash.
 There was also a EBR "read during write" warning when inferring RAM in `spram32.vhd`.
 
 I tried synthesis with a Cyclone 10 LP target. The Cyclone 10 LP seems to be MAX10 without flash.

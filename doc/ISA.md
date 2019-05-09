@@ -10,40 +10,48 @@ An ISA for a dialect of MachineForth is presented below.
 
 ## Comparisons with other Forth CPUs
 
-James Bowman's J1 and J1B. The J1 is about 10 years old. J1B is the 32-bit version.
-16-bit instructions lead to compact code. It's a zero-operand WISC with 16-bit instructions.
+First off, why this architecture is different:
+
+- Stacks and data memory share the same block RAM.
+- 26-bit jumps/calls support up to 256MB apps.
+- It runs fast in hardware and in software simulation.
+- The CPU is a single VHDL file of about 700 lines. Not too complex.
+
+Most other stack machines that use internal stacks. 
+These stacks are limited in depth, so you can't be sure an off-the-shelf Forth library will fit.
+Stacks in data space hail back to the 1970s, but why not? 
+The overhead required to implement them in single-port RAM isn't too bad with a Harvard architecture.
+
+Let's look at some existing 32-bit Forth soft CPUs: 
+
+James Bowman's J1B. A zero-operand WISC with 16-bit instructions, on Github.
 Very small, very awesome. I didn't copy it because:
 
-- Small address range. 13-bit calls and jumps, cover a 16KB address space.
-- Stacks are not in memory, so multitasking is limited.
+- Small address range. 13-bit calls and jumps.
+- Stacks are not in memory, so you have to know your code. Will it overflow?
 - It simulates slowly. I wanted a sandbox that would run on ARM.
 
-Richard James Howe's H2 is a J1-like CPU. It has a Forth implementation.
+Richard James Howe's H2 is a J1-like CPU. It has a Forth implementation on Github.
 
 Charles Ting's eP32 CPU. Uses 6-bit opcodes packed in a 32-bit word.
 
-- Stacks are not in memory, so multitasking is not as tidy.
+- Stacks are not in memory, but bigger.
 - Design and ISA details are behind a paywall.
-- Has some more powerful instructions to support multiply and divide.
+- eForth. Okay cool, but one wordspace?
 
 Brad Eckert's SC20. Uses 8-bit opcodes packed into 16-bit, 32-bit, or 48-bit instruction groups.
 I wrote that one in 2010 and ported SwiftForth to it.
 
 - Stacks have small caches to allow conventional Forth multitasking.
 - The ISA has a CISC look and feel. Code is very compact.
-- With the stack cache, simulation of the ISA using C or assembly wasn't fast.
+- With the stack cache (auto spill/refill), simulation of the ISA using C or assembly wasn't fast.
 
-Mforth (this one)
-
-- 26-bit jumps/calls support 256MB apps.
-- 24-bit xts in header space span 64MB.
-- 6-bit opcodes packed in a 32-bit word.
-- Compatible with VM sandboxes in conventional computers.
-- Not eForth. Supports multiple search orders and wordlists.
-- Designed for arbitrarily large apps residing in and compiling to flash memory.
-- Built around synchronous Block RAM. Which has some minor drawbacks:
-- Keeping stacks in data memory increases power consumption, but FPGAs are power hogs anyway.
-- Synchronous RAM means reads have to be started even earlier so sometimes wait states must be inserted.
+So what happened? Perhaps demonic possession.
+I just had to implement this sandboxxed Forth and then implement a soft CPU for it.
+The idea was to implement Forth's QUIT loop in a C console application while keeping all of its internal
+state in a simple Virtual Machine, itself implemented in C in a way that would execute quickly. 
+It was supposed to save me time by eliminating the need to write libraries. Just use the C ones.
+I suspect it will do the opposite. The Forth CPU will encourage yet more Forth libraries.
 
 ## The Virtual Machine
 
