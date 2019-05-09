@@ -18,16 +18,16 @@ First off, why this architecture is different:
 - The CPU is a single VHDL file of about 700 lines. Not too complex.
 
 Most other stack machines that use internal stacks. 
-These stacks are limited in depth, so you can't be sure an off-the-shelf Forth library will fit.
-Stacks in data space hail back to the 1970s, but why not? 
-The overhead required to implement them in single-port RAM isn't too bad with a Harvard architecture.
+I think that Moore's use of dedicated stack RAM arose from the bandwidth constraints of the Von Neuman architecture.
+The overhead required to implement stacks in data space isn't too bad with a Harvard architecture.
+You can have the classic 70s-style Forth, compatible with rapid context switching when multitasking, by putting stacks in data space.
 
 Let's look at some existing 32-bit Forth soft CPUs: 
 
 James Bowman's J1B. A zero-operand WISC with 16-bit instructions, on Github.
 Very small, very awesome. I didn't copy it because:
 
-- Small address range. 13-bit calls and jumps.
+- 32KB program size. As Bill Gates said, nobody would ever need more than 640K. Right.
 - Stacks are not in memory, so you have to know your code. Will it overflow?
 - It simulates slowly. I wanted a sandbox that would run on ARM.
 
@@ -35,7 +35,7 @@ Richard James Howe's H2 is a J1-like CPU. It has a Forth implementation on Githu
 
 Charles Ting's eP32 CPU. Uses 6-bit opcodes packed in a 32-bit word.
 
-- Stacks are not in memory, but bigger.
+- Stacks use dedicated RAM, but more of it.
 - Design and ISA details are behind a paywall.
 - eForth. Okay cool, but one wordspace?
 
@@ -251,16 +251,17 @@ Burst transfers use a !AS or @AS instruction to issue the address (with burst le
 
 RAM has a negative address ANDed with (RAMsize-1) where RAMsize is an exact power of 2.
 In `mf` it sits at the top of the memory space.
-Negative literals are formed by putting a COM opcode in slot 0. It's pretty good.
+Negative literals are formed by putting a COM opcode in slot 0 of the next instruction. It's pretty good.
 I thought about having signed literals, but it adds logic. So, no.
 
 A typical Forth kernel will have a number of sequential calls, which take four bytes per call.
 This is a little bulky, especially if the equivalent macro can fit in a group.
-The call and return overhead is eight clock cycles, so it’s also slow.
-Using the macro sequence should replace the call when possible.
+The call and return overhead isn't cheap. Using the macro sequence should replace the call when possible.
 Code that’s inlineable is copied directly except for its `;`, leaving that slot open for the next instruction.
 
-Hardware multiply and divide, if provided, are accessed via the USER instruction. `um*` takes about 500 cycles when done by shift-and-add. An opcode could easily be added to greatly speed this up.
+Hardware multiply and divide, if provided, are accessed via the USER instruction. 
+`um*` takes about 500 cycles when done by shift-and-add. 
+With real hardware, it's more like 10 cycles. 16x16 multiplier hardware uses several cycles to create the 64-bit product.
 
 ### Interrupts
 

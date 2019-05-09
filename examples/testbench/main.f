@@ -12,6 +12,7 @@ defer exception
 
 \ Include core words that test a lot of primitives
 
+0 equ options                           \ configuration options
 include ../../forth/core.f
 
 : test0 ;                               \ call and return
@@ -71,9 +72,9 @@ include ../../forth/core.f
     85 litx                             \ 9B000055 <sp
     drop
 ;
+
 : test2  \ c --                         \ emit
-    2 user                              \ user
-    drop                                \ drop
+   fn#emit +  0 user  drop
 ;
 
 : test3                                 \ cause an exception
@@ -111,6 +112,7 @@ include ../../forth/core.f
 \ The bench operates on the non-tracing version using function macros.
 
 make ../../src/vm.c vm.c                \ Using the known-good one
-500 make ../../templates/test_main.c main.c
-\ stack is changed after testbench due to SP register moved, but harmless.
-bye
+ 500 make ../../templates/test_main.c main.c
+\ system is squirrelly after testbench generation, probably should quit now.
+\ misaligned address was part of the test, mf should complain.
+ bye

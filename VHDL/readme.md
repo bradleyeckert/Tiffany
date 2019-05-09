@@ -59,16 +59,18 @@ Not actually interrupts, but signals to jam WAKE tokens into memory to wake up t
 
 The internal RAM uses synchronous read/write, which means a read must be started the cycle before the data is needed.
 A read from external ROM is a special case that latches the address and then cycles through a FSM to get the data.
-The idea is to keep external ROM out of the critical path.
 Fetches and pops read from RAM. Stores and pushes write to RAM.
 
 The opcode decoder for initiating reads also latches control lines that control the next pipeline stage.
-It may delay reading (stalling slot execution) to allow necessary writes or other activity.
+It may delay reading (holding slot execution) to allow necessary writes or other activity.
 A `state` signal controls the behavior of the opcode decoder.
 
 Unnecessary memory accesses should probably be looked at.
 Adjacent DUP DROP pairs, for instance, cause delays to be inserted for the sake of waiting for data to be written.
-There should be a better option than waiting. It doesn't look obvious, though.
+There should be a better option than waiting. It doesn't look obvious.
+
+The CPU is implemented as a FSM that spends most of its time in `execute`.
+Other states handle user functions, non-cell fetches, control flow changes, etc.
 
 ### Hardware Multiply and Divide
 
@@ -116,4 +118,4 @@ The ANS example has bigger ROM and RAM. Synthesized into 5CEBA2F17C6 using Quart
 There was no EBR warning this time.
 
 - Without hardware multiply/divide: 708 ALMs, Fmax of 145 MHz in the "slow 85C" model.
-- With hardware multiply/divide: 940 ALMs, Fmax of 120 MHz in the "slow 85C" model.
+- With hardware multiply/divide: 932 ALMs, Fmax of 131 MHz in the "slow 85C" model.

@@ -7,10 +7,10 @@ uint32_t FlashRead (uint32_t addr) {
     return 0;
 };
 
-void FlashInit (void) {
+void FlashInit (char * s) {
 };
 
-void FlashBye (void) {
+void FlashBye (char * s) {
 };
 
 int FlashWrite (uint32_t x, uint32_t addr) {

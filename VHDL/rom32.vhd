@@ -7250,7 +7250,7 @@ process (clk) begin
       when 7224 => data_o <= x"61546174";
       when 7225 => data_o <= x"FF656C62";
       when 7226 => data_o <= x"14FF0017";
-      when 7227 => data_o <= x"080012BC";
+      when 7227 => data_o <= x"070012BC";
       when 7228 => data_o <= x"00002854";
       when 7229 => data_o <= x"000070D8";
       when 7230 => data_o <= x"696E694A";

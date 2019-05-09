@@ -20,7 +20,7 @@ This allows internal `mf` C functions to be replaced by Forth definitions as the
 A complete ANS Forth can be built by replacing all of the internal C functions with Forth and defining a QUIT loop.
 
 You can bootstrap an ANS Forth or just use part of Forth for your application.
-The resulting ROM image can be saved as a hex file with "save-hex \<filename\>".
+The resulting ROM image can be saved as a hex file with "\<flags\> save-hex \<filename\>".
 
 The ROM image is binary compatible with models implemented in your embedded C application
 or with an FPGA or ASIC, which runs the same Forth system (big or small) as `mf`.
@@ -109,22 +109,23 @@ This is especially true for Forth, since it spends most of its time in internal 
 An MCU with attached SPI flash provides a huge system at minimal cost.
 RAM is the only thing that's constrained, which is okay since Forth is very stingey with RAM.
 At slightly more cost, an FPGA can replace the MCU.
-The ISA is oriented toward implementation in an FPGA using a block RAM for stack space.
+The ISA is oriented toward implementation in an FPGA using a block RAM for stack and data space.
 
 Instruction set simulation is very simple, so it can run quickly in even an MCU.
 This allows a VM to run as a sandbox in an MCU-based system that provides middleware and/or OS services.
 Mixed language systems provide the best of both worlds.
 The use of C to leverage MCU development flows and libraries.
+Today's MCUs are as complex as the streets of London. Do you want to be a London cabbie?
+Riding the wave of modern SDKs is becoming a necessity.
 
 A C console application provides a minimal Forth that has a built-in VM model for executing code.
-This VM model simulates the instruction set of the FPGA or other versions of the CPU so that
+This VM model simulates the instruction set of the CPU so that
 if a full Forth system can be built up in that environment, a text file in C, assembly, Verilog, or VHDL
 can be generated to provide the same system on embedded hardware.
 This is simpler than traditional cross complation because the host runs target code at compile time.
-Code that's binary compatible with the target can be tested on the desktop.
 
 The VHDL folder contains a Forth processor that runs in ModelSIM. You can run the examples in a VHDL simulator.
-They are fully synthesizable, with RAMs and ROMs being inferred by FPGA tools. No need for anything vendor-specific.  
+The vanilla RTL is fully synthesizable, with RAMs and ROMs being inferred by FPGA tools.  
 
 ## What's programming in Mforth like?
 

@@ -120,14 +120,15 @@ END COMPONENT;
   signal RAM_waddr: unsigned(RAMsize-1 downto 0);
   signal RAM_read:  std_logic;
 
--- options use extra registers, which will be pruned if not used.
+-- options use extra registers which will be pruned if not used.
   signal counter:  integer range 0 to 31;
   signal xo, yo:   unsigned(31 downto 0);           -- math inputs
   signal divisor:  unsigned(31 downto 0);           -- register
   signal diffd:    unsigned(32 downto 0);           -- divider subtractor
   signal xom, yom: unsigned(15 downto 0);           -- multiplier inputs
-  signal product:  unsigned(31 downto 0);           -- multiplier product
+  signal product:  unsigned(31 downto 0);           -- multiplier output
   signal mulsum:   unsigned(47 downto 0);           -- multiplier sum
+
 
 -- signal name: string(1 to 5); -- show opcode name in the waveform viewer
 
@@ -476,17 +477,18 @@ begin
       when "0101" =>
         if options(0) = '1' then
           state <= multiplying;             -- start UM*
-          counter <= 4;  new_T <= '0';
+          counter <= 5;  new_T <= '0';
           xom <= T(15 downto 0);  yom <= N(15 downto 0);
         end if;
       when others => null;
       end case;
     when multiplying =>                     -- with 16x16 hardware multiply
+      product <= xom * yom;                 -- 16x16 multiplier with registered output
       case counter is
-        when 4 => xo <= product;   xom <= T(31 downto 16);  yom <= N(31 downto 16);
-        when 3 => yo <= product;   xom <= T(31 downto 16);  yom <= N(15 downto 0);
+        when 5 =>                 xom <= T(31 downto 16);  yom <= N(31 downto 16);
+        when 4 => xo <= product;  xom <= T(31 downto 16);  yom <= N(15 downto 0);
+        when 3 => yo <= product;  xom <= T(15 downto 0);   yom <= N(31 downto 16);
         when 2 => yo <= mulsum(47 downto 16);  xo(31 downto 16) <= mulsum(15 downto 0);
-          xom <= T(15 downto 0);   yom <= N(31 downto 16);
         when others => yo <= mulsum(47 downto 16);
           userdata <= mulsum(15 downto 0) & xo(15 downto 0);
           new_T <= '1';  T_src <= "1011";  state <= stalled;
@@ -675,7 +677,6 @@ zeroequal <= x"FFFFFFFF" when T=x"00000000" else x"00000000";
 TNsum <= ('0' & T & (carryin and CARRY)) + ('0' & N & '1');
 
 diffd <= ('0'&yo(30 downto 0)&xo(31)) - ('0'&divisor);  -- dividend difference
-product <= xom * yom;  -- 16x16 multiplier
 mulsum <= (yo & xo(31 downto 16)) + (x"0000" & product);
 
 held <= opcode(1) and RAM_we when WR_src = WR_none

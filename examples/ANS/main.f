@@ -130,7 +130,7 @@ cp @ ," DataCodeHead" 1+  alignc
 	3 0 do                              \ even it's not ANS
 		i c_scope c!
 		dup i cells + 4 type
-		." : " unused . cr             	\ unused is a weird, depends on memory usage
+		." : " unused . cr             	\ unused is weird, depends on memory usage
 	loop  drop  ram
 ;
 
