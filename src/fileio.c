@@ -144,7 +144,7 @@ case 13:                                // 13: VHDL syntax internal ROM dump
     }
     free(rom);  rom = NULL;
     break;
-case 14:                                // 14: Quartus ROM syntax internal ROM dump
+case 14:                                // 14: Alternate VHDL ROM syntax
     length = ROMwords(ROMsize);
     for (int i=0; i<length; i++) {
         fprintf(ofp, "    mem(%d) := x\"%08X\";\n", i, rom[i]);

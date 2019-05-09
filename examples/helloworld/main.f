@@ -4,6 +4,7 @@ defer coldboot
 defer safemode
 :noname coldboot ; drop                 \ error reboots
 
+0 equ options                           \ use SW mul/div
 include ../../forth/core.f
 : pause ;  \ include ../../forth/tasker.f \ no multitasker
 include ../../forth/timing.f

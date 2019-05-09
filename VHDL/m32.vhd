@@ -7,6 +7,7 @@ use IEEE.NUMERIC_STD.ALL;
 
 ENTITY M32 IS
 generic (
+  options:  std_logic_vector(1 downto 0) := "00";   -- feature set
   RAMsize:  integer := 10                           -- log2 (RAM cells)
 );
 port (
@@ -58,37 +59,37 @@ END COMPONENT;
   signal RAM_q:     std_logic_vector(31 downto 0);  -- read data
 
 -- intermediate T mux results
-  signal zeroequals:    unsigned(31 downto 0);
-  signal TNsum:         unsigned(33 downto 0);      -- T + N with carrt in and out
+  signal zeroequal: unsigned(31 downto 0);
+  signal TNsum:     unsigned(33 downto 0);          -- T + N with carrt in and out
 
 -- CPU registers
-  signal opcode:        std_logic_vector(5 downto 0);
-  signal IR:            std_logic_vector(31 downto 0);
-  signal T, N:          unsigned(31 downto 0);
-  signal RP, SP, UP:    unsigned(RAMsize-1 downto 0);
-  signal PC:            unsigned(25 downto 0);
-  signal DebugReg:      unsigned(31 downto 0);
-  signal CARRY:         std_logic;
-  signal slot:          integer range 0 to 7;
+  signal opcode:    std_logic_vector(5 downto 0);
+  signal IR:        std_logic_vector(31 downto 0);
+  signal T, N:      unsigned(31 downto 0);
+  signal RP,SP,UP:  unsigned(RAMsize-1 downto 0);
+  signal PC:        unsigned(25 downto 0);
+  signal DebugReg:  unsigned(31 downto 0);
+  signal CARRY:     std_logic;
+  signal slot:      integer range 0 to 7;
 
   type   state_t is (changed, stalled, execute, fetch, fetchc, fetchd, fetchsm,
-                     userinit, user, pwait);
+                     userinit, user, pwait, dividing, divdone, multiplying);
   signal state: state_t;
 
   signal skip_if, skip_nc, skip_ge: std_logic;      -- skip type
   signal rept_mi, rept_nc: std_logic;               -- repeat type
-  signal skipping, repeating: std_logic;            -- don't decode
+  signal skipping, repeating: std_logic;
   signal noexecute: std_logic;                      -- don't execute
 
-  signal new_T:         std_logic;                  -- load new T
-  signal T_src:  std_logic_vector(3 downto 0);      -- T source
-  signal carryin:       std_logic;                  -- adder or shifter gets a carry in
-  signal immdata:       unsigned(31 downto 0);
-  signal userdata:      unsigned(31 downto 0);
+  signal new_T:     std_logic;                      -- load new T
+  signal T_src:     std_logic_vector(3 downto 0);   -- T source
+  signal carryin:   std_logic;                      -- adder or shifter gets a carry in
+  signal immdata:   unsigned(31 downto 0);
+  signal userdata:  unsigned(31 downto 0);          -- user states output this
 
-  signal new_N:         std_logic;                  -- load new N
-  signal N_src:  std_logic_vector(1 downto 0);      -- N source
-  signal Noffset:       unsigned(2 downto 0);       -- offset for "11"
+  signal new_N:     std_logic;                      -- load new N
+  signal N_src:     std_logic_vector(1 downto 0);   -- N source
+  signal Noffset:   unsigned(2 downto 0);           -- offset for "11"
 
   type   PC_src_t is (PC_inc, PC_imm, PC_RAM);
   signal PC_src: PC_src_t;                          -- PC source
@@ -97,27 +98,36 @@ END COMPONENT;
   signal Port_src: Port_src_t;                      -- DbgPort source
 
   type   WR_src_t is (WR_none, WR_T, WR_N, WR_PC);
-  signal WR_src: WR_src_t;                          -- write source
+  signal WR_src: WR_src_t;                          -- RAM write source
   type   WR_dest_t is (WR_miSP, WR_miRP, WR_aT);
-  signal WR_dest: WR_dest_t;                        -- write address
-  signal WR_size, RD_size:   std_logic_vector(1 downto 0); -- 1/2/4
-  signal RD_align: std_logic_vector(1 downto 0);    -- alignment
-  signal Tpacked:       unsigned(31 downto 0);      -- packed read data
+  signal WR_dest: WR_dest_t;                        -- RAM write address
+  signal WR_size, RD_size: std_logic_vector(1 downto 0); -- 1/2/4
+  signal RD_align:  std_logic_vector(1 downto 0);   -- alignment
+  signal Tpacked:   unsigned(31 downto 0);          -- packed read data from FSM
 
-  signal RPinc, SPinc:  std_logic;                  -- post-increment
+  signal RPinc, SPinc:  std_logic;                  -- post-increment stack pointers
   signal RPload, SPload, UPload: std_logic;         -- load from T
 
-  signal userFNsel:     unsigned(3 downto 0);       -- user function select
-  signal cycles:        unsigned(41 downto 0);      -- hardware counter
+  signal userFNsel: unsigned(3 downto 0);           -- user function select
+  signal cycles:    unsigned(41 downto 0);          -- hardware counter
   -- COUNTER increments at Fclk/1024.
-  signal held:          std_logic;
-  signal error:         std_logic;                  -- signal an error
-  signal errorcode:     integer range 0 to 31;
+  signal held:      std_logic;                      -- stay of execution
+  signal error:     std_logic;                      -- signal an error
+  signal errorcode: integer range 0 to 31;          -- complement of Forth "throw code"
 
 -- read and writes share access to single-port RAM
-  signal RAM_raddr:     unsigned(RAMsize-1 downto 0);
-  signal RAM_waddr:     unsigned(RAMsize-1 downto 0);
-  signal RAM_read:      std_logic;
+  signal RAM_raddr: unsigned(RAMsize-1 downto 0);
+  signal RAM_waddr: unsigned(RAMsize-1 downto 0);
+  signal RAM_read:  std_logic;
+
+-- options use extra registers, which will be pruned if not used.
+  signal counter:  integer range 0 to 31;
+  signal xo, yo:   unsigned(31 downto 0);           -- math inputs
+  signal divisor:  unsigned(31 downto 0);           -- register
+  signal diffd:    unsigned(32 downto 0);           -- divider subtractor
+  signal xom, yom: unsigned(15 downto 0);           -- multiplier inputs
+  signal product:  unsigned(31 downto 0);           -- multiplier product
+  signal mulsum:   unsigned(47 downto 0);           -- multiplier sum
 
 -- signal name: string(1 to 5); -- show opcode name in the waveform viewer
 
@@ -212,18 +222,21 @@ begin
     cycles <= (others=>'0');           RAM_d <= x"00000000";   RAMlanes <= x"0";
     caddr <= (others=>'0');           IR <= x"00000000"; opcode <= "000000";
     RAM_we <= '0';              userdata <= x"00000000";   PC_src <= PC_inc;
-    new_T <= '0';    T_src <= x"0";  immdata <= x"00000000";
-    new_N <= '0';    N_src <= "00";  Noffset <= "000";    Port_src <= Port_none;
+    new_T <= '0';  T_src <= x"0";  immdata <= x"00000000";
+    new_N <= '0';  N_src <= "00";  Noffset <= "000";   Port_src <= Port_none;
     bye <= '0';
     -- stack post-inc/dec strobes
-    RPinc <= '0';    RPload <= '0';  WR_dest <= WR_miSP;
-    SPinc <= '0';    SPload <= '0';  UPload <= '0';
+    RPinc <= '0';  RPload <= '0';  WR_dest <= WR_miSP;
+    SPinc <= '0';  SPload <= '0';  UPload <= '0';
     -- read/write control
-    WR_size <= "00";   WR_src <= WR_none;  error <= '0';  errorcode <= 19;
-    RD_size <= "00";   RD_align <= "00";   userFNsel <= x"0";
+    WR_size <= "00";  WR_src <= WR_none;  error <= '0';  errorcode <= 0;
+    RD_size <= "00";  RD_align <= "00";   userFNsel <= x"0";
     skip_nc <= '0';  skip_if <= '0';  skip_ge <= '0';
     rept_mi <= '0';  rept_nc <= '0';  noexecute <= '0';  paddr <= (others=>'0');
     pwrite <= '0';  psel <= '0';  penable <= '0';  pwdata <= x"0000";
+    -- math
+    counter <= 0;  divisor <= x"00000000";  xo <= x"00000000";  yo <= x"00000000";
+    xom <= x"0000";  yom <= x"0000";
   elsif (rising_edge(clk)) then
 --------------------------------------------------------------------------------
     cycles <= cycles + 1;
@@ -238,7 +251,7 @@ begin
         when "0010" => T <= T and N;
         when "0011" => T <= T xor N;
         when "0100" => T <= TNsum(32 downto 1);                    CARRY <= TNsum(33);
-        when "0101" => T <= zeroequals;
+        when "0101" => T <= zeroequal;
         when "0110" => T <= unsigned(RAM_q);
         when "0111" => T <= immdata;
         when "1000" => T <= T(30 downto 0) & (carryin and CARRY);  CARRY <= T(31);
@@ -366,15 +379,15 @@ begin
       state <= stalled;
     when stalled =>  -- `caddr` is new: wait for data from ROM[PC].
       if cready = '1' then
-        opcode <= cdata(31 downto 26);        -- grab the instruction group
-        IR <= cdata;  slot <= 0;              -- save the whole IR for repeats
-        PC    <= PC + 1;                      -- bump the PC
+        opcode <= cdata(31 downto 26);      -- grab the instruction group
+        IR <= cdata;  slot <= 0;            -- save the whole IR for repeats
+        PC    <= PC + 1;                    -- bump the PC
         caddr <= std_logic_vector(PC + 1);
         skip_if <= '0';  skip_nc <= '0';  skip_ge <= '0';
-        if error = '1' then                   -- not so fast...
+        if error = '1' then                 -- not so fast...
           state <= changed;  PC_src <= PC_imm;
           p_rdup;   WR_src <= WR_PC;
-          immdata <= x"00000002";             -- error code is in port
+          immdata <= x"00000002";           -- error code is in port
           DebugReg <= not (to_unsigned(errorcode, 32));
         else
           state <= execute;
@@ -385,35 +398,35 @@ begin
       RD_align <= std_logic_vector(T(1 downto 0));
       if T(31) = '1' then
         if RD_size="00" then
-          new_T <= '1';  T_src <= "0110";     -- cell from RAM, ready now
+          new_T <= '1';  T_src <= "0110";   -- cell from RAM, ready now
           if T(1 downto 0) /= "00" then
-            error <= '1';  errorcode <= 22;   -- misaligned read
+            error <= '1';  errorcode <= 22; -- misaligned read
           end if;
           state <= execute;
         else
-          state <= fetchd;                    -- next state gets the unaligned data
+          state <= fetchd;                  -- next state gets the unaligned data
         end if;
       else
         caddr <= std_logic_vector(T(27 downto 2));
-        state <= fetchc;                      -- fetch from ROM space
+        state <= fetchc;                    -- fetch from ROM space
       end if;
-    when fetchc =>                            -- wait for ROM to return the data
+    when fetchc =>                          -- wait for ROM to return the data
       if cready = '1' then
-        Tpacked <= unsigned(cdata);           -- register the input
-        caddr <= std_logic_vector(PC);        -- restore code address bus
+        Tpacked <= unsigned(cdata);         -- register the input
+        caddr <= std_logic_vector(PC);      -- restore code address bus
         case RD_size is
         when "01" | "10" => state <= fetchsm; -- some shift-and-mask is needed
-        when others => state <= execute;      -- cell-sized fetch
-          new_T <= '1';  T_src <= "1111";     -- T gets Tpacked
+        when others => state <= execute;    -- cell-sized fetch
+          new_T <= '1';  T_src <= "1111";   -- T gets Tpacked
           if RD_align /= "00" then
             error <= '1';  errorcode <= 22;
           end if;
         end case;
       end if;
     when fetchd =>
-      Tpacked <= unsigned(RAM_q);             -- non-cell RAM fetch needs alignment
+      Tpacked <= unsigned(RAM_q);           -- non-cell RAM fetch needs alignment
       state <= fetchsm;
-    when fetchsm =>                           -- Tpacked has byte or half data
+    when fetchsm =>                         -- Tpacked has byte or half data
       if RD_size(0) = '1' then
         case RD_align is
         when "00"   => Tpacked <= x"000000" & Tpacked(7 downto 0);
@@ -432,25 +445,72 @@ begin
         end if;
       end if;
       state <= execute;  new_T <= '1';  T_src <= "1111";
-    when userinit =>                          -- T is still indeterminate
+    when userinit =>                        -- T is still indeterminate
       state <= user;  userFNsel <= immdata(3 downto 0);
-    when user =>                              -- calculate userdata
+    when user =>                            -- calculate userdata
       new_T <= '1';  T_src <= "1011";  userdata <= x"00000000";
-      state <= stalled;                       -- default is single-cycle operation
+      state <= stalled;                     -- default is single-cycle operation
       case userFNsel is
-      when "0000" => pwrite <= T(16);         -- peripheral bus
-            paddr <= std_logic_vector(T(25 downto 17));  psel <= '1';
-            if T(16) = '1' then
-              pwdata <= std_logic_vector(T(15 downto 0));
-            end if;  state <= pwait;          -- bus cycle instead
-            new_T <= '0';
+      when "0000" => pwrite <= T(16);       -- peripheral bus
+        paddr <= std_logic_vector(T(25 downto 17));  psel <= '1';
+        if T(16) = '1' then
+          pwdata <= std_logic_vector(T(15 downto 0));
+        end if;  state <= pwait;            -- bus cycle instead
+        new_T <= '0';
       when "0001" => bye <= '1';
-      when "0010" => userdata <= cycles(41 downto 10); -- Counter
+      when "0010" =>                        -- Counter
+        userdata <= cycles(41 downto 10);
+      when "0011" =>                        -- set divisor, get remainder
+        if options(0) = '1' then
+          divisor <= T;  userdata <= yo;
+        end if;
+      when "0100" =>
+        if options(0) = '1' then
+          if T >= divisor then              -- division overflow
+            xo <= x"FFFFFFFF";  yo <= x"00000000";
+          else
+            state <= dividing;              -- start UM/MOD
+            yo <= T;  xo <= N;  counter <= 31;  new_T <= '0';
+          end if;
+        end if;
+      when "0101" =>
+        if options(0) = '1' then
+          state <= multiplying;             -- start UM*
+          counter <= 4;  new_T <= '0';
+          xom <= T(15 downto 0);  yom <= N(15 downto 0);
+        end if;
       when others => null;
       end case;
+    when multiplying =>                     -- with 16x16 hardware multiply
+      case counter is
+        when 4 => xo <= product;   xom <= T(31 downto 16);  yom <= N(31 downto 16);
+        when 3 => yo <= product;   xom <= T(31 downto 16);  yom <= N(15 downto 0);
+        when 2 => yo <= mulsum(47 downto 16);  xo(31 downto 16) <= mulsum(15 downto 0);
+          xom <= T(15 downto 0);   yom <= N(31 downto 16);
+        when others => yo <= mulsum(47 downto 16);
+          userdata <= mulsum(15 downto 0) & xo(15 downto 0);
+          new_T <= '1';  T_src <= "1011";  state <= stalled;
+      end case;
+      counter <= counter - 1;
+    when dividing =>                        -- binary long division
+      if (diffd(32)='0') or (yo(31)='1') then
+        xo <= xo(30 downto 0) & '1';
+        yo <= diffd(31 downto 0);
+      else
+        xo <= xo(30 downto 0) & '0';
+        yo <= yo(30 downto 0) & xo(31);
+      end if;
+      if counter = 0 then
+        state <= divdone;
+      else
+        counter <= counter - 1;
+      end if;
+    when divdone =>
+      userdata <= xo;
+      new_T <= '1';  T_src <= "1011";  state <= stalled;
     when pwait =>
       penable <= '1';
-      if pready = '1' then                  -- cycle is finished
+      if pready = '1' then                  -- DPB cycle is finished
         penable <= '1';  psel <= '0';
         new_T <= '1';  T_src <= "1011";  state <= stalled;
         userdata <= unsigned(x"0000" & prdata);
@@ -611,8 +671,12 @@ begin
   end if;
 end process;
 
-zeroequals <= x"FFFFFFFF" when T=x"00000000" else x"00000000";
+zeroequal <= x"FFFFFFFF" when T=x"00000000" else x"00000000";
 TNsum <= ('0' & T & (carryin and CARRY)) + ('0' & N & '1');
+
+diffd <= ('0'&yo(30 downto 0)&xo(31)) - ('0'&divisor);  -- dividend difference
+product <= xom * yom;  -- 16x16 multiplier
+mulsum <= (yo & xo(31 downto 16)) + (x"0000" & product);
 
 held <= opcode(1) and RAM_we when WR_src = WR_none
    else opcode(1);

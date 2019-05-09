@@ -11,6 +11,7 @@ defer safemode
 defer errorISR
 -1 , -1 ,                               \ space for CRC and LENGTH
 
+1 equ options                           \ use HW mul/div
 include ../../forth/core.f
 : pause ;  \ include ../../forth/tasker.f \ no multitasker
 include ../../forth/timing.f

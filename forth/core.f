@@ -101,10 +101,22 @@
 
 : u<  - 2*c 1 and 1- ;                	\ 6.1.2340  u1 u2 -- flag
 : u>  swap u< ;                         \ 6.2.2350  u1 u2 -- flag
+
+\ Here's where I disagree with the ANS standard.
+
+\ You should be able to use "- 0<" for "<", but ANS "<" assumes the
+\ existence of overflow and other flags such as those in typical CPUs.
+\ This means the simple definition will fail only in a special case
+\ that never happens in practice. That case is included in the Hayes test suite.
+
+options 8 and [if]                      \ loose ANS compliance
+: < - 0< ; macro
+[else]
 : < 2dup xor 0<                         \ 6.1.0480  n1 n2 -- flag
     |ifz - 0< exit |
     drop 0<
 ;
+[then]
 : >  swap < ;                           \ 6.1.0540  n1 n2 -- flag
 
 : umove  \ a1 a2 n --                   \ move cells, assume cell aligned
@@ -146,8 +158,10 @@
 ;
 
 \ Is a 4x speedup worth it? Maybe if large RAM needs erased.
-\ A 60 MHz CPU erases 10 cells (40 bytes) per microsecond.
-\ A large 64KB RAM would erase in 1.64 ms.
+\ A 100 MHz CPU erases 16 cells (64 bytes) per microsecond.
+\ A large 64KB RAM would erase in 1 ms.
+\ I made it big and ugly to speed up hardware simulation.
+\ In real life, just use "0 fill".
 
 : erase  \ a n --                       \ 6.2.1350  --
    dup ifz: 2drop exit |                \ no length
@@ -175,6 +189,19 @@
    | u2/ -rept nop swap drop ;
 ;
 
+options 1 and [if]
+: um*  \ u1 u2 -- ud                    \ 6.1.2360
+   5 user ( u1 low )  swap  3 user
+;
+: *  \ n1 n2 -- n3                      \ 6.1.0090
+   5 user ( u1 low )  swap drop
+;
+: um/mod \ ud u -- ur uq                \ 6.1.2370
+   3 user drop                          \ set divisor
+   4 user  ( x quot ) swap
+   3 user  swap
+;
+[else]
 : um*  \ u1 u2 -- ud                    \ 6.1.2360
    dup dup xor -32
    begin >r
@@ -184,6 +211,7 @@
    r> r> 1+ +until drop
    >r >r drop r> r> swap
 ;
+: *       um* drop ;                    \ 6.1.0090  n1 n2 -- n1*n2
 : um/mod \ ud u -- ur uq                \ 6.1.2370
     2dup - drop
     ifnc
@@ -202,8 +230,9 @@
         drop drop swap 2*c invert       \ finish quotient
         exit
     then
-    drop drop drop  -1 dup              \ overflow
+    drop drop dup xor  dup 1-           \ overflow = 0 -1
 ;
+[then]
 
 : sm/rem  \ d n -- rem quot             \ 6.1.2214
    2dup xor >r  over >r  abs >r dabs r> um/mod
@@ -239,7 +268,6 @@
 
 : /string >r swap r@ + swap r> - ;      \ 17.6.1.0245  a u -- a+1 u-1
 : within  over - >r - r> u< ;           \ 6.2.2440  u ulo uhi -- flag
-: *       um* drop ;                    \ 6.1.0090  n1 n2 -- n1*n2
 : m*                                    \ 6.1.1810  n1 n2 -- d
     2dup xor 0< >r
     abs swap abs um*

@@ -51,7 +51,7 @@ Basic streaming busses as described by Xilinx. To Be Implemented.
 Interrupt request pins could be added.
 Not actually interrupts, but signals to jam WAKE tokens into memory to wake up tasks.
 
-`BYE` produces an output signal that can end simulation or go into deep powerdown.
+`BYE` produces an output signal that can end simulation or put a SOC into deep powerdown.
 
 ## Architecture
 
@@ -66,7 +66,16 @@ A `state` signal controls the behavior of the opcode decoder.
 
 Unnecessary memory accesses should probably be looked at.
 Adjacent DUP DROP pairs, for instance, cause delays to be inserted for the sake of waiting for data to be written.
-There should be a better option than waiting.
+There should be a better option than waiting. It doesn't look obvious, though.
+
+### Hardware Multiply and Divide
+
+Generic options (bit 0) enable hardware multiply and divide to be synthesized.
+That makes the CPU a little bigger and a little slower.
+Multiplication uses a 16x16 hardware multiplier, which is reasonably fast in an FPGA.
+The software-only versions of UM* and UM/MOD take about 700 and 1800 cycles respectively.
+At 100 MHz, that's 7 usec and 18 usec. Maybe all you need unless there's a lot of number crunching going on.
+But then, why isn't the FPGA fabric doing that?
 
 ## Usage
 
@@ -76,16 +85,17 @@ something that simulates keyboard input, runs the CPU, and directs output to the
 
 The ANS example (make.bat) compiles a large ROM.
 The testbench "types" "see see" into the Forth interpreter.
-ModelSIM chugs along disassembling one line per second in real time.
-Most of the time is spent in UM/MOD, which is done with shift-and-add instructions.
-Speeding it up in hardware is somewhat trivial but is beside the point.
-Grinding it out exercises several opcodes. Give it 32ms of simulation time to finish.
+ModelSIM chugs along disassembling about one line per second in real time (on a fast PC).
+Using hardware UM* and UM/MOD (options bit 0) doubles the speed.
 You can also run `make.bat` in the `helloworld` example to generate a smaller ROM.
+The `options` are in `main.f` as well as `mcu.vhd`.
+Change both to switch between HW and SW multiply and divide.
 
 Although you could use the ANS Forth's synthesizable ROM in a real system,
 a 32KB ROM is a lot of memory in an FPGA.
 It would be better to save the ROM image as a hex file and flash it into a SPI flash chip.
-Although you could execute exclusively from flash, it would be better to cache the bottom 2K or 4K bytes in a block RAM to run faster.
+Although you could execute exclusively from flash,
+it would be better to cache the bottom 2K or 4K bytes in a block RAM to run faster.
 
 ### Synthesis results for MAX 10
 
@@ -95,11 +105,12 @@ The synchronous-read code ROM synthesized using 1966 LEs, so the MCU without ROM
 This MAX10 doesn't do instantiated block RAM. You would initialize from user flash or SPI flash.
 There was also a EBR "read during write" warning when inferring RAM in `spram32.vhd`.
 
-I tried synthesis with a Cyclone 10 LP target. The Cyclone 10 LP seems to be a MAX10 without flash.
+I tried synthesis with a Cyclone 10 LP target. The Cyclone 10 LP seems to be MAX10 without flash.
 
 ### Synthesis results for Cyclone V
 
 The ANS example has bigger ROM and RAM. Synthesized into 5CEBA2F17C6 using Quartus Prime Lite.
 There was no EBR warning this time.
-Logic was 708 ALMs. Fmax of 145 MHz in the "slow 85C" model.
 
+- Without hardware multiply/divide: 708 ALMs, Fmax of 145 MHz in the "slow 85C" model.
+- With hardware multiply/divide: 940 ALMs, Fmax of 120 MHz in the "slow 85C" model.
