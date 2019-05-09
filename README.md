@@ -1,34 +1,36 @@
-# Mforth
+# Tiff
 
-An embeddable model Forth for small MCUs and FPGAs.
+An embeddable Forth model for small MCUs and FPGAs.
 The VM forms a sandbox for a C system,
 relying on C libraries for middleware and other wheels that you don't want to reinvent.
 It's set up to compile to flash memory. Code space is flash (big) so that data space can be small.
 
-Try `bin/mf.exe` to play. If you're a Linux user, compile from source using the Makefile.
-Kids, never trust a downloaded executable. Unless it's your parents' computer...
+Try `bin/tiff.exe` to play, if you like to live dangerously.
+If you're a Linux user, compile from source using the Makefile.
+On Windows, I just pull all files in `src` into a Code::Blocks console project.
 
 Windows users would do well to run this console app under Conemu.
 Color looks so much better. `theme=color` turns it on.
-You can also enable UTF-8 in Conemu, since Mforth supports that too.
+You can also enable UTF-8 in Conemu, since Tiff supports that too.
 There are `make.bat` files in the example folders to make launching dead simple.
 
-`mf` is a C99 console application that implements the Forth `QUIT` loop. It provides a small number of keywords to compile code.
-It uses a simulated Mforth CPU (`vm.c`) to execute compiled code as needed.
+`tiff` is a C99 console application that implements the Forth `QUIT` loop. It provides a small number of keywords to compile code.
+It uses a simulated Tiff CPU (`vm.c`) to execute compiled code as needed.
 The `QUIT` loop keeps its internal state in the VM's memory instead of using C ints, etc.
-This allows internal `mf` C functions to be replaced by Forth definitions as they become available.
+This allows internal `tiff` C functions to be replaced by Forth definitions as they become available.
 A complete ANS Forth can be built by replacing all of the internal C functions with Forth and defining a QUIT loop.
 
 You can bootstrap an ANS Forth or just use part of Forth for your application.
 The resulting ROM image can be saved as a hex file with "\<flags\> save-hex \<filename\>".
 
 The ROM image is binary compatible with models implemented in your embedded C application
-or with an FPGA or ASIC, which runs the same Forth system (big or small) as `mf`.
-`mf` can boot from the hex file with `mf -c myfile.hex`, which avoids most of `mf`: it just coldboots and runs the VM, just like a Mforth chip would.
+or with an FPGA or ASIC, which runs the same Forth system (big or small) as `tiff`.
+`tiff` can boot from the hex file with `tiff -c myfile.hex`, which avoids most of `tiff`:
+it just coldboots and runs the VM, just like a Tiff chip would.
 
 ## Command Line Syntax
 
-`./mf [cmds] ["forth command line"]`
+`./tiff [cmds] ["forth command line"]`
 
 Cmds are 2-character commands starting with '-'. They are:
 
@@ -102,7 +104,7 @@ Although this kind of stack machine has less semantic density per clock cycle th
 (after code-in-a-blender optimizations),
 that doesn't matter with a machine that's trivial to customize to the application.
 
-## Platforms for Mforth
+## Platforms for Tiff
 
 SPI flash is a very useful device for expansion of code space.
 This is especially true for Forth, since it spends most of its time in internal ROM.
@@ -125,18 +127,25 @@ can be generated to provide the same system on embedded hardware.
 This is simpler than traditional cross complation because the host runs target code at compile time.
 
 The VHDL folder contains a Forth processor that runs in ModelSIM. You can run the examples in a VHDL simulator.
-The vanilla RTL is fully synthesizable, with RAMs and ROMs being inferred by FPGA tools.  
+The vanilla RTL is fully synthesizable, with RAMs and ROMs being inferred by FPGA tools.
 
-## What's programming in Mforth like?
+## What's programming in Tiff like?
 
-Mforth starts up with a relatively blank slate.
+Tiff starts up with a relatively blank slate.
 It compiles the headers it needs to handle keywords, but code space is blank.
 There's no separation between assembly language and Forth since Forth is the assembly.
 I find myself using tokens I know are opcodes or short opcode sequences.
 They are often free (in terms of code size) if used before literals and calls,
 which affects how I code.
 
-Mforth is basically a cut-down ANS Forth. You can write an application in it.
+Tiff is basically a cut-down ANS Forth. You can write an application in it.
 ANS Forth is one such application. It's a rather large beast, but fun to ride.
 To make a standalone app, you would generate C source suitable for embedding,
 then compile that with a C compiler.
+
+## About the name
+
+Mforth and MachineForth were taken and/or overloaded.
+What Forth would Chuck Moore have written if he were more tasteless and less smart?
+This one, of course! So, Tiffany from the film "Bride of Chucky". Perfect for this hack job.
+

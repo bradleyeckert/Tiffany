@@ -1,6 +1,6 @@
 # Header space
 
-The most important thing about header space is that it lives in flash memory. The basic rule about flash programming is that you can only change a '1' to a '0'. Erased flash starts out at '1'. You may not program a '0' to the same bit twice. A good chip design might mitigate the possible damage caused by this, but you don't know about the parts you're dealing with. Writing a '0' to the same bit twice without erasing in between could over-charge the floating gate causing problems with incomplete erasure and reading of adjacent bits. So, `mf` throws an error if you try to program a '0' into a bit that's already at '0'.
+The most important thing about header space is that it lives in flash memory. The basic rule about flash programming is that you can only change a '1' to a '0'. Erased flash starts out at '1'. You may not program a '0' to the same bit twice. A good chip design might mitigate the possible damage caused by this, but you don't know about the parts you're dealing with. Writing a '0' to the same bit twice without erasing in between could over-charge the floating gate causing problems with incomplete erasure and reading of adjacent bits. So, `tiff` throws an error if you try to program a '0' into a bit that's already at '0'.
 
 An application can run without header space. It just won't have an interpreter. This is not a problem in embedded systems. SPI flash could be used in development and removed in the final system. Think of physically beheading a system by de-soldering the flash chip.
 
@@ -10,7 +10,7 @@ Some Forths use a hashed dictionary, where the name to be searched uses a hash t
 
 A huge Forth app with 10,000 words would take 40 seconds to load at that rate, but since the dictionary is built up linearly from nothing it would be more like 20 seconds. Reloading the app would be rarely done. Half a minute for something rarely done isn't bad. More reasonable hardware would use quad SPI at 50 MHz, or 10x the speed, so 4 seconds.
 
-The Mforth simulates the stack computer. On a laptop i7, the ANS Forth system loaded in 75ms in `mf.exe`. Once compiled in an application with fixed memory sizes and without instrumentation, the ANS Forth system would load in 25ms. This `mf` is fast.
+Tiff simulates the stack computer. On a laptop i7, the ANS Forth system loaded in 75ms in `mf.exe`. Once compiled in an application with fixed memory sizes and without instrumentation, the ANS Forth system would load in 25ms.
 
 For each wordlist, there is a RAM variable that holds the pointer to the head of the list. Hashing increases RAM usage. There's no need to hash the dictionary. In the interest of minimizing the size of target code, hashing is not used.
 
@@ -51,7 +51,7 @@ IMMEDIATE means something different in a flash-based dual-xt Forth. We would lik
 
 This allows the default compile action to be `compile,`. By flipping bit 2 or bit 3 in `xtc` from '1' to '0', the xtc gets changed to `comp-macro` or `do-immediate` respectively.
 
-Another way to do IMMEDIATE is to clear the xtc. However, I added this late to `mf`. Its QUIT loop treats a zero xtc as immediate. It hasn't been tested, but only the Forth code would change to make use of it.
+Another way to do IMMEDIATE is to clear the xtc. However, I added this late to `tiff`. Its QUIT loop treats a zero xtc as immediate. It hasn't been tested, but only the Forth code would change to make use of it.
 
 ## Wordlists
 
@@ -63,6 +63,6 @@ A new wordlist starts with 0x12345678 followed by a named/unnamed tag and option
 
 There is a forward linked list for filenames. If a filename exists in the list, its position in the list is its ID number. If it must be appended, the filename is added to the list and the previously blank forward link is populated.
 
-When `mf`'s "include" opens a file, it adds the filename to this list by compiling a -1 (blank link) and the filename to head space, which uses HP as its pointer. Then it resolves the previous element's forward link.
+When `tiff`'s "include" opens a file, it adds the filename to this list by compiling a -1 (blank link) and the filename to head space, which uses HP as its pointer. Then it resolves the previous element's forward link.
 
 

@@ -17,12 +17,12 @@ First off, why this architecture is different:
 - It runs fast in hardware and in software simulation.
 - The CPU is a single VHDL file of about 700 lines. Not too complex.
 
-Most other stack machines that use internal stacks. 
+Most other stack machines that use internal stacks.
 I think that Moore's use of dedicated stack RAM arose from the bandwidth constraints of the Von Neuman architecture.
 The overhead required to implement stacks in data space isn't too bad with a Harvard architecture.
 You can have the classic 70s-style Forth, compatible with rapid context switching when multitasking, by putting stacks in data space.
 
-Let's look at some existing 32-bit Forth soft CPUs: 
+Let's look at some existing 32-bit Forth soft CPUs:
 
 James Bowman's J1B. A zero-operand WISC with 16-bit instructions, on Github.
 Very small, very awesome. I didn't copy it because:
@@ -49,7 +49,7 @@ I wrote that one in 2010 and ported SwiftForth to it.
 So what happened? Perhaps demonic possession.
 I just had to implement this sandboxxed Forth and then implement a soft CPU for it.
 The idea was to implement Forth's QUIT loop in a C console application while keeping all of its internal
-state in a simple Virtual Machine, itself implemented in C in a way that would execute quickly. 
+state in a simple Virtual Machine, itself implemented in C in a way that would execute quickly.
 It was supposed to save me time by eliminating the need to write libraries. Just use the C ones.
 I suspect it will do the opposite. The Forth CPU will encourage yet more Forth libraries.
 
@@ -95,8 +95,8 @@ Microprocessor companies have a depressing habit of asserting IP rights on ISAs.
 An ISA is the backend for a tool ecosystem that CPU companies had very little hand in creating.
 It's like the auto makers owning the roads.
 Closed ISAs hold back the industry. Fortunately, RISCV is helping to de-incentivize them.
-Therefore the MachineForth ISA presented here (I'll call it Mforth),
-is completely free and open. You get to do whatever you want with it.
+Therefore the MachineForth ISA presented here, used by Tiff, is completely free and open.
+You get to do whatever you want with it.
 The specification is `vm.c` but is summarized below.
 
 ## The ISA
@@ -259,8 +259,8 @@ This is a little bulky, especially if the equivalent macro can fit in a group.
 The call and return overhead isn't cheap. Using the macro sequence should replace the call when possible.
 Code that’s inlineable is copied directly except for its `;`, leaving that slot open for the next instruction.
 
-Hardware multiply and divide, if provided, are accessed via the USER instruction. 
-`um*` takes about 500 cycles when done by shift-and-add. 
+Hardware multiply and divide, if provided, are accessed via the USER instruction.
+`um*` takes about 500 cycles when done by shift-and-add.
 With real hardware, it's more like 10 cycles. 16x16 multiplier hardware uses several cycles to create the 64-bit product.
 
 ### Interrupts

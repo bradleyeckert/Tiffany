@@ -2,3 +2,5 @@ I hacked out a VM and got it to assemble cleanly. Should be riddled with bugs.
 I thought I had a LB12 eval board, but someone tidied up. May debug later.
 
 NOTE: 8051 assembly file extension for Keil must be A51, not a51.
+
+Also, the opcodes have been moved around since, so that needs fixing too.
