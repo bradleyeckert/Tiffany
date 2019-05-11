@@ -109,14 +109,14 @@ make ../../src/vm.c vm.c                \ vm.c is used as a template
 make ../../src/flash.c flash.c          \ flash.c is used as a template
 
 \ Make VHDL ROM file
-make ../../templates/rom.vhd  ../../VHDL/rom32.vhd
+\ make ../../templates/rom.vhd  ../../VHDL/rom32.vhd
 
 \ ------------------------------------------------------------------------------
 
 \ TEST STUFF: The demo doesn't use anything after this...
 
 romsize ramsize + cp !  \ uncomment to compile code to flash region (not internal ROM)
-cp @ 16384 + hp !		\ remaining disctionary is in external flash
+cp @ 16384 + hp !		\ remaining dictionary is in external flash
 cp @ @ -1 = [if]		\ flash is not blank, try deleting "flash.bin" file.
 
 \ To do: Manage the flash memory so as to save additions to the dictionary.
@@ -165,6 +165,6 @@ include ../../forth/test/dbltest.fs
 [then]
 
 \ save a hex file you could `coldboot` from
-3 save-hex boot.hex                    \ save everything
+\ 3 save-hex boot.hex                    \ save everything
 
 \ theme=color

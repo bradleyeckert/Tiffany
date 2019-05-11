@@ -27,7 +27,6 @@ ARCHITECTURE RTL OF MCU IS
 
 component m32
 generic (
-  options:  std_logic_vector(1 downto 0) := "00";   -- feature set
   RAMsize:  integer := 10                           -- log2 (RAM cells)
 );
 port (
@@ -118,7 +117,7 @@ end process;
 
 -- Instantiate the components of the MCU: CPU, ROM, and UART
 cpu: m32
-GENERIC MAP ( RAMsize => RAMsize, options => "01" )
+GENERIC MAP ( RAMsize => RAMsize )
 PORT MAP (
   clk => clk,  reset => reset_a,  bye => bye,
   caddr => caddr,  cready => cready,  cdata => cdata,

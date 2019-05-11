@@ -7,8 +7,7 @@ use IEEE.NUMERIC_STD.ALL;
 
 ENTITY M32 IS
 generic (
-  options:  std_logic_vector(1 downto 0) := "00";   -- feature set
-  RAMsize:  integer := 10                           -- log2 (RAM cells)
+  RAMsize: integer := 10                            -- log2 (RAM cells)
 );
 port (
   clk     : in  std_logic;                          -- System clock
@@ -60,7 +59,7 @@ END COMPONENT;
 
 -- intermediate T mux results
   signal zeroequal: unsigned(31 downto 0);
-  signal TNsum:     unsigned(33 downto 0);          -- T + N with carrt in and out
+  signal TNsum:     unsigned(33 downto 0);          -- T + N with carry in and out
 
 -- CPU registers
   signal opcode:    std_logic_vector(5 downto 0);
@@ -73,7 +72,7 @@ END COMPONENT;
   signal slot:      integer range 0 to 7;
 
   type   state_t is (changed, stalled, execute, fetch, fetchc, fetchd, fetchsm,
-                     userinit, user, pwait, dividing, divdone, multiplying);
+                     userinit, peripheral, pwait, ufwait0, ufwait);
   signal state: state_t;
 
   signal skip_if, skip_nc, skip_ge: std_logic;      -- skip type
@@ -108,9 +107,7 @@ END COMPONENT;
   signal RPinc, SPinc:  std_logic;                  -- post-increment stack pointers
   signal RPload, SPload, UPload: std_logic;         -- load from T
 
-  signal userFNsel: unsigned(3 downto 0);           -- user function select
-  signal cycles:    unsigned(41 downto 0);          -- hardware counter
-  -- COUNTER increments at Fclk/1024.
+  signal userFNsel: unsigned(7 downto 0);           -- user function select
   signal held:      std_logic;                      -- stay of execution
   signal error:     std_logic;                      -- signal an error
   signal errorcode: integer range 0 to 31;          -- complement of Forth "throw code"
@@ -120,15 +117,22 @@ END COMPONENT;
   signal RAM_waddr: unsigned(RAMsize-1 downto 0);
   signal RAM_read:  std_logic;
 
--- options use extra registers which will be pruned if not used.
-  signal counter:  integer range 0 to 31;
-  signal xo, yo:   unsigned(31 downto 0);           -- math inputs
-  signal divisor:  unsigned(31 downto 0);           -- register
-  signal diffd:    unsigned(32 downto 0);           -- divider subtractor
-  signal xom, yom: unsigned(15 downto 0);           -- multiplier inputs
-  signal product:  unsigned(31 downto 0);           -- multiplier output
-  signal mulsum:   unsigned(47 downto 0);           -- multiplier sum
+component userfn                                    -- user function
+port (
+  clk     : in  std_logic;                          -- System clock
+  reset   : in  std_logic;                          -- Asynchronous reset
+  -- Parameters
+  N, T    : in  unsigned(31 downto 0);              -- top of stack
+  fnsel   : in  unsigned(7 downto 0);               -- function select
+  result  : out unsigned(31 downto 0);              -- output
+  -- handshaking
+  start   : in  std_logic;                          -- strobe
+  busy    : out std_logic                           -- crunching...
+);
+end component;
 
+  signal uf_stb, uf_busy:  std_logic;
+  signal result:   unsigned(31 downto 0);           -- user result
 
 -- signal name: string(1 to 5); -- show opcode name in the waveform viewer
 
@@ -220,7 +224,7 @@ begin
     SP <= to_unsigned(32, RAMsize);    T <= x"00000000";     carryin <= '0';
     UP <= to_unsigned(64, RAMsize);    N <= x"00000000";       CARRY <= '0';
     DebugReg <= (others=>'0');   Tpacked <= x"00000000";   state <= changed;
-    cycles <= (others=>'0');           RAM_d <= x"00000000";   RAMlanes <= x"0";
+    uf_stb <= '0';                 RAM_d <= x"00000000";   RAMlanes <= x"0";
     caddr <= (others=>'0');           IR <= x"00000000"; opcode <= "000000";
     RAM_we <= '0';              userdata <= x"00000000";   PC_src <= PC_inc;
     new_T <= '0';  T_src <= x"0";  immdata <= x"00000000";
@@ -231,16 +235,13 @@ begin
     SPinc <= '0';  SPload <= '0';  UPload <= '0';
     -- read/write control
     WR_size <= "00";  WR_src <= WR_none;  error <= '0';  errorcode <= 0;
-    RD_size <= "00";  RD_align <= "00";   userFNsel <= x"0";
+    RD_size <= "00";  RD_align <= "00";   userFNsel <= x"00";
     skip_nc <= '0';  skip_if <= '0';  skip_ge <= '0';
     rept_mi <= '0';  rept_nc <= '0';  noexecute <= '0';  paddr <= (others=>'0');
     pwrite <= '0';  psel <= '0';  penable <= '0';  pwdata <= x"0000";
-    -- math
-    counter <= 0;  divisor <= x"00000000";  xo <= x"00000000";  yo <= x"00000000";
-    xom <= x"0000";  yom <= x"0000";
   elsif (rising_edge(clk)) then
 --------------------------------------------------------------------------------
-    cycles <= cycles + 1;
+    uf_stb <= '0';
     noexecute <= skipping;
 -- execution pipeline stage
 -- T: 16:1 mux
@@ -446,76 +447,31 @@ begin
         end if;
       end if;
       state <= execute;  new_T <= '1';  T_src <= "1111";
-    when userinit =>                        -- T is still indeterminate
-      state <= user;  userFNsel <= immdata(3 downto 0);
-    when user =>                            -- calculate userdata
-      new_T <= '1';  T_src <= "1011";  userdata <= x"00000000";
-      state <= stalled;                     -- default is single-cycle operation
-      case userFNsel is
-      when "0000" => pwrite <= T(16);       -- peripheral bus
-        paddr <= std_logic_vector(T(25 downto 17));  psel <= '1';
-        if T(16) = '1' then
-          pwdata <= std_logic_vector(T(15 downto 0));
-        end if;  state <= pwait;            -- bus cycle instead
-        new_T <= '0';
-      when "0001" => bye <= '1';
-      when "0010" =>                        -- Counter
-        userdata <= cycles(41 downto 10);
-      when "0011" =>                        -- set divisor, get remainder
-        if options(0) = '1' then
-          divisor <= T;  userdata <= yo;
-        end if;
-      when "0100" =>
-        if options(0) = '1' then
-          if T >= divisor then              -- division overflow
-            xo <= x"FFFFFFFF";  yo <= x"00000000";
-          else
-            state <= dividing;              -- start UM/MOD
-            yo <= T;  xo <= N;  counter <= 31;  new_T <= '0';
-          end if;
-        end if;
-      when "0101" =>
-        if options(0) = '1' then
-          state <= multiplying;             -- start UM*
-          counter <= 5;  new_T <= '0';
-          xom <= T(15 downto 0);  yom <= N(15 downto 0);
-        end if;
-      when others => null;
+    when userinit =>                        -- T is indeterminate until next cycle
+      case immdata(7 downto 0) is
+      when x"00" =>  state <= peripheral;
+      when x"01" =>  state <= stalled;  bye <= '1';
+      when others => state <= ufwait0;
+        uf_stb <= '1';  userFNsel <= immdata(7 downto 0);
       end case;
-    when multiplying =>                     -- with 16x16 hardware multiply
-      product <= xom * yom;                 -- 16x16 multiplier with registered output
-      case counter is
-        when 5 =>                 xom <= T(31 downto 16);  yom <= N(31 downto 16);
-        when 4 => xo <= product;  xom <= T(31 downto 16);  yom <= N(15 downto 0);
-        when 3 => yo <= product;  xom <= T(15 downto 0);   yom <= N(31 downto 16);
-        when 2 => yo <= mulsum(47 downto 16);  xo(31 downto 16) <= mulsum(15 downto 0);
-        when others => yo <= mulsum(47 downto 16);
-          userdata <= mulsum(15 downto 0) & xo(15 downto 0);
-          new_T <= '1';  T_src <= "1011";  state <= stalled;
-      end case;
-      counter <= counter - 1;
-    when dividing =>                        -- binary long division
-      if (diffd(32)='0') or (yo(31)='1') then
-        xo <= xo(30 downto 0) & '1';
-        yo <= diffd(31 downto 0);
-      else
-        xo <= xo(30 downto 0) & '0';
-        yo <= yo(30 downto 0) & xo(31);
-      end if;
-      if counter = 0 then
-        state <= divdone;
-      else
-        counter <= counter - 1;
-      end if;
-    when divdone =>
-      userdata <= xo;
-      new_T <= '1';  T_src <= "1011";  state <= stalled;
+    when peripheral =>                      -- DPB transfer
+      pwrite <= T(16);  psel <= '1';
+      paddr <= std_logic_vector(T(25 downto 17));
+      if T(16) = '1' then
+        pwdata <= std_logic_vector(T(15 downto 0));
+      end if;  state <= pwait;
     when pwait =>
       penable <= '1';
       if pready = '1' then                  -- DPB cycle is finished
         penable <= '1';  psel <= '0';
         new_T <= '1';  T_src <= "1011";  state <= stalled;
         userdata <= unsigned(x"0000" & prdata);
+      end if;
+    when ufwait0 => state <= ufwait;        -- give busy time to appear
+    when ufwait =>
+      if uf_busy = '0' then
+        new_T <= '1';  T_src <= "1011";  state <= stalled;
+        userdata <= result;
       end if;
     when execute =>
 --------------------------------------------------------------------------------
@@ -676,9 +632,6 @@ end process;
 zeroequal <= x"FFFFFFFF" when T=x"00000000" else x"00000000";
 TNsum <= ('0' & T & (carryin and CARRY)) + ('0' & N & '1');
 
-diffd <= ('0'&yo(30 downto 0)&xo(31)) - ('0'&divisor);  -- dividend difference
-mulsum <= (yo & xo(31 downto 16)) + (x"0000" & product);
-
 held <= opcode(1) and RAM_we when WR_src = WR_none
    else opcode(1);
 
@@ -689,6 +642,13 @@ PORT MAP (
   en => RAM_en,  we => RAM_we,  addr => RAM_addr,
   data_i => RAM_d,  lanes => RAMlanes,  data_o => RAM_q
 );
+
+userfunc: userfn
+PORT MAP (
+  clk => clk,  reset => reset,  N => N,  T => T,  fnsel => userFNsel,
+  result => result,  start => uf_stb,  busy => uf_busy
+);
+
 
 -- uncomment if you want to see the opcode name in the waveform viewer
 -- process(opcode, state, held) begin
