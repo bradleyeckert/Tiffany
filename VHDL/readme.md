@@ -74,15 +74,12 @@ Other states handle user functions, non-cell fetches, control flow changes, etc.
 
 ### Hardware Multiply and Divide
 
-Generic options (bit 0) enable hardware multiply and divide to be synthesized.
-That makes the CPU a little bigger and a little slower.
 Multiplication uses a 16x16 hardware multiplier, which is reasonably fast in an FPGA.
 The software-only versions of UM\* and UM/MOD take about 700 and 1800 cycles respectively.
 At 100 MHz, that's 7 usec and 18 usec.
 Maybe it's all you need unless there's a lot of number crunching going on.
 But then, why isn't the FPGA fabric doing that?
-The `options` are in `main.f` as well as `mcu.vhd`.
-Change both to switch between HW and SW multiply and divide.
+The `options` are in `main.f`. To remove HW math, change the `userfn` architecture.
 
 ## Usage
 
@@ -94,7 +91,7 @@ The ANS example (make.bat) compiles a large ROM.
 The testbench "types" "see see" into the Forth interpreter.
 ModelSIM chugs along disassembling about one line per second in real time (on a fast PC).
 Using hardware UM\* and UM/MOD (options bit 0) doubles the speed.
-You can also run `make.bat` in the `helloworld` example to generate a smaller ROM.
+You can run `make.bat` in the `helloworld` example to generate a smaller ROM.
 
 Although you could use the ANS Forth's synthesizable ROM in a real system,
 a 32KB ROM is a lot of memory in an FPGA.
@@ -119,3 +116,12 @@ There was no EBR warning this time.
 
 - Without hardware multiply/divide: 708 ALMs, Fmax of 145 MHz in the "slow 85C" model.
 - With hardware multiply/divide: 932 ALMs, Fmax of 131 MHz in the "slow 85C" model.
+
+## Dhrystone MIPS
+
+Why would you care? Benchmarks are completely meaningless.
+Just as in the classic Forth world time-critical code is moved into assembly,
+time-critical functions should be in hardware. Yup, you have to learn a little VHDL or Verilog.
+Use `userfn.vhd` as an example for your own functions.
+
+
