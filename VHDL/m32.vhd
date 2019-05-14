@@ -194,7 +194,7 @@ main: process(clk, reset)
 
 procedure p_sdup is -- write setup: mem[--SP]=N
 begin
-  WR_src <= WR_N;
+  WR_src <= WR_N; -- change fn type to impure
   WR_dest <= WR_miSP;
   new_N <= '1';
 end procedure p_sdup;
@@ -232,7 +232,7 @@ begin
     bye <= '0';
     -- stack post-inc/dec strobes
     RPinc <= '0';  RPload <= '0';  WR_dest <= WR_miSP;
-    SPinc <= '0';  SPload <= '0';  UPload <= '0';
+    SPinc <= '0';  SPload <= '0';  UPload <= '0';  RAM_waddr <= (others=>'0');
     -- read/write control
     WR_size <= "00";  WR_src <= WR_none;  error <= '0';  errorcode <= 0;
     RD_size <= "00";  RD_align <= "00";   userFNsel <= x"00";

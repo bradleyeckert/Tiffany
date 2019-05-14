@@ -60,7 +60,7 @@ port (
 );
 end component;
 
-  signal now_addr:  std_logic_vector(25 downto 0) := (others=>'1');
+  signal now_addr:  std_logic_vector(25 downto 0);
 
   signal cready:    std_logic;
   signal caddr:     std_logic_vector(25 downto 0);
@@ -158,6 +158,7 @@ begin
     emit_stb <= '0';
     key_stb <= '0';
     bitperiod <= std_logic_vector(to_unsigned(clk_Hz/115200, 16));
+	prdata <= x"0000";  pready <= '0';
   elsif rising_edge(clk) then
     emit_stb <= '0';
     key_stb <= '0';
