@@ -35,7 +35,7 @@ begin
       if (we='1') then
         mem(to_integer(unsigned(addr))) <= data_i;
       else
-        data_o <= mem(to_integer(unsigned(addr)));
+        data_o <= mem(to_integer(unsigned(addr))) after 3 ns;
       end if;
     end if;
   end if;

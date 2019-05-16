@@ -202,73 +202,75 @@ JumpTable:  LJMP NEXT         ;(000)  // nop
             LJMP opDUP        ;(001)  // dup
             LJMP opEXIT       ;(002)  // exit
             LJMP opADD        ;(003)  // +
-            LJMP opUSER       ;(004)  // user
-            LJMP opZeroLess   ;(005)  // 0<
-            LJMP opPOP        ;(006)  // r>
-            LJMP opTwoDiv     ;(007)  // 2/
+            LJMP opTwoStar    ;(004)  // 2*
+            LJMP NEXT         ;(005)
+            LJMP NEXT         ;(006)
+            LJMP NEXT         ;(007)
 
-            LJMP opSKIPNC     ;(010)  // ifc:  slot=end if no carry
+            LJMP opSKIP       ;(010)  // no:  skip remaining slots
             LJMP opOnePlus    ;(011)  // 1+
-            LJMP opSWAP       ;(012)  // swap
-            LJMP opSUB        ;(013)  // -
-            LJMP NEXT
-            LJMP opCstorePlus ;(015)  // c!+  ( c a -- a+1 )
+            LJMP opPOP        ;(012)  // r>
+            LJMP NEXT         ;(013)
+            LJMP opTwoStarC   ;(014)  // 2*c
+            LJMP opUSER       ;(015)  // user
             LJMP opCfetchPlus ;(016)  // c@+  ( a -- a+1 c )
-            LJMP opUtwoDiv    ;(017)  // u2/
+            LJMP opCstorePlus ;(017)  // c!+  ( c a -- a+1 )
 
-            LJMP opSKIP       ;(020)  // no:  skip remaining slots
-            LJMP opTwoPlus    ;(021)  // 2+
-            LJMP opSKIPNZ     ;(022)  // ifz:
-            LJMP opJUMP       ;(023)  // jmp
-            LJMP NEXT
-            LJMP opWstorePlus ;(025)  // w!+  ( n a -- a+2 )
+            LJMP NEXT         ;(020)
+            LJMP opRP         ;(021)  // rp
+            LJMP opRfetch     ;(022)  // r@
+            LJMP opAND        ;(023)  // and
+            LJMP opTwoDiv     ;(024)  // 2/
+            LJMP opJUMP       ;(025)  // jmp
             LJMP opWfetchPlus ;(026)  // w@+  ( a -- a+2 n )
-            LJMP opAND        ;(027)  // and
+            LJMP opWstorePlus ;(027)  // w!+  ( n a -- a+2 )
 
-            LJMP NEXT
-            LJMP opLitX       ;(031)  // litx
-            LJMP opPUSH       ;(032)  // >r
-            LJMP opCALL       ;(033)  // call
-            LJMP NEXT
-            LJMP opZeroEquals ;(035)  // 0=
+            LJMP NEXT         ;(030)
+            LJMP opSP         ;(031)  // sp
+            LJMP NEXT         ;(032)
+            LJMP opXOR        ;(033)  // xor
+            LJMP opUtwoDiv    ;(034)  // u2/
+            LJMP opCALL       ;(035)  // call
             LJMP opWfetch     ;(036)  // w@  ( a -- n )
-            LJMP opXOR        ;(037)  // xor
+            LJMP opPUSH       ;(037)  // >r
 
-            LJMP opREPT       ;(040)  // rept  slot=0
+            LJMP opREPTC      ;(040)  // reptc
             LJMP opFourPlus   ;(041)  // 4+
-            LJMP opOVER       ;(042)  // over
+            LJMP NEXT         ;(042)
             LJMP opADDC       ;(043)  // c+  with carry in
-            LJMP NEXT
-            LJMP opStorePlus  ;(045)  // !+  ( n a -- a+4 )
+            LJMP opZeroEquals ;(044)  // 0=
+            LJMP opLitX       ;(045)  // litx
             LJMP opFetchPlus  ;(046)  // @+  ( a -- a+4 n )
-            LJMP opTwoStar    ;(047)  // 2*
+            LJMP opStorePlus  ;(047)  // !+  ( n a -- a+4 )
 
-            LJMP opMiREPT     ;(050)  // -rept  slot=0 if T < 0
-            LJMP NEXT
-            LJMP opRP         ;(052)  // rp
-            LJMP opDROP       ;(053)  // drop
-            LJMP NEXT
-            LJMP opSetRP      ;(055)  // rp!
+            LJMP opMiREPT     ;(050)  // -rept
+            LJMP opUP         ;(051)  // up
+            LJMP NEXT         ;(052)
+            LJMP NEXT         ;(053)
+            LJMP opZeroLess   ;(054)  // 0<
+            LJMP opFetchAS    ;(055)  // @as
             LJMP opFetch      ;(056)  // @
-            LJMP opTwoStarC   ;(057)  // 2*c
+            LJMP opSetRP      ;(057)  // rp!
 
             LJMP opSKIPGE     ;(060)  // -if:  slot=end if T >= 0
-            LJMP NEXT
-            LJMP opSP         ;(062)  // sp
-            LJMP opFetchAS    ;(063)  // @as
-            LJMP opSetSP      ;(065)  // sp!
+            LJMP opPORT       ;(061)  // port  ( n -- m ) swap T with port
+            LJMP NEXT         ;(062)
+            LJMP NEXT         ;(063)
+            LJMP opCOM        ;(064)  // com
+            LJMP opStoreAS    ;(065)  // !as
             LJMP opCfetch     ;(066)  // c@
-            LJMP opPORT       ;(067)  // port  ( n -- m ) swap T with port
+            LJMP opSetSP      ;(067)  // sp!
 
-            LJMP opSKIPLT     ;(070)  // +if:  slot=end if T < 0
-            LJMP opLIT        ;(071)  // lit
-            LJMP opUP         ;(072)  // up
-            LJMP opStoreAS    ;(073)  // !as
-            LJMP NEXT
-            LJMP opSetUP      ;(075)  // up!
-            LJMP opRfetch     ;(076)  // r@
-;           LJMP opCOM        ;(077)  // com
-            MOV A, R7
+            LJMP opSKIPNC     ;(070)  // ifc:  slot=end if no carry
+            LJMP opOVER       ;(071)  // over
+            LJMP opSKIPNZ     ;(072)  // ifz:
+            LJMP opDROP       ;(073)  // drop
+            LJMP opSWAP       ;(074)  // swap
+            LJMP opLIT        ;(075)  // lit
+            LJMP NEXT         ;(076)
+            LJMP opSetUP      ;(077)  // up!
+
+opCOM:      MOV A, R7
             CPL A
             MOV R7, A
             MOV A, R6

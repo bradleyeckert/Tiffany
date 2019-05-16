@@ -6,6 +6,7 @@ use IEEE.NUMERIC_STD.ALL;
 
 -- Supports 2^30 32-bit words, or 2^32 (4G) bits. BTW, 1G parts are under $10.
 -- Parts beyond 128Mb use 4-byte read operations for the upper address range.
+-- Supports single-rate and quad-rate.
 
 -- Upon POR, the RAM is loaded from flash.
 -- RAMsize is log2 of the number of 32-bit RAM words.
@@ -16,7 +17,8 @@ use IEEE.NUMERIC_STD.ALL;
 entity sfif is
 generic (
   RAMsize:   integer := 10;                     -- log2 (RAM cells)
-  BaseBlock: integer := 0
+  CacheSize: integer := 4;
+  BaseBlock: unsigned(7 downto 0) := x"00"
 );
 port (clk:   in std_logic;
   reset:     in std_logic;                      -- reset is async
@@ -40,254 +42,294 @@ port (clk:   in std_logic;
 );
 end sfif;
 
-architecture behavioral of sfif is
-  signal rate, divisor, prescale: integer range 0 to 3;
+architecture RTL of sfif is
 
-
-  signal float, first, last: std_logic;
-  signal data, data0, cache: std_logic_vector(7 downto 0);
-  signal ticks, tick0: std_logic_vector(3 downto 0);
-  signal nextaddr: std_logic_vector(29 downto 0);
-  type statetype is (idle, command, highA, mediumA, lowA, zero, dummy, xfer);
-  signal state: statetype;
-  signal ioxfer: std_logic;                     -- io port transfer in progress
-
-  type cache_t is array (0 to 15) of std_logic_vector(31 downto 0);
-  signal cache_ok: std_logic_vector(31 downto 0);-- cache word is filled
-  signal cache_addr: unsigned(29 downto 0);     -- current cache address
-  signal cache: cache_t;                        -- prefetch cache
-  signal missed: std_logic;                     -- cache miss
+  -- transfer process signals
+  signal Tdata:  std_logic_vector(31 downto 0);     -- transmit data for SPI
+  signal xstart: std_logic;                         -- start strobe
+  signal divisor, divider, prescale: integer range 0 to 3;
+  signal sclk_i: std_logic;
+  signal TdatSR: std_logic_vector(31 downto 0);     -- transmit shift register
+  signal xdone:  std_logic;                         -- done flag
+  signal xcount, RTcount: integer range 0 to 31;    -- symbol counter
+  type t_state_t is (t_idle, t_transfer, t_finish);
+  signal t_state: t_state_t;
+  signal endcs, isxfer:  std_logic;
+  signal rate: std_logic;                           -- single / quad
+  signal xcs: std_logic_vector(1 downto 0);         -- transfer NCS
+  signal dummy, dummycnt: integer range 0 to 15;    -- dummy counts after transfer
 
 component SPRAMEZ
 generic (
-  Wide:  integer := 32;                         -- width of word
-  Size:  integer := 10                          -- log2 (words)
+  Wide:  integer := 32;                             -- width of word
+  Size:  integer := 10                              -- log2 (words)
 );
 port (
-  clk:    in  std_logic;                        -- System clock
-  reset:  in  std_logic;                        -- async reset
-  en:     in  std_logic;                        -- Memory Enable
-  we:     in  std_logic;                        -- Write Enable (0=read, 1=write)
+  clk:    in  std_logic;                            -- System clock
+  reset:  in  std_logic;                            -- async reset
+  en:     in  std_logic;                            -- Memory Enable
+  we:     in  std_logic;                            -- Write Enable (0=read, 1=write)
   addr:   in  std_logic_vector(Size-1 downto 0);
-  data_i: in  std_logic_vector(Wide-1 downto 0);-- write data
-  data_o: out std_logic_vector(Wide-1 downto 0) -- read data
+  data_i: in  std_logic_vector(Wide-1 downto 0);    -- write data
+  data_o: out std_logic_vector(Wide-1 downto 0)     -- read data
 );
 END component;
 
-  type f_state_t is (f_start, f_fill, f_run);
-  signal f_state: f_state_t;
+  type cache_t is array (0 to 2**CacheSize-1) of std_logic_vector(31 downto 0);
+  signal cache_ok:   std_logic_vector(2**CacheSize-1 downto 0); -- cache word is filled
+  signal cache_pend: std_logic_vector(2**CacheSize-1 downto 0); -- cache word is pending
+  signal cache_addr: unsigned(29 downto 0);         -- current cache address
+  signal cache: cache_t;                            -- prefetch cache
+  signal missed, cokay: std_logic;                  -- cache miss, ready
+  signal cache_cnt: integer range 0 to 2**CacheSize;-- amount of cache to fill
+  signal upperaddr, loweraddr: unsigned(15 downto 0);
+    type c_state_t is (c_idle, c_addr24, c_addr32, c_first, c_fill);
+  signal c_state: c_state_t;
+  signal cache_wipe: std_logic;
 
-  -- SPI transfer
-  signal Rdata:  std_logic_vector(31 downto 0); -- receive shift register
-  signal TdatSR: std_logic_vector(31 downto 0); -- transmit shift register
-  signal xstart: std_logic;                     -- start strobe
-  signal xdone:  std_logic;                     -- done flag
-  signal xcount, RTcount: integer range 0 to 31;-- symbol counter
+    type f_state_t is (f_idle, f_start, f_fill, f_fillx, f_run);
+  signal f_state: f_state_t;
+  signal int_addr: unsigned(RAMsize-1 downto 0);    -- Internal "ROM" address
+  signal ram_addr, ram_waddr: std_logic_vector(RAMsize-1 downto 0);
+  signal ram_en, ram_we, ram_wen, internal: std_logic;
+  signal ram_in, ram_out: std_logic_vector(31 downto 0); -- cache word is filled
+  constant last_addr: unsigned(RAMsize-1 downto 0) := (others => '1');
+  constant next_to_last: unsigned(RAMsize-1 downto 0) := last_addr - 1;
+  signal int_a0: unsigned(RAMsize-1 downto 0);      -- internal addr
 
 begin -------------------------------------------------------------------------
 
--- Transfer shifts incoming data into Rdata while shifting Tdata out to the bus.
--- Rdata and Tdata are 32-bit words. To send shorter data, left-justify it.
--- The xstart strobe triggers a transfer. xdone rises when it's finished.
-
-with rate select data_o <= -- {io3 io2 io1 io0}
-  TdatSR(31 downto 29) & TdatSR(31) when 0,             -- single
-  TdatSR(31 downto 30) & TdatSR(31 downto 30) when 1,   -- dual
-  TdatSR(31 downto 28) when others;                     -- quad
-
-with config(5 downto 4) select divisor <=
-  2 when "00",     -- Fclk/8
-  1 when "01",     -- Fclk/4
-  0 when others;   -- Fclk/2
-
-transfer: process (clk, reset) begin
-  if reset='1' then
-    Rdata  <= x"00000000";  xcount <= 0;
-    TdatSR <= x"00000000";  xdone <= '0';
-  elsif rising_edge(clk) then
-    if RTcount = 0 then
-      if xstart = '1' then
-        RTcount <= xcount;
-        rate <= to_integer(unsigned(config(7 downto 6)));
-        TdatSR <= Tdata;
-        xdone <= '0';
-      else
-        xdone <= '1';
-      end if;
-    elsif divider = 0 then
-      RTcount <= RTcount - 1;
-      divider <= divisor;
-    else
-      divider <= divider - 1;
-    end if;
-  end if;
-end process transfer;
-
-missed <= '0' when cache_addr(29 downto 4) = caddr(29 downto 4) else '1';
-cready <= '0' when missed = '1' else cache_ok(to_integer(unsigned(caddr(3 downto 0))));
-cdata <= cache(to_integer(unsigned(caddr(3 downto 0))));
-
 -- The ROM interface attempts to fetch from a small cache of 16 words.
 -- The cache attempts to fill from memory. Any change in caddr[25:4] restarts it.
+-- The bottom of memory is a synchronous-read RAM that shadows the bottom of flash.
 
 prefetch: process (clk, reset) begin
   if reset='1' then
-    cache_ok <= (others=>'0');
+    cache_ok   <= (others=>'0');  xstart <= '0';  ram_wen <= '0';
+    cache_pend <= (others=>'0');  xcount <= 0;    dummy <= 0;
     cache_addr <= (others=>'0');
-    data <= x"0B";  count <= 8;
-    f_state <= f_start;                         -- start out filling RAM with flash contents
+    f_state <= f_idle;                          -- start out filling RAM with flash contents
+    Tdata <= x"00000000";  cache_cnt <= 0;
+    ram_in <= x"00000000";  cache_wipe <= '1';
+    xcs <= "00";  int_addr <= (others=>'0');
+    ram_waddr <= (others=>'0');
   elsif rising_edge(clk) then
-    if missed = '1' then
-      cache_ok <= (others=>'0');
-      cache_addr <= caddr;
-      state <=
-    else
-    end if;
+    xstart <= '0';
+    ram_wen <= '0';
+    case f_state is
+    when f_idle =>                              -- boot at reset:
+      xcount <= 31;  Tdata <= x"0B" & std_logic_vector(BaseBlock) & x"0000";
+      dummy <= 8;
+      xstart <= '1';  f_state <= f_start;       -- start a fast read from BaseBlock address
+    when f_start =>
+      int_addr <= (others=>'0');  Tdata <= x"00000000";
+      xcount <= 31;  dummy <= 0;
+      xstart <= '1';  f_state <= f_fill;        -- fetch first 32-bit word
+    when f_fill =>
+      if (xstart = '0') and (xdone = '1') then  -- transfer done
+        ram_waddr <= std_logic_vector(int_addr);-- write to RAM, used as "internal ROM"
+        ram_wen <= '1';  ram_in <= TdatSR;
+        if int_addr = last_addr then
+          f_state <= f_fillx;                   -- finished booting
+        else
+          int_addr <= int_addr + 1;
+          if int_addr = next_to_last then
+            xcs <= "01";
+          end if;
+          xcount <= 31;  dummy <= 0;
+          xstart <= '1';
+        end if;
+      end if;
+    when f_fillx =>                             -- allow time to write
+      f_state <= f_run;
+    when f_run =>
+      if internal = '1' then                    -- reading from internal block RAM
+        int_addr <= unsigned(caddr(RAMsize-1 downto 0));
+      else
+        if (missed = '1') or (cache_pend (to_integer(unsigned(not caddr(CacheSize-1 downto 0)))) = '0') then
+        -- cache miss or hit on a part that isn't waiting to be filled
+          cache_ok <= (others=>'0');
+          cache_addr <= unsigned(caddr);
+          cache_pend <= (others=>'0');          -- waiting to be filled = '1'
+          cache_pend (to_integer(unsigned(not caddr(CacheSize-1 downto 0))) downto 0) <= (others => '1');
+          cache_cnt <= 2**CacheSize - to_integer(unsigned(caddr(CacheSize-1 downto 0)));
+          cache_wipe <= '1';                    -- end current prefetch and restart it
+        end if;
+        case c_state is
+        when c_idle =>                          -- NCS already at '1'
+          if cache_wipe = '1' then
+            cache_wipe <= '0';  xcs <= "00";  xcount <= 7;  dummy <= 0;
+            if cache_addr(29 downto 22) = x"00" then
+              Tdata(31 downto 24) <= x"0B";  c_state <= c_addr24;
+            else
+              Tdata(31 downto 24) <= x"0C";  c_state <= c_addr32;
+            end if;
+            xstart <= '1';
+          end if;
+        when c_addr32 =>
+          if (xstart = '0') and (xdone = '1') then
+            Tdata <= std_logic_vector(upperaddr & loweraddr);
+            xcount <= 31;  dummy <= 8;  xstart <= '1';  c_state <= c_first;
+          end if;
+        when c_addr24 =>
+          if (xstart = '0') and (xdone = '1') then
+            Tdata(31 downto 8) <= std_logic_vector(upperaddr(7 downto 0) & loweraddr);
+            xcount <= 23;  dummy <= 8;  xstart <= '1';  c_state <= c_first;
+          end if;
+        when c_first =>                         -- request 1st word
+          if (xstart = '0') and (xdone = '1') then
+            Tdata <= x"00000000";
+            xcount <= 31;  dummy <= 0;
+            xstart <= '1';  c_state <= c_fill;
+          end if;
+        when c_fill =>                          -- prefetch flash into cache
+          if (xstart = '0') and (xdone = '1') then
+            cache_ok(to_integer(unsigned(cache_addr(CacheSize-1 downto 0)))) <= not cache_wipe;
+            cache(to_integer(unsigned(cache_addr(CacheSize-1 downto 0)))) <= TdatSR;
+            if cache_cnt = 0 then
+              c_state <= c_idle;
+            else
+              xcount <= 31;  xstart <= '1';
+              if (cache_cnt = 1) or (cache_wipe = '1') then
+                xcs <= "01";  cache_wipe <= '0';
+                cache_cnt <= 0;
+              else
+                cache_addr <= cache_addr + 1;
+                cache_cnt <= cache_cnt - 1;
+              end if;
+            end if;
+          end if;
+        end case;
+      end if;
+    end case;
   end if;
 end process prefetch;
 
+missed <= '0' when cache_addr(29 downto CacheSize) = unsigned(caddr(29 downto CacheSize)) else '1';
+cokay <= cache_ok(to_integer(unsigned(caddr(CacheSize-1 downto 0))));
+upperaddr <= cache_addr(29 downto 14) + (x"00" & BaseBlock);
+loweraddr <= cache_addr(13 downto 0) & "00";
 
+-- clk        --____----____----____----____----____----____
+-- caddr      xx0000
+-- cache_addr xxxxxx00000000
+-- internal   __-------
+-- ram_out    xxxxxxxxxDDDDDDDD
 
-
-
-process (clk, reset) begin
-  if reset='1' then
-    prescale <= 0;
-    nextaddr <= (others=>'1');
-
-    data <= "00000000";
-    state <= idle;
-    SCLK <= '0';
-    NCS <= '1';
-    ioxfer <= '0';
-  elsif rising_edge(clk) then
--- SPI state machine -----------------------------------------------------------
-    if (prescale="00") then                     -- tick once every 1, 2, 3 or 4 clocks
-      prescale <= speed;
-      if (ticks/="0000") then                   -- process half-bits, if any
-        ticks <= ticks - 1;
-        if (first='0') then
-          SCLK <= ticks(0);                     -- generate SCLK
-          if (ticks(0)='0') then
-            data <= data0;                      -- falling SCLK -> sample and shift
-          end if;
-          if (ticks="0001") then
-            cache <= data0;                     -- received data for sequential reads
-          end if;
-        else
-          NCS <= '1';
-          if (ticks="0001") then                -- insert a long inactive CS
-            first <= '0';                       -- before the SPI transfer
-            ticks <= tick0;                     -- then restart the bit timer
-            NCS <= '0';
-          end if;
-        end if;
+RAM_decode: process (caddr, f_state, ram_wen, ram_waddr, cache, cache_ok, ram_out, cokay, missed) begin
+  internal <= '0';
+  if f_state = f_run then
+    ram_we <= '0';  ram_en <= '0';
+    ram_addr <= caddr(RAMsize-1 downto 0);
+    if unsigned(caddr(29 downto RAMsize)) = 0 then
+      ram_en <= '1';  internal <= '1';
+      cdata <= ram_out;
+      if unsigned(caddr(RAMsize-1 downto 0)) = int_addr then
+        cready <= '1';
       else
-        if (state=xfer) then                    -- end of random access
-          rom_ack <= rom_stb after 2 ns;
-        end if;
-        SCLK <= '0';
+        cready <= '0';
       end if;
     else
-      prescale <= prescale - 1;
+      cdata  <= cache (to_integer(unsigned(caddr(CacheSize-1 downto 0))));
+      cready <= cokay and (not missed);
     end if;
--- I/O port --------------------------------------------------------------------
-    if (io_stb='1') then
-      if (io_we='1') then
-        if (io_addr="11") then
-          speed <= io_data_i(1 downto 0);       -- set new SPI speed
-          rate  <= io_data_i(5 downto 4);       -- set new immediate data rate
-          rrate <= io_data_i(7 downto 6);       -- set new ROM data rate
-          io_ack <= '1' after 2 ns;
-        else
-          if ioxfer='0' then
-            float <= '0';
-            first <= io_addr(0);                -- set up to deassert CS before transfer
-            last  <= io_addr(1);                -- set up to deassert CS after transfer
-            data <= io_data_i;                  -- start a transfer
-            nextaddr <= (others=>'1');          -- pending ROM byte is now invalid
-            ticks <= tick0;
-            ioxfer <= '1';
-          elsif (ticks="0000") then             -- transfer finished
-            NCS <= last;
-            float <= last;
-            io_ack <= '1' after 2 ns;
-          end if;
-        end if;
-      else
-        io_ack <= '1' after 2 ns;               -- reads are trivial
-      end if;
-    else
-      ioxfer <= '0';
-      io_ack <= '0' after 2 ns;
-    end if;
--- ROM port --------------------------------------------------------------------
-    if (ticks="0000") then
-      case state is
-        when idle =>
-          if (rom_stb='1') then                 -- host is requesting ROM data
-            if (rom_addr = nextaddr) then
-              rom_data <= cache;                -- sequential data is already at the SPI output
-              ticks <= tick0;
-              rom_ack <= '1' after 2 ns;
-            else
-              state <= command;
-              float <= '0';
-              if (rate = "11") then
-                rate <= rrate;
-              else
-                rate <= "00";
-              end if;
-              case rate is
-                when "01" =>   data <= x"3B";   -- double
-                when "10" =>   data <= x"EB";   -- quad
-                when others => data <= x"0B";   -- single or SSTquad
-              end case;
-              first <= '1';
-              ticks <= tick0;
-              rom_ack <= '0' after 2 ns;
-            end if;
-            nextaddr <= rom_addr + 1;
-          end if;
-        when command =>                         -- process "fast read" command
-          if (rate(1)='1') then
-            rate <= rrate;                      -- quad rate address
-          end if;
-          data <= rom_addr(23 downto 16);       -- hi
-          ticks <= tick0;  state <= highA;
-        when highA =>
-          data <= rom_addr(15 downto 8);        -- med
-          ticks <= tick0;  state <= mediumA;
-        when mediumA =>
-          data <= rom_addr(7 downto 0);         -- lo
-          ticks <= tick0;  state <= lowA;
-        when lowA =>
-          data <= "00000000";                   -- dummy
-          ticks <= tick0;
-          if (rate="10") then
-            rate <= rrate;                      -- quad rate data (0xEB)
-            state <= zero;                      -- 2-cycle "00" after address
-          else
-            rate <= "00";                       -- normal rate
-            float <= '1';  state <= dummy;
-          end if;
-        when zero =>
-          float <= '1';                         -- 0xEB command uses 4-cycle dummy
-          data <= "00000000";
-          rate <= "01";
-          ticks <= tick0;  state <= dummy;
-        when dummy =>
-          data <= "00000000";                   -- xfer
-          rate <= rrate;
-          ticks <= tick0;  state <= xfer;
-        when xfer =>
-          data <= "00000000";                   -- prefetch
-          rom_data <= data0;
-          ticks <= tick0;  state <= idle;
-      end case;
-    elsif (state=idle) and (rom_stb='0') then
-      rom_ack <= '0' after 2 ns;
-    end if;
+  else
+    cready <= '0';
+    ram_en <= ram_wen;
+    ram_we <= ram_wen;
+    ram_addr <= ram_waddr;
   end if;
-end process;
-end behavioral;
+end process RAM_decode;
+
+ram: SPRAMEZ
+GENERIC MAP ( Wide => 32, Size => RAMsize )
+PORT MAP (
+  clk => clk,  reset => reset,  en => ram_en,  we => ram_we,
+  addr => ram_addr,  data_i => ram_in,  data_o => ram_out
+);
+
+----------------------------------------------------------------------------------
+-- SPI transfer shifts incoming data into TdatSR while shifting it out to the bus.
+-- To send shorter data than 32-bit, left-justify it.
+-- The xstart strobe triggers a transfer. xdone rises when it's finished.
+-- TdatSR is the received data.
+
+divisor <= to_integer(unsigned(config(5 downto 4)));
+sclk <= sclk_i;
+
+transfer: process (clk, reset) begin
+  if reset='1' then
+    RTcount <= 0;  divider <= 0;
+    TdatSR <= x"00000000";  xdone <= '0';  sclk_i <= '0';  NCS <= '1';
+    data_o <= "0000";  t_state <= t_idle;  endcs <= '0';
+    xdata_o <= x"00";  xbusy <= '0';  isxfer <= '0';
+    drive_o <= "0001";  dummycnt <= 0;  rate <= '0';
+  elsif rising_edge(clk) then
+    case t_state is
+    when t_idle =>
+      if xstart = '1' then                      -- controller requests a transfer
+        RTcount <= xcount;  dummycnt <= dummy;
+        isxfer <= '0';  rate <= config(7);
+        divider <= divisor;  xdone <= '0';
+        if config(7) = '0' then
+          data_o(0) <= Tdata(31);
+          TdatSR <= Tdata(30 downto 0) & '0';
+        else                                    -- quad rate, needs to know direction
+          data_o <= Tdata(31 downto 28);
+          TdatSR <= Tdata(27 downto 0) & x"0";
+        end if;
+        NCS <= xcs(1);  endcs <= xcs(0);
+        t_state <= t_transfer;
+      elsif xtrig = '1' then                    -- MCU requests a transfer
+        RTcount <= 7;  dummycnt <= 0;
+        divider <= divisor;  isxfer <= '1';
+        rate <= '0';  TdatSR(31 downto 25) <= xdata_i(6 downto 0);
+        data_o(0) <= xdata_i(7);                -- single rate
+        xbusy <= '1';  t_state <= t_transfer;
+        NCS <= xdata_i(9);  endcs <= xdata_i(8);
+      end if;
+    when t_transfer =>
+      if (divider = 0) then
+        divider <= divisor;
+        sclk_i <= not sclk_i;
+        if sclk_i = '1' then                    -- output to SPI on falling edge
+          TdatSR <= TdatSR(30 downto 0) & data_i(0);
+          data_o(0) <= TdatSR(31);              -- also capture input
+          if RTcount = 0 then
+            t_state <= t_finish;
+          else
+            RTcount <= RTcount - 1;
+          end if;
+        end if;
+      else
+        divider <= divider - 1;
+      end if;
+    when t_finish =>
+      if dummycnt = 0 then
+        if (divider = 0) then                   -- wait for last bit to finish
+          sclk_i <= '0';  xbusy <= '0';
+          NCS <= endcs;
+          if isxfer = '1' then
+            xdata_o <= TdatSR(7 downto 0);
+          else
+            xdone <= '1';
+          end if;
+          t_state <= t_idle;
+        else
+          divider <= divider - 1;
+        end if;
+      elsif (divider = 0) then
+        sclk_i <= not sclk_i;
+        if sclk_i = '1' then                    -- output to SPI on falling edge
+          if dummycnt /= 0 then
+            dummycnt <= dummycnt - 1;
+          end if;
+        end if;
+      else
+        divider <= divider - 1;
+      end if;
+    end case;
+  end if;
+end process transfer;
+
+end RTL;
