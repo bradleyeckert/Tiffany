@@ -1,6 +1,7 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
+USE IEEE.VITAL_timing.ALL;
 
 ENTITY sfif_tb IS
 END sfif_tb;
@@ -51,17 +52,57 @@ END COMPONENT;
   signal drive_o: std_logic_vector(3 downto 0);
   signal data_i:  std_logic_vector(3 downto 0) := "0000";
 
+  signal data:    std_logic_vector(3 downto 0);
+  signal RESETNeg: std_logic;
+
   signal sr: std_logic_vector(31 downto 0) := x"12345678";
 
   constant clk_period : time := 10 ns;          -- 100 MHz
 
--- {rate, speed, dummy, hasmode} in [7:6], [5:4], [3:2], and [1] respectively.
--- rate:	Select rate for all ROM reads: 0=single, 1=double, 2=quad; Default = 0.
--- speed:	SPI interface speed: 3,2=clk/2, 1=clk/4, 0=clk/8; Default = 0.
--- dummy:	Number of dummy cycles to wait for read data: {4, 6, 8, 10}; Default = 2 (8).
--- hasmode:	Include a mode byte after the address: Default = 0.
+
+    COMPONENT s25fl064l                         -- flash device
+    GENERIC (                                   -- single data rate only
+        tdevice_PU          : VitalDelayType  := 4 ms;
+        mem_file_name       : STRING    := "s25fl064l.mem";
+        TimingModel         : STRING;
+        UserPreload         : BOOLEAN   := FALSE);
+    PORT (
+        -- Data Inputs/Outputs
+        SI                : INOUT std_ulogic := 'U'; -- serial data input/IO0
+        SO                : INOUT std_ulogic := 'U'; -- serial data output/IO1
+        -- Controls
+        SCK               : IN    std_ulogic := 'U'; -- serial clock input
+        CSNeg             : IN    std_ulogic := 'U'; -- chip select input
+        WPNeg             : INOUT std_ulogic := 'U'; -- write protect input/IO2
+        RESETNeg          : INOUT std_ulogic := 'U'; -- reset the chip
+        IO3RESETNeg       : INOUT std_ulogic := 'U'  -- hold input/IO3
+    );
+    END COMPONENT;
+
 
 BEGIN
+
+data_i <= data;
+g_data: for i in 0 to 3 generate
+  data(i) <= data_o(i) when drive_o(i) = '1' else 'H';
+end generate g_data;
+RESETNeg <= not reset;
+
+   mem: s25fl064l
+        GENERIC MAP (
+          tdevice_PU  => 1 ns,  -- power up very fast
+          UserPreload => TRUE,  -- load a file from the current workspace
+          TimingModel => "               ",
+          mem_file_name => "testrom.txt")
+        PORT MAP (
+          SCK => SCLK,
+          SO => data(1),
+          CSNeg => NCS,
+          IO3RESETNeg => data(3),
+          WPNeg => data(2),
+          SI => data(0),
+          RESETNeg => RESETNeg
+        );
 
    -- Instantiate the Unit Under Test (UUT)
    uut: sfif
@@ -82,24 +123,25 @@ BEGIN
 
    -- Stimulus process
    stim_proc: process is
+   procedure fetch(a: integer) is begin
+      loop
+        wait until rising_edge(clk);
+        caddr <= std_logic_vector(to_unsigned(a, 30));
+        wait for 2 ns;
+        if cready='1' then
+          exit;
+        end if;
+      end loop;
+   end procedure;
    begin
       wait for clk_period*8.2;  reset <= '0';
-      wait until rising_edge(clk);
-      for i in 0 to 10 loop
-        caddr <= std_logic_vector(to_unsigned(i, 30));
-        wait for 2 ns;
-        wait until cready = '1';
-        wait until rising_edge(clk);
+      for i in 0 to 15 loop
+         fetch(i);
+      end loop;
+      for i in 12 to 15 loop
+         fetch(i);
       end loop;
       wait;
-   end process;
-
-   process (clk) is
-   begin
-      if rising_edge(clk) then
-        data_i(0) <= sr(0) after 2 ns;
-        sr <= sr(30 downto 0) & sr(31);
-      end if;
    end process;
 
 END;
