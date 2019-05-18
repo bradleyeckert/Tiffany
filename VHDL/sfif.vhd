@@ -254,7 +254,7 @@ cokay <= cache_ok(to_integer(unsigned(caddr(CacheSize-1 downto 0))));
 upperaddr <= cache_addr(29 downto 14) + (x"00" & BaseBlock);
 loweraddr <= cache_addr(13 downto 0) & "00";
 
-RAM_decode: process (caddr, f_state, ram_wen, ram_waddr, cache, cache_ok, ram_out, cokay, missed) begin
+RAM_decode: process (caddr, f_state, ram_wen, ram_waddr, cache, ram_out, cokay, missed, int_addr) begin
   internal <= '0';
   if f_state = f_run then
     ram_we <= '0';  ram_en <= '0';

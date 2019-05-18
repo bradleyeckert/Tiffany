@@ -59,7 +59,6 @@ END COMPONENT;
 
   constant clk_period : time := 10 ns;          -- 100 MHz
 
-
     COMPONENT s25fl064l                         -- flash device
     GENERIC (                                   -- single data rate only
         tdevice_PU          : VitalDelayType  := 4 ms;
@@ -78,7 +77,6 @@ END COMPONENT;
         IO3RESETNeg       : INOUT std_ulogic := 'U'  -- hold input/IO3
     );
     END COMPONENT;
-
 
 BEGIN
 
