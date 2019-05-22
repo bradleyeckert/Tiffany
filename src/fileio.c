@@ -121,15 +121,15 @@ case 11:                                // 11: Assembler syntax internal ROM dum
     break;
 case 12:                                // 12: Assembler syntax for 8051
     length = ROMwords(ROMsize);
-    directive = "DW";
-    format = "0%04XH,0%04XH";           // no Keil support for 32-bit words
+    directive = "DB";
+    format = "0%02XH,0%02XH,0%02XH,0%02XH";  // Little-endian format
     C_Columns = 6;
     for (int i=0; i<length; i++) {
         int col = i % C_Columns;
         if (!col) {
             fprintf(ofp, "\n%s ", directive);
         }
-        fprintf(ofp, format, rom[i]>>16, rom[i]&0xFFFF);
+        fprintf(ofp, format, rom[i]&0xFF, (rom[i]>>8)&0xFF, (rom[i]>>16)&0xFF, (rom[i]>>24)&0xFF);
         if ((i != (length-1)) && (col != (C_Columns-1))) {
             fprintf(ofp, ", ");
         }

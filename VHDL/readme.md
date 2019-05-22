@@ -1,3 +1,31 @@
+# MCU models
+
+The MCUs are synthesizable. V0 has a UART and built-in ROM. V1 has a SPI flash controller.
+
+MCU V0:
+
+- userfn.vhd, user functions
+- spram32.vhd, data RAM
+- m32.vhd, CPU
+- uart.vhd, simple UART
+- rom32.vhd, internal ROM
+- mcu_v0.vhd, MCU
+- mcu_v0_tb.vhd, testbench
+
+MCU V1:
+
+- userfn.vhd, user functions
+- spram32.vhd, data RAM
+- m32.vhd, CPU
+- uart.vhd, simple UART
+- spramEZ.vhd, generic RAM
+- spif.vhd, SPI flash interface
+- mcu_v1.vhd, MCU
+- conversions.vhd, FMF library
+- gen_utils.vhd, FMF library
+- s25fl064l.vhd, FMF model
+- mcu_v1_tb.vhd, testbench
+
 ## M32 ports
 
 The M32 CPU uses inferred block RAM for its internal code and data spaces.
@@ -74,7 +102,6 @@ Other states handle user functions, non-cell fetches, control flow changes, etc.
 
 ### Hardware Multiply and Divide
 
-Multiplication uses a 16x16 hardware multiplier, which is reasonably fast in an FPGA.
 The software-only versions of UM\* and UM/MOD take about 700 and 1800 cycles respectively.
 At 100 MHz, that's 7 usec and 18 usec.
 Maybe it's all you need unless there's a lot of number crunching going on.
@@ -102,12 +129,12 @@ it would be better to cache the bottom 2K or 4K bytes in a block RAM to run fast
 ### Synthesis results for MAX 10
 
 I synthesized the HelloWorld example into a 10M08SCE144C8G using Quartus Prime Lite.
-It took 3506 LEs and had a Fmax of 115 MHz in the "slow 85C" model.
+V0 took 3506 LEs and had a Fmax of 115 MHz in the "slow 85C" model.
 The synchronous-read code ROM synthesized using 1966 LEs, so the MCU without ROM would be 1540 LEs.
 This MAX10 doesn't do initialized block RAM. You would initialize from user flash or SPI flash.
 There was also a EBR "read during write" warning when inferring RAM in `spram32.vhd`.
 
-I tried synthesis with a Cyclone 10 LP target. The Cyclone 10 LP seems to be MAX10 without flash.
+MCU_V1 came out to 150 MHz on a 10CL006YE144C6G and 2693 LEs (46% of the part).
 
 ### Synthesis results for Cyclone V
 

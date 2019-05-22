@@ -862,8 +862,8 @@ uint32_t vmRegRead(int ID) {
 	switch(ID) {
 		case 0: return T;
 		case 1: return N;
-		case 2: return (RP-ROMsize)*4;
-		case 3: return (SP-ROMsize)*4;
+		case 2: return (RP-RAMsize)*4;
+		case 3: return (SP-RAMsize)*4;
 		case 4: return (UP-RAMsize)*4;
 		case 5: return PC*4;
 		default: return 0;

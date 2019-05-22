@@ -51,12 +51,14 @@ architecture RTL of sfif is
   signal divisor, divider, prescale: integer range 0 to 3;
   signal sclk_i: std_logic;
   signal TdatSR: std_logic_vector(31 downto 0);     -- transmit shift register
+  signal TdatSRle: std_logic_vector(31 downto 0);   -- byte-reversed
   signal xdone:  std_logic;                         -- done flag
   signal xcount, RTcount: integer range 0 to 31;    -- symbol counter
   type t_state_t is (t_idle, t_transfer, t_finish);
   signal t_state: t_state_t;
-  signal endcs, isxfer:  std_logic;
-  signal rate, xrate, quadrate: std_logic;          -- single / quad
+  signal endcs, isxfer, hasmode:  std_logic;
+  signal rate, xrate: std_logic_vector(1 downto 0);
+  signal spirate: std_logic_vector(1 downto 0);     -- single / double / quad
   signal xdir: std_logic;                           -- direction: in / out
   signal xcs: std_logic_vector(1 downto 0);         -- transfer NCS
   signal dummy, dummycnt: integer range 0 to 15;    -- dummy counts after transfer
@@ -69,7 +71,6 @@ generic (
 );
 port (
   clk:    in  std_logic;                            -- System clock
-  reset:  in  std_logic;                            -- async reset
   en:     in  std_logic;                            -- Memory Enable
   we:     in  std_logic;                            -- Write Enable (0=read, 1=write)
   addr:   in  std_logic_vector(Size-1 downto 0);
@@ -86,10 +87,10 @@ END component;
   signal missed, cokay: std_logic;                  -- cache miss, ready
   signal cache_cnt: integer range 0 to 2**CacheSize;-- amount of cache to fill
   signal upperaddr, loweraddr: unsigned(15 downto 0);
-    type c_state_t is (c_idle, c_addr24, c_addr32, c_first, c_fill, c_end);
+    type c_state_t is (c_idle, c_addr24, c_addr32, c_mode, c_first, c_fill, c_end);
   signal c_state: c_state_t;
-  signal cache_wipe: std_logic;                     -- tell prefetch cache was wiped
   signal ca: integer range 0 to 2**CacheSize-1;
+  signal restart: std_logic;
 
     type f_state_t is (f_idle, f_start, f_fill, f_fillx, f_run);
   signal f_state: f_state_t;
@@ -99,11 +100,12 @@ END component;
   signal ram_in, ram_out: std_logic_vector(31 downto 0); -- cache word is filled
   constant last_addr: unsigned(RAMsize-1 downto 0) := (others => '1');
   constant next_to_last: unsigned(RAMsize-1 downto 0) := last_addr - 1;
-  signal int_a0: unsigned(RAMsize-1 downto 0);      -- internal addr
 
 begin -------------------------------------------------------------------------
 
 ca <= to_integer(unsigned(cache_addr(CacheSize-1 downto 0)));
+
+restart <= missed or not cache_pend (to_integer(unsigned(not caddr(CacheSize-1 downto 0))));
 
 -- The ROM interface attempts to fetch from a small cache of 16 words.
 -- The cache attempts to fill from memory. Any change in caddr[25:4] restarts it.
@@ -113,10 +115,10 @@ prefetch: process (clk, reset) begin
   if reset='1' then
     cache_ok   <= (others=>'0');  xstart <= '0';  ram_wen <= '0';
     cache_pend <= (others=>'0');  xcount <= 0;    dummy <= 0;
-    cache_addr <= (others=>'0');  xrate <= '0';   xdir <= '0';
+    cache_addr <= (others=>'0');  xrate <= "00";  xdir <= '0';
     f_state <= f_idle;                          -- start out filling RAM with flash contents
     Tdata <= x"00000000";  cache_cnt <= 0;
-    ram_in <= x"00000000";  cache_wipe <= '1';
+    ram_in <= x"00000000";
     xcs <= "00";  int_addr <= (others=>'0');
     ram_waddr <= (others=>'0');
   elsif rising_edge(clk) then
@@ -125,7 +127,7 @@ prefetch: process (clk, reset) begin
     case f_state is
     when f_idle =>                              -- boot at reset:
       xcount <= 31;  Tdata <= x"0B" & std_logic_vector(BaseBlock) & x"0000";
-      dummy <= 8;  xdir <= '1';  xrate <= '0';
+      dummy <= 8;  xdir <= '1';  xrate <= "00";
       xstart <= '1';  f_state <= f_start;       -- start a fast read from BaseBlock address
     when f_start =>
       if (xstart = '0') and (xdone = '1') then  -- transfer done
@@ -136,7 +138,7 @@ prefetch: process (clk, reset) begin
     when f_fill =>
       if (xstart = '0') and (xdone = '1') then
         ram_waddr <= std_logic_vector(int_addr);-- write to RAM, used as "internal ROM"
-        ram_wen <= '1';  ram_in <= TdatSR;
+        ram_wen <= '1';  ram_in <= TdatSRle;
         if int_addr = last_addr then
           f_state <= f_fillx;                   -- finished booting
         else
@@ -154,79 +156,94 @@ prefetch: process (clk, reset) begin
       if internal = '1' then                    -- reading from internal block RAM
         int_addr <= unsigned(caddr(RAMsize-1 downto 0));
       else                                      -- filling cache
-        if (missed = '1') or (cache_pend (to_integer(unsigned(not caddr(CacheSize-1 downto 0)))) = '0') then
-        -- cache miss or hit on a part that isn't waiting to be filled
-          cache_ok <= (others=>'0');
-          cache_addr <= unsigned(caddr);
-          cache_pend <= (others=>'0');          -- waiting to be filled = '1'
-          cache_pend (to_integer(unsigned(not caddr(CacheSize-1 downto 0))) downto 0) <= (others => '1');
-          cache_cnt <= 2**CacheSize - to_integer(unsigned(caddr(CacheSize-1 downto 0)));
-          cache_wipe <= '1';                    -- end current prefetch and restart it
-        end if;
-        case c_state is
-        when c_idle =>                          -- NCS already at '1'
-          if cache_wipe = '1' then
-            cache_wipe <= '0';
-            xcs <= "00";  xcount <= 7;  dummy <= 0;  xdir <= '1';
-            if cache_addr(29 downto 22) = x"00" then
-              Tdata(31 downto 24) <= x"0B";  c_state <= c_addr24;
-            else
-              Tdata(31 downto 24) <= x"0C";  c_state <= c_addr32;
+        if (xstart = '0') and (xdone = '1') then
+          case c_state is
+          when c_idle =>                        -- NCS already at '1'
+            if restart = '1' then
+              cache_ok <= (others=>'0');
+              cache_addr <= unsigned(caddr);
+              cache_pend <= (others=>'0');      -- waiting to be filled = '1'
+              cache_pend (to_integer(unsigned(not caddr(CacheSize-1 downto 0))) downto 0) <= (others => '1');
+              cache_cnt <= 2**CacheSize - to_integer(unsigned(caddr(CacheSize-1 downto 0)));
+              xrate <= "00";
+              xcs <= "00";  xcount <= 7;  dummy <= 0;  xdir <= '1';
+              if caddr(29 downto 22) = x"00" then
+                case spirate is                 -- can use 24-bit address
+                when "00" =>   Tdata(31 downto 24) <= x"0B";
+                when "01" =>   Tdata(31 downto 24) <= x"BB";
+                when others => Tdata(31 downto 24) <= x"EB";
+                end case;
+		  	    c_state <= c_addr24;
+              else
+                case spirate is
+                when "00" =>   Tdata(31 downto 24) <= x"0C";
+                when "01" =>   Tdata(31 downto 24) <= x"BC";
+                when others => Tdata(31 downto 24) <= x"EC";
+                end case;
+		  	    c_state <= c_addr32;
+              end if;
+              xstart <= '1';
             end if;
-            xstart <= '1';
-          end if;
-        when c_addr32 =>
-          if (xstart = '0') and (xdone = '1') then
+          when c_addr32 =>
             Tdata <= std_logic_vector(upperaddr & loweraddr);
-            xrate <= quadrate;
-            if quadrate = '1' then
-              xcount <= 7;
-              dummy <= qdummy;
-            else
-              xcount <= 31;
-              dummy <= 8;
-            end if;
-            xstart <= '1';  c_state <= c_first;
-          end if;
-        when c_addr24 =>
-          if (xstart = '0') and (xdone = '1') then
+            xrate <= spirate;
+            case spirate is
+            when "00"   => xcount <= 31;  dummy <= 8;
+            when "01"   => xcount <= 15;  dummy <= qdummy;
+            when others => xcount <= 7;   dummy <= qdummy;
+            end case;
+            xstart <= '1';
+		  	if hasmode = '1' then
+		  	  c_state <= c_mode;
+		  	  dummy <= 0;
+		  	else
+		  	  c_state <= c_first;
+		  	end if;
+          when c_addr24 =>
             Tdata(31 downto 8) <= std_logic_vector(upperaddr(7 downto 0) & loweraddr);
-            xrate <= quadrate;
-            if quadrate = '1' then
-              xcount <= 5;
-              dummy <= qdummy;
-            else
-              xcount <= 23;
-              dummy <= 8;
-            end if;
+            xrate <= spirate;
+            case spirate is
+            when "00"   => xcount <= 23;  dummy <= 8;
+            when "01"   => xcount <= 11;  dummy <= qdummy;
+            when others => xcount <= 5;   dummy <= qdummy;
+            end case;
+            xstart <= '1';
+		  	if hasmode = '1' then
+		  	  c_state <= c_mode;
+		  	  dummy <= 0;
+		  	else
+		  	  c_state <= c_first;
+		  	end if;
+		  when c_mode =>
+            Tdata <= x"FF000000";  dummy <= qdummy;
+            case spirate is
+            when "01" =>   xcount <= 3;
+            when others => xcount <= 1;
+            end case;
             xstart <= '1';  c_state <= c_first;
-          end if;
-        when c_first =>                         -- request 1st word
-          if (xstart = '0') and (xdone = '1') then
+          when c_first =>                       -- request 1st word
             Tdata <= x"00000000";  dummy <= 0;  xdir <= '0';
-            if quadrate = '1' then
-              xcount <= 7;
-            else
-              xcount <= 31;
-            end if;
+            case spirate is
+            when "00"   => xcount <= 31;
+            when "01"   => xcount <= 15;
+            when others => xcount <= 7;
+            end case;
             xstart <= '1';  c_state <= c_fill;
-          end if;
-        when c_fill =>                          -- prefetch flash into cache
-          if (xstart = '0') and (xdone = '1') then
-            if cache_ok(ca) = '0' then
-               cache(ca) <= TdatSR;             -- save if not already not prefetched
+          when c_fill =>                        -- prefetch flash into cache
+            if cache_ok(ca) = '0' then          -- save if not already not prefetched
+               cache(ca) <= TdatSRle;
             end if;
-            cache_ok(ca) <= not cache_wipe;
+            cache_ok(ca) <= not restart;
             if cache_cnt = 0 then
               c_state <= c_idle;
             else
-              if quadrate = '1' then
-                xcount <= 7;
-              else
-                xcount <= 31;
-              end if;
+              case spirate is
+              when "00"   => xcount <= 31;
+              when "01"   => xcount <= 15;
+              when others => xcount <= 7;
+              end case;
               xstart <= '1';
-              if cache_wipe = '1' then
+              if restart = '1' then
                 xcs <= "01";  xcount <= 1;      -- stop prefetch by deasserting CS
                 c_state <= c_end;
               else
@@ -238,12 +255,10 @@ prefetch: process (clk, reset) begin
                 cache_cnt <= cache_cnt - 1;
               end if;
             end if;
-          end if;
-        when c_end =>                           -- cache has been wiped, idle will refill
-          if (xstart = '0') and (xdone = '1') then
+          when c_end =>                         -- cache has been wiped, idle will refill
             c_state <= c_idle;
-          end if;
-        end case;
+          end case;
+        end if;
       end if;
     end case;
   end if;
@@ -254,6 +269,10 @@ cokay <= cache_ok(to_integer(unsigned(caddr(CacheSize-1 downto 0))));
 upperaddr <= cache_addr(29 downto 14) + (x"00" & BaseBlock);
 loweraddr <= cache_addr(13 downto 0) & "00";
 
+-- convert to little endian format
+TdatSRle <= TdatSR(7 downto 0) & TdatSR(15 downto 8) & TdatSR(23 downto 16) & TdatSR(31 downto 24);
+
+-- mux Block RAM or cache data to output
 RAM_decode: process (caddr, f_state, ram_wen, ram_waddr, cache, ram_out, cokay, missed, int_addr) begin
   internal <= '0';
   if f_state = f_run then
@@ -273,16 +292,17 @@ RAM_decode: process (caddr, f_state, ram_wen, ram_waddr, cache, ram_out, cokay, 
     end if;
   else -- not running yet
     cready <= '0';
+    cdata <= x"00000000";
     ram_en <= ram_wen;
     ram_we <= ram_wen;
     ram_addr <= ram_waddr;
   end if;
 end process RAM_decode;
 
+-- Block RAM
 ram: SPRAMEZ
 GENERIC MAP ( Wide => 32, Size => RAMsize )
-PORT MAP (
-  clk => clk,  reset => reset,  en => ram_en,  we => ram_we,
+PORT MAP ( clk => clk,  en => ram_en,  we => ram_we,
   addr => ram_addr,  data_i => ram_in,  data_o => ram_out
 );
 
@@ -292,9 +312,10 @@ PORT MAP (
 -- The xstart strobe triggers a transfer. xdone rises when it's finished.
 -- TdatSR is the received data.
 
-quadrate <= config(7);
-divisor <= to_integer(unsigned(config(5 downto 4)));
-qdummy  <= to_integer(unsigned(config(3 downto 2)))*2 + 4;
+spirate <= config(7 downto 6);
+hasmode <= config(5);
+divisor <= to_integer(unsigned(config(4 downto 3)));
+qdummy  <= to_integer(unsigned(config(2 downto 1)))*2 + 4; -- 4, 6, 8, 10
 sclk <= sclk_i;
 
 transfer: process (clk, reset) begin
@@ -303,7 +324,7 @@ transfer: process (clk, reset) begin
     TdatSR <= x"00000000";  xdone <= '0';  sclk_i <= '0';  NCS <= '1';
     data_o <= "0000";  t_state <= t_idle;  endcs <= '0';
     xdata_o <= x"00";  xbusy <= '0';  isxfer <= '0';
-    drive_o <= "0000";  dummycnt <= 0;  rate <= '0';
+    drive_o <= "0000";  dummycnt <= 0;  rate <= "00";
   elsif rising_edge(clk) then
     case t_state is
     when t_idle =>
@@ -311,24 +332,26 @@ transfer: process (clk, reset) begin
         RTcount <= xcount;  dummycnt <= dummy;
         isxfer <= '0';  rate <= xrate;
         divider <= divisor;  xdone <= '0';
-        if xrate = '0' then
+        case xrate is
+        when "00" =>
+          drive_o <= "000" & xdir;
           data_o(0) <= Tdata(31);
           TdatSR <= Tdata(30 downto 0) & '0';
-        else
+        when "01" =>
+          drive_o <= "00" & xdir & xdir;
+          data_o(1 downto 0) <= Tdata(31 downto 30);
+          TdatSR <= Tdata(29 downto 0) & "00";
+        when others =>
+          drive_o <= (others => xdir);
           data_o <= Tdata(31 downto 28);
           TdatSR <= Tdata(27 downto 0) & x"0";
-        end if;
+        end case;
         NCS <= xcs(1);  endcs <= xcs(0);
-        if rate = '1' then
-          drive_o <= (others => xdir);
-        else
-          drive_o <= "000" & xdir;
-        end if;
         t_state <= t_transfer;
       elsif xtrig = '1' then                    -- MCU requests a transfer
         RTcount <= 7;  dummycnt <= 0;
         divider <= divisor;  isxfer <= '1';
-        rate <= '0';  TdatSR(31 downto 25) <= xdata_i(6 downto 0);
+        rate <= "00";  TdatSR(31 downto 25) <= xdata_i(6 downto 0);
         data_o(0) <= xdata_i(7);                -- single rate, 8-bit
         xbusy <= '1';  t_state <= t_transfer;
         NCS <= xdata_i(9);  endcs <= xdata_i(8);
@@ -338,13 +361,17 @@ transfer: process (clk, reset) begin
         divider <= divisor;
         sclk_i <= not sclk_i;
         if sclk_i = '1' then                    -- output to SPI on falling edge
-          if rate = '0' then
+          case rate is
+          when "00" =>
             TdatSR <= TdatSR(30 downto 0) & data_i(1);
-            data_o(0) <= TdatSR(31);            -- SDR
-          else
+            data_o(0) <= TdatSR(31);            -- serial
+          when "01" =>
+            TdatSR <= TdatSR(29 downto 0) & data_i(1 downto 0);
+            data_o(1 downto 0) <= TdatSR(31 downto 30); -- dual
+          when others =>
             TdatSR <= TdatSR(27 downto 0) & data_i;
-            data_o <= TdatSR(31 downto 28);     -- QDR
-          end if;
+            data_o <= TdatSR(31 downto 28);     -- quad
+          end case;
           if RTcount = 0 then
             t_state <= t_finish;
             drive_o <= "0000";                  -- float the bus
@@ -370,6 +397,7 @@ transfer: process (clk, reset) begin
           divider <= divider - 1;
         end if;
       elsif (divider = 0) then
+        drive_o <= "0000";                      -- float during dummy cycles
         sclk_i <= not sclk_i;
         if sclk_i = '1' then                    -- output to SPI on falling edge
           if dummycnt /= 0 then

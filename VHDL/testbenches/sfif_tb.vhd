@@ -2,6 +2,7 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 USE IEEE.VITAL_timing.ALL;
+use ieee.math_real.all;
 
 ENTITY sfif_tb IS
 END sfif_tb;
@@ -41,7 +42,11 @@ END COMPONENT;
   signal caddr:   std_logic_vector(29 downto 0) := (others => '0');
   signal cdata:   std_logic_vector(31 downto 0);
   signal cready:  std_logic;
-  signal config:  std_logic_vector(7 downto 0) := "00000000";
+  -- simulated flash uses factory defaults
+  -- config = 00000000 for single, tested okay
+  -- config = 01100100 for dual, tested okay: rate=01, mode=yes, dummy=8
+  -- config = 10100100 for quad, tested okay
+  signal config:  std_logic_vector(7 downto 0) := "10100100";
   signal xdata_i: std_logic_vector(9 downto 0) := "0101101001";
   signal xdata_o: std_logic_vector(7 downto 0);
   signal xtrig:   std_logic := '0';
@@ -54,29 +59,31 @@ END COMPONENT;
 
   signal data:    std_logic_vector(3 downto 0);
   signal RESETNeg: std_logic;
+  signal oops:    std_logic := '0';
 
   signal sr: std_logic_vector(31 downto 0) := x"12345678";
 
   constant clk_period : time := 10 ns;          -- 100 MHz
 
-    COMPONENT s25fl064l                         -- flash device
-    GENERIC (                                   -- single data rate only
-        tdevice_PU          : VitalDelayType  := 4 ms;
-        mem_file_name       : STRING    := "s25fl064l.mem";
-        TimingModel         : STRING;
-        UserPreload         : BOOLEAN   := FALSE);
-    PORT (
-        -- Data Inputs/Outputs
-        SI                : INOUT std_ulogic := 'U'; -- serial data input/IO0
-        SO                : INOUT std_ulogic := 'U'; -- serial data output/IO1
-        -- Controls
-        SCK               : IN    std_ulogic := 'U'; -- serial clock input
-        CSNeg             : IN    std_ulogic := 'U'; -- chip select input
-        WPNeg             : INOUT std_ulogic := 'U'; -- write protect input/IO2
-        RESETNeg          : INOUT std_ulogic := 'U'; -- reset the chip
-        IO3RESETNeg       : INOUT std_ulogic := 'U'  -- hold input/IO3
-    );
-    END COMPONENT;
+COMPONENT s25fl064l                             -- flash device
+GENERIC (                                       -- single data rate only
+    tdevice_PU          : VitalDelayType  := 4 ms;
+    mem_file_name       : STRING    := "s25fl064l.mem";
+    secr_file_name      : STRING    := "s25fl064lSECR.mem";
+    TimingModel         : STRING;
+    UserPreload         : BOOLEAN   := FALSE);
+PORT (
+    -- Data Inputs/Outputs
+    SI                : INOUT std_ulogic := 'U'; -- serial data input/IO0
+    SO                : INOUT std_ulogic := 'U'; -- serial data output/IO1
+    -- Controls
+    SCK               : IN    std_ulogic := 'U'; -- serial clock input
+    CSNeg             : IN    std_ulogic := 'U'; -- chip select input
+    WPNeg             : INOUT std_ulogic := 'U'; -- write protect input/IO2
+    RESETNeg          : INOUT std_ulogic := 'U'; -- reset the chip
+    IO3RESETNeg       : INOUT std_ulogic := 'U'  -- hold input/IO3
+);
+END COMPONENT;
 
 BEGIN
 
@@ -91,6 +98,7 @@ RESETNeg <= not reset;
           tdevice_PU  => 1 ns,  -- power up very fast
           UserPreload => TRUE,  -- load a file from the current workspace
           TimingModel => "               ",
+		  secr_file_name => "config.txt",
           mem_file_name => "testrom.txt")
         PORT MAP (
           SCK => SCLK,
@@ -104,7 +112,7 @@ RESETNeg <= not reset;
 
    -- Instantiate the Unit Under Test (UUT)
    uut: sfif
-        GENERIC MAP (RAMsize => 2, CacheSize => 2)
+        GENERIC MAP (RAMsize => 3, CacheSize => 3)
         PORT MAP (
           clk => clk,  reset => reset,  config => config,
           caddr => caddr,  cdata => cdata,  cready => cready,
@@ -121,12 +129,22 @@ RESETNeg <= not reset;
 
    -- Stimulus process
    stim_proc: process is
+   variable start, len : integer := 0;
+   variable seed1, seed2: positive;          -- seed values for random generator
+   variable rand: real;   					 -- random real-number value in range 0 to 1.0
    procedure fetch(a: integer) is begin
       loop
         wait until rising_edge(clk);
         caddr <= std_logic_vector(to_unsigned(a, 30));
-        wait for 2 ns;
+        wait for 7 ns;
         if cready='1' then
+		  if to_integer(unsigned(cdata)) = 263 * to_integer(unsigned(caddr)) then
+		    oops <= '0';
+		  else
+		    oops <= '1';
+		  end if;
+  		  assert to_integer(unsigned(cdata)) = 263 * to_integer(unsigned(caddr))
+  		    report "wrong cdata"  severity error;
           exit;
         end if;
       end loop;
@@ -138,6 +156,17 @@ RESETNeg <= not reset;
       end loop;
       for i in 12 to 15 loop
          fetch(i);
+      end loop;
+      for i in 100 downto 90 loop
+         fetch(i);
+      end loop;
+	  loop
+	    -- start and run length for testing memory access
+        uniform(seed1, seed2, rand);  start := integer(rand*1000.0);
+        uniform(seed1, seed2, rand);    len := integer(rand*8.0);
+        for i in start to start+len loop
+           fetch(i);
+        end loop;
       end loop;
       wait;
    end process;

@@ -109,7 +109,8 @@ make ../../src/vm.c vm.c                \ vm.c is used as a template
 make ../../src/flash.c flash.c          \ flash.c is used as a template
 
 \ Make VHDL ROM file
-\ make ../../templates/rom.vhd  ../../VHDL/rom32.vhd
+5 save-hex ../../VHDL/testrom.txt       \ FMF model
+ make ../../templates/rom.vhd  ../../VHDL/rom32.vhd
 
 \ ------------------------------------------------------------------------------
 

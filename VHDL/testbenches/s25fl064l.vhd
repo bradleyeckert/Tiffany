@@ -104,8 +104,8 @@ ENTITY s25fl064l IS
 
         -- Byte Programming
         tdevice_BP1             : VitalDelayType := 90 us;  --tBP1
-        -- Byte Programming 
-        tdevice_BP2             : VitalDelayType := 30 us;  --tBP2 
+        -- Byte Programming
+        tdevice_BP2             : VitalDelayType := 30 us;  --tBP2
 
         -- 4 KB Sector Erase Operation
         tdevice_SE              : VitalDelayType := 320 ms; --tSE
@@ -131,14 +131,14 @@ ENTITY s25fl064l IS
         tdevice_PASSACC         : VitalDelayType := 100 us;  -- tpassu
         -- CS# High to Power Down Mode
         -- DPD enter
-        tdevice_DPD             : VitalDelayType := 3 us;   -- tDPD 
+        tdevice_DPD             : VitalDelayType := 3 us;   -- tDPD
         -- CS# High to StandBy mode without Electronic Signature read
         -- Release DPD
         tdevice_RES             : VitalDelayType := 5 us;  --tRES
         -- QIO, QPI mode enter to the next command
         tdevice_QEN             : VitalDelayType := 1.5 us;  --
         -- QIO, QPI mode exit to the next command
-        tdevice_QEXN            : VitalDelayType := 1 us;  -- 
+        tdevice_QEXN            : VitalDelayType := 1 us;  --
 
     ---------------------------------------------------------------------------
     -- CONTROL GENERICS:
@@ -637,7 +637,7 @@ BEGIN
         SIGNAL CR1_in : std_logic_vector(7 DOWNTO 0) := (OTHERS => '0');
         SIGNAL CR1_NV : std_logic_vector(7 DOWNTO 0) := (OTHERS => '0');
         --Volatile Configuration Register 1
-        SIGNAL CR1_V  : std_logic_vector(7 DOWNTO 0) := (OTHERS => '0');
+        SIGNAL CR1_V  : std_logic_vector(7 DOWNTO 0) := x"02"; -- QUAD is on by default {brad}
         -- Complement Protection bit
         ALIAS CMP     :std_logic IS CR1_V(6);
         -- Security Region Lock bit
@@ -8218,7 +8218,7 @@ BEGIN
                         END IF;
                     END IF;
 
-                WHEN "110" =>             
+                WHEN "110" =>
                     IF TBPROT = '0' THEN
                             Legacy_Sec_Prot(SecNum DOWNTO (SecNum-1023))
                                                     <= (OTHERS => '0');

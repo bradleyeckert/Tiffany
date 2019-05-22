@@ -1,1 +1,1 @@
-"../../bin/tiff" -s 64 -r 512 -m 1024 -n -h 65536 -f main.f
+"../../bin/tiff" -r 0x100 -f main.f

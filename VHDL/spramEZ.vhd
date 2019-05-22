@@ -11,7 +11,6 @@ generic (
 );
 port (
   clk:    in  std_logic;                        -- System clock
-  reset:  in  std_logic;                        -- async reset
   en:     in  std_logic;                        -- Memory Enable
   we:     in  std_logic;                        -- Write Enable (0=read, 1=write)
   addr:   in  std_logic_vector(Size-1 downto 0);

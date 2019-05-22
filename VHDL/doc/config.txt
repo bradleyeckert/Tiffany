@@ -1,0 +1,6 @@
+/See table 34 of datasheet for register map
+00
+00
+02
+60
+78

@@ -4,6 +4,7 @@ defer coldboot
 defer safemode
 defer errorISR
 
+0 equ options
 include ../../forth/core.f
 : pause ;  \ include ../../forth/tasker.f \ no multitasker
 include ../../forth/timing.f
@@ -14,8 +15,6 @@ include ../../forth/comma.f             \ smart comma
 	." Hello World!" cr
 	10 0 do i . loop
 ;
-
-defer coldboot
 
 include ../../forth/end.f               \ finish the app
 

@@ -463,7 +463,7 @@ begin
     when pwait =>
       penable <= '1';
       if pready = '1' then                  -- DPB cycle is finished
-        penable <= '1';  psel <= '0';
+        penable <= '0';  psel <= '0';
         new_T <= '1';  T_src <= "1011";  state <= stalled;
         userdata <= unsigned(x"0000" & prdata);
       end if;

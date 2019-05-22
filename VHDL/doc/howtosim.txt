@@ -1,9 +1,0 @@
-In ModelSim:
-File > New > Library  FMF
-Change Properties of conversions.vhd: General Settings: Compile to library FMF
-Change Properties of gen_utils.vhd: General Settings: Compile to library FMF
-Change Properties of s25fl064l.vhd: Use 1993 syntax
-The working directory of the data files is the project folder.
-testrom.txt is the main data file.
-s25fl064lSECR.mem is the non-volatile configuration, if any.
-
