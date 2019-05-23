@@ -152,7 +152,7 @@ begin
     KeyChar (std_logic_vector(to_unsigned(character'pos(S(i)), 8)));
   end loop;
   KeyChar (x"0D");
-  KeyChar (x"0A");
+--  KeyChar (x"0A");
 end procedure;
 
 begin

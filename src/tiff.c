@@ -31,7 +31,7 @@ static int ShowCPU = 0;                 // Enable CPU status display
 // Version of getline that converts tabs to spaces upon reading is defined here.
 // Well, not really getline. getline is a nice use case for malloc, but let's not.
 // And why not omit non-control chars while we're at it?
-// We'll just indicate an error if full, you're welcome.
+// The line is truncated if it doesn't fit the buffer. tiffIOR is a Forth throw code.
 
 int GetLine(char *line, int length, FILE *stream) {
     if (stream == NULL) {
@@ -924,9 +924,7 @@ static void LoadKeywords(void) {        // populate the list of gator brain func
     AddEquate ("fn#spirate",   0x50000); // ( u -- )
     AddEquate ("fn#qemit",     0x60000); // ( -- u )
     AddEquate ("fn#uartrate",  0x70000); // ( u -- )
-    AddEquate ("fn#uarterror", 0x80000); // ( -- u )
-    AddEquate ("fn#bbin",      0x90000); // ( a -- u )
-    AddEquate ("fn#bbout",     0xB0000); // ( a|n -- u )
+    AddEquate ("fn#sfbusy",    0x80000); // ( -- u )
 
     // CPU opcode names
     AddEquate ("op_dup",   opDUP);

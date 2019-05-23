@@ -73,6 +73,7 @@ end component;
   signal pwdata:    std_logic_vector(15 downto 0);
   signal prdata:    std_logic_vector(15 downto 0);
   signal pready:    std_logic;
+  signal penable:   std_logic;
 
   signal keyready:  std_logic;
   signal emitready: std_logic;
@@ -121,7 +122,7 @@ GENERIC MAP ( RAMsize => RAMsize )
 PORT MAP (
   clk => clk,  reset => reset_a,  bye => bye,
   caddr => caddr,  cready => cready,  cdata => cdata,
-  paddr => paddr,  pwrite => pwrite,  psel => psel,  penable => open,
+  paddr => paddr,  pwrite => pwrite,  psel => psel,  penable => penable,
   pwdata => pwdata,  prdata => prdata,  pready => pready
 );
 
@@ -160,10 +161,9 @@ begin
     bitperiod <= std_logic_vector(to_unsigned(clk_Hz/115200, 16));
 	prdata <= x"0000";  pready <= '0';
   elsif rising_edge(clk) then
-    emit_stb <= '0';
-    key_stb <= '0';
-    pready <= psel;                   -- usual case: no wait states
-    if (psel='1') and (pready='0') then
+    emit_stb <= '0';  key_stb <= '0';
+    if (psel='1') and (penable='0') then
+      pready <= '1';                   	-- usual case: no wait states
       case paddr(3 downto 0) is
       when "0000" =>                  -- R=qkey, W=emit
         prdata <= "000000000000000" & keyready;
@@ -183,6 +183,8 @@ begin
       when others =>
         prdata <= x"0000";
       end case;
+    else
+      pready <= '0';
     end if;
   end if;
 end process DPB_process;

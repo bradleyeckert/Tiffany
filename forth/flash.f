@@ -1,22 +1,14 @@
 \ SPI flash access through user function.
 
-\ In mf, a SPI flash chip is simulated in flash.c.
+\ In Tiff, a SPI flash chip is simulated in flash.c.
 \ Real hardware will have an actual SPI flash chip that uses the same commands.
-\ This code must run in internal ROM:.
-\ It also trashes HLD, so you don't want to compile or write to flash in the
+\ This code must run in internal ROM.
+\ It trashes HLD, so you don't want to compile or write to flash in the
 \ middle of numeric output. But that would be weird.
 
 : SPIxfer     \ command -- result
-   fn#spixfer io11                      \ Flash, a-ah, king of the impossible
-;
-
-: SPIaddr  \ addr command final --      \ initiate a command with 24-bit address
-   >r
-   SPIxfer drop  hld dup >r ! r>        \ use a cell for extracting bytes
-   count >r  count >r  c@               \ low med high
-   SPIxfer drop                         \ assuming a little-endian model
-   r> SPIxfer drop
-   r> r> + SPIxfer drop
+   begin fn#sfbusy  0 user  0= until    \ wait until flash interface is idle
+   fn#spixfer io11                      \ 10-bit in, 8-bit out
 ;
 
 : SPIaddress  \ addr command final --   \ initiate a command with 24-bit address

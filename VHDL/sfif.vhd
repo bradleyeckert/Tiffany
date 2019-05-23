@@ -29,6 +29,7 @@ port (clk:   in std_logic;
   cready:   out std_logic;
 -- Configuration
   config:    in std_logic_vector(7 downto 0);   -- HW configuration
+  busy:     out std_logic;
 -- SPIxfer
   xdata_i:   in std_logic_vector(9 downto 0);
   xdata_o:  out std_logic_vector(7 downto 0);
@@ -48,7 +49,7 @@ architecture RTL of sfif is
   -- transfer process signals
   signal Tdata:  std_logic_vector(31 downto 0);     -- transmit data for SPI
   signal xstart: std_logic;                         -- start strobe
-  signal divisor, divider, prescale: integer range 0 to 3;
+  signal divisor, divider: integer range 0 to 3;
   signal sclk_i: std_logic;
   signal TdatSR: std_logic_vector(31 downto 0);     -- transmit shift register
   signal TdatSRle: std_logic_vector(31 downto 0);   -- byte-reversed
@@ -118,7 +119,7 @@ prefetch: process (clk, reset) begin
     cache_addr <= (others=>'0');  xrate <= "00";  xdir <= '0';
     f_state <= f_idle;                          -- start out filling RAM with flash contents
     Tdata <= x"00000000";  cache_cnt <= 0;
-    ram_in <= x"00000000";
+    ram_in <= x"00000000";  busy <= '1';
     xcs <= "00";  int_addr <= (others=>'0');
     ram_waddr <= (others=>'0');
   elsif rising_edge(clk) then
@@ -155,110 +156,112 @@ prefetch: process (clk, reset) begin
     when f_run =>
       if internal = '1' then                    -- reading from internal block RAM
         int_addr <= unsigned(caddr(RAMsize-1 downto 0));
-      else                                      -- filling cache
-        if (xstart = '0') and (xdone = '1') then
-          case c_state is
-          when c_idle =>                        -- NCS already at '1'
-            if restart = '1' then
-              cache_ok <= (others=>'0');
-              cache_addr <= unsigned(caddr);
-              cache_pend <= (others=>'0');      -- waiting to be filled = '1'
-              cache_pend (to_integer(unsigned(not caddr(CacheSize-1 downto 0))) downto 0) <= (others => '1');
-              cache_cnt <= 2**CacheSize - to_integer(unsigned(caddr(CacheSize-1 downto 0)));
-              xrate <= "00";
-              xcs <= "00";  xcount <= 7;  dummy <= 0;  xdir <= '1';
-              if caddr(29 downto 22) = x"00" then
-                case spirate is                 -- can use 24-bit address
-                when "00" =>   Tdata(31 downto 24) <= x"0B";
-                when "01" =>   Tdata(31 downto 24) <= x"BB";
-                when others => Tdata(31 downto 24) <= x"EB";
-                end case;
-		  	    c_state <= c_addr24;
-              else
-                case spirate is
-                when "00" =>   Tdata(31 downto 24) <= x"0C";
-                when "01" =>   Tdata(31 downto 24) <= x"BC";
-                when others => Tdata(31 downto 24) <= x"EC";
-                end case;
-		  	    c_state <= c_addr32;
-              end if;
-              xstart <= '1';
+      end if;
+      if (xstart = '0') and (xdone = '1') then  -- FSM to fill cache from SPI flash
+        case c_state is
+        when c_idle =>                          -- NCS already at '1'
+          if restart = '1' then
+            cache_ok <= (others=>'0');
+            cache_addr <= unsigned(caddr);
+            cache_pend <= (others=>'0');        -- waiting to be filled = '1'
+            cache_pend (to_integer(unsigned(not caddr(CacheSize-1 downto 0))) downto 0) <= (others => '1');
+            cache_cnt <= 2**CacheSize - to_integer(unsigned(caddr(CacheSize-1 downto 0)));
+            xrate <= "00";
+            xcs <= "00";  xcount <= 7;  dummy <= 0;  xdir <= '1';
+            if caddr(29 downto 22) = x"00" then
+              case spirate is                   -- can use 24-bit address
+              when "00" =>   Tdata(31 downto 24) <= x"0B";
+              when "01" =>   Tdata(31 downto 24) <= x"BB";
+              when others => Tdata(31 downto 24) <= x"EB";
+              end case;
+        	    c_state <= c_addr24;
+            else
+              case spirate is
+              when "00" =>   Tdata(31 downto 24) <= x"0C";
+              when "01" =>   Tdata(31 downto 24) <= x"BC";
+              when others => Tdata(31 downto 24) <= x"EC";
+              end case;
+        	    c_state <= c_addr32;
             end if;
-          when c_addr32 =>
-            Tdata <= std_logic_vector(upperaddr & loweraddr);
-            xrate <= spirate;
-            case spirate is
-            when "00"   => xcount <= 31;  dummy <= 8;
-            when "01"   => xcount <= 15;  dummy <= qdummy;
-            when others => xcount <= 7;   dummy <= qdummy;
-            end case;
             xstart <= '1';
-		  	if hasmode = '1' then
-		  	  c_state <= c_mode;
-		  	  dummy <= 0;
-		  	else
-		  	  c_state <= c_first;
-		  	end if;
-          when c_addr24 =>
-            Tdata(31 downto 8) <= std_logic_vector(upperaddr(7 downto 0) & loweraddr);
-            xrate <= spirate;
-            case spirate is
-            when "00"   => xcount <= 23;  dummy <= 8;
-            when "01"   => xcount <= 11;  dummy <= qdummy;
-            when others => xcount <= 5;   dummy <= qdummy;
-            end case;
-            xstart <= '1';
-		  	if hasmode = '1' then
-		  	  c_state <= c_mode;
-		  	  dummy <= 0;
-		  	else
-		  	  c_state <= c_first;
-		  	end if;
-		  when c_mode =>
-            Tdata <= x"FF000000";  dummy <= qdummy;
-            case spirate is
-            when "01" =>   xcount <= 3;
-            when others => xcount <= 1;
-            end case;
-            xstart <= '1';  c_state <= c_first;
-          when c_first =>                       -- request 1st word
-            Tdata <= x"00000000";  dummy <= 0;  xdir <= '0';
+            busy <= '1';
+          else
+            busy <= '0';
+          end if;
+        when c_addr32 =>
+          Tdata <= std_logic_vector(upperaddr & loweraddr);
+          xrate <= spirate;
+          case spirate is
+          when "00"   => xcount <= 31;  dummy <= 8;
+          when "01"   => xcount <= 15;  dummy <= qdummy;
+          when others => xcount <= 7;   dummy <= qdummy;
+          end case;
+          xstart <= '1';
+        	if hasmode = '1' then
+        	  c_state <= c_mode;
+        	  dummy <= 0;
+        	else
+        	  c_state <= c_first;
+        	end if;
+        when c_addr24 =>
+          Tdata(31 downto 8) <= std_logic_vector(upperaddr(7 downto 0) & loweraddr);
+          xrate <= spirate;
+          case spirate is
+          when "00"   => xcount <= 23;  dummy <= 8;
+          when "01"   => xcount <= 11;  dummy <= qdummy;
+          when others => xcount <= 5;   dummy <= qdummy;
+          end case;
+          xstart <= '1';
+        	if hasmode = '1' then
+        	  c_state <= c_mode;
+        	  dummy <= 0;
+        	else
+        	  c_state <= c_first;
+        	end if;
+        when c_mode =>
+          Tdata <= x"FF000000";  dummy <= qdummy;
+          case spirate is
+          when "01" =>   xcount <= 3;
+          when others => xcount <= 1;
+          end case;
+          xstart <= '1';  c_state <= c_first;
+        when c_first =>                         -- request 1st word
+          Tdata <= x"00000000";  dummy <= 0;  xdir <= '0';
+          case spirate is
+          when "00"   => xcount <= 31;
+          when "01"   => xcount <= 15;
+          when others => xcount <= 7;
+          end case;
+          xstart <= '1';  c_state <= c_fill;
+        when c_fill =>                          -- prefetch flash into cache
+          if cache_ok(ca) = '0' then            -- save if not already not prefetched
+             cache(ca) <= TdatSRle;
+          end if;
+          cache_ok(ca) <= not restart;
+          if cache_cnt = 0 then
+            c_state <= c_idle;
+          else
             case spirate is
             when "00"   => xcount <= 31;
             when "01"   => xcount <= 15;
             when others => xcount <= 7;
             end case;
-            xstart <= '1';  c_state <= c_fill;
-          when c_fill =>                        -- prefetch flash into cache
-            if cache_ok(ca) = '0' then          -- save if not already not prefetched
-               cache(ca) <= TdatSRle;
-            end if;
-            cache_ok(ca) <= not restart;
-            if cache_cnt = 0 then
-              c_state <= c_idle;
+            xstart <= '1';
+            if restart = '1' then
+              xcs <= "01";  xcount <= 1;        -- stop prefetch by deasserting CS
+              c_state <= c_end;
             else
-              case spirate is
-              when "00"   => xcount <= 31;
-              when "01"   => xcount <= 15;
-              when others => xcount <= 7;
-              end case;
-              xstart <= '1';
-              if restart = '1' then
-                xcs <= "01";  xcount <= 1;      -- stop prefetch by deasserting CS
-                c_state <= c_end;
+              if cache_cnt = 1 then             -- this is the last word
+                xcs <= "01";
               else
-                if cache_cnt = 1 then           -- this is the last word
-                  xcs <= "01";
-                else
-                  cache_addr <= cache_addr + 1;
-                end if;
-                cache_cnt <= cache_cnt - 1;
+                cache_addr <= cache_addr + 1;
               end if;
+              cache_cnt <= cache_cnt - 1;
             end if;
-          when c_end =>                         -- cache has been wiped, idle will refill
-            c_state <= c_idle;
-          end case;
-        end if;
+          end if;
+        when c_end =>                           -- cache has been wiped, idle will refill
+          c_state <= c_idle;
+        end case;
       end if;
     end case;
   end if;

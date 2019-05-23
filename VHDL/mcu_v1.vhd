@@ -49,17 +49,6 @@ port (
 );
 end component;
 
-component rom32
-generic (
-  Size:  integer := 10                              -- log2 (cells)
-);
-port (
-  clk:    in  std_logic;                            -- System clock
-  addr:   in  std_logic_vector(Size-1 downto 0);
-  data_o: out std_logic_vector(31 downto 0)         -- read data
-);
-end component;
-
   signal cready:    std_logic;
   signal caddr:     std_logic_vector(25 downto 0);
   signal caddrx:    std_logic_vector(29 downto 0);
@@ -108,6 +97,7 @@ end component;
   signal xtrig:    std_logic;
   signal xbusy:    std_logic;
   signal fwait:    std_logic;
+  signal sfbusy:   std_logic;
 
 COMPONENT sfif
 generic (
@@ -123,6 +113,7 @@ port (clk:   in std_logic;
   cready:   out std_logic;
 -- Configuration
   config:    in std_logic_vector(7 downto 0);   -- HW configuration
+  busy:     out std_logic;
 -- SPIxfer
   xdata_i:   in std_logic_vector(9 downto 0);
   xdata_o:  out std_logic_vector(7 downto 0);
@@ -166,7 +157,7 @@ PORT MAP (
 flash: sfif
 GENERIC MAP (RAMsize => ROMsize, CacheSize => 4)
 PORT MAP (
-  clk => clk,  reset => reset,  config => config,
+  clk => clk,  reset => reset,  config => config,  busy => sfbusy,
   caddr => caddrx,  cdata => cdata,  cready => cready,
   xdata_i => xdata_i,  xdata_o => xdata_o,  xtrig => xtrig,  xbusy => xbusy,
   NCS => NCS,  SCLK => SCLK,  data_o => fdata_o,  drive_o => fdrive_o,  data_i => fdata_i
@@ -213,7 +204,7 @@ begin
         prdata <= x"00" & xdata_o;
       end if;
     elsif (psel='1') and (penable='0') then
-      pready <= '1';                   -- usual case: no wait states
+      pready <= '1';                   	-- usual case: no wait states
       case paddr(3 downto 0) is
       when "0000" =>                    -- R=qkey, W=emit
         prdata <= "000000000000000" & keyready;
@@ -236,6 +227,8 @@ begin
         if pwrite='1' then
           bitperiod <= pwdata;
         end if;
+	  when "0100" =>					-- R=fbusy
+	    prdata <= "000000000000000" & sfbusy;
       when others =>
         prdata <= x"0000";
       end case;

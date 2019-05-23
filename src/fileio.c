@@ -224,9 +224,9 @@ void GenHex (uint32_t begin, uint32_t end, FILE *fp) {
     }
 }
 
-/* Save in Free Model Foundation byte-wide format */
+/* Save in Free Model Foundry byte-wide format */
 void GenFMF (uint32_t begin, uint32_t end, FILE *fp) {
-    fprintf(fp, "@%X\n", begin << 2);
+    fprintf(fp, "@%06X\n", begin << 2);
     for (int i=begin; i<end; i++) {
         uint32_t x = rom[i];
         for (int i = 0; i < 4; i++) {   // unpack little-endian
@@ -269,7 +269,7 @@ void SaveHexImage (int flags, char *filename) {
 }
 
 /*
-    Load to StoreROM in hex format
+    Load to ROM image (using StoreROM) in hex format
 */
 
 static int NextHexByte(FILE *fp) {

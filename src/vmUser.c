@@ -7,13 +7,7 @@
 
 // To facilitate FPGA/ASIC implementation, console I/O uses a peripheral bus.
 // There is no need for a 32-bit data bus, 16-bit is fine. Upper half is the address.
-
- /* AddEquate ("fn#spirate",   0x50000); // ( u -- )
-    AddEquate ("fn#uartrate",  0x70000); // ( u -- )
-    AddEquate ("fn#uarterror", 0x80000); // ( -- u )
-    AddEquate ("fn#bbin",      0x90000); // ( a -- u )
-    AddEquate ("fn#bbout",     0xB0000); // ( a|n -- u )
-*/
+// Even addresses are reads, odd are writes (or write+read)
 
 static uint32_t vmIO (uint32_t dout) {
     unsigned int address = dout >> 16;      // typically a 4-bit address
@@ -25,6 +19,7 @@ static uint32_t vmIO (uint32_t dout) {
         case 3: return(SPIflashXfer(data)); // 3: SPI transfer
         case 4: return(vmKeyFormat(data));  // 4: keyboard cursor keys format {win32, xterm}
         case 6: return 1;                   // 6: EMIT buffer ready?
+        case 8: return 0;                   // 8: flash busy?
         default: break;
     }
     return 0;

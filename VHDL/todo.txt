@@ -1,0 +1,8 @@
+v0 simulates okay
+v1 hangs in the middle of "see see"
+
+put random delays on cready in v0 to ensure they don't hose operation
+
+compare the sfif cdata in v1 to ROM32 data, they should match
+
+
