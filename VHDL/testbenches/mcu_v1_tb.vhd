@@ -144,7 +144,12 @@ begin              -- transmit a serial character
   for i in 0 to 7 loop
   rxd <= char(i);  wait for baud_period;        -- bits
   end loop;
-  rxd <= '1';      wait for baud_period*5;        -- stop
+  rxd <= '1';      wait for baud_period*2;      -- stop*2
+  -- Two stop bits are needed to prevent receiver processing delays from piling up.
+  -- ACCEPT waits for QEMIT when echoing, so serial out must be faster than the input.
+  -- The serial bit rate at 100 MHz could be up to about 3M BPS without a multitasker,
+  -- but future multitasker will introduce a PAUSE delay of 2 or more usec.
+  -- So, 460K or less is probably best.
 end procedure;
 
 procedure Keyboard(S: string) is

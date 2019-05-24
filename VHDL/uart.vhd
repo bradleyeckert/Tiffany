@@ -106,7 +106,7 @@ process (clk, reset) begin
     end if;
     if wstb = '1' then                          -- retrigger transmission
       txreg <= wdata;  tnext <= '0';
-      txstate <= "10111111";                    -- n,8,2
+      txstate <= "10101111";                    -- n,8,1
       ready <= '0';
     end if;
   end if;
