@@ -46,7 +46,7 @@ END COMPONENT;
   -- config = 00000000 for single, tested okay
   -- config = 01100100 for dual, tested okay: rate=01, mode=yes, dummy=8
   -- config = 10100100 for quad, tested okay
-  signal config:  std_logic_vector(7 downto 0) := "10100100";
+  signal config:  std_logic_vector(7 downto 0) := x"00";--"10100100";
   signal xdata_i: std_logic_vector(9 downto 0) := "0101101001";
   signal xdata_o: std_logic_vector(7 downto 0);
   signal xtrig:   std_logic := '0';
@@ -151,12 +151,17 @@ RESETNeg <= not reset;
    end procedure;
    begin
       wait for clk_period*8.2;  reset <= '0';
-      for i in 0 to 15 loop
+      for i in 0 to 14 loop
          fetch(i);
       end loop;
-      for i in 12 to 15 loop
+      caddr <= std_logic_vector(to_unsigned(70, 30));
+      wait for clk_period*100;    -- trigger a miss
+      fetch(15);
+
+      for i in 12 to 14 loop
          fetch(i);
       end loop;
+
       for i in 100 downto 90 loop
          fetch(i);
       end loop;

@@ -1,8 +1,7 @@
-v0 simulates okay
-v1 hangs in the middle of "see see"
+v1 testbench compiles a definition to flash and "see"s it.
 
-put random delays on cready in v0 to ensure they don't hose operation
-
-compare the sfif cdata in v1 to ROM32 data, they should match
-
+things to do next:
+1. Add UART hardware access to flash's xport.
+2. Port to an FPGA board.
+3. Write an app to re-flash over serial.
 

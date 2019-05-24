@@ -128,6 +128,7 @@ port (clk:   in std_logic;
 );
 END COMPONENT;
 
+
 ---------------------------------------------------------------------------------
 BEGIN
 
@@ -199,8 +200,8 @@ begin
   elsif rising_edge(clk) then
     emit_stb <= '0';  key_stb <= '0';  xtrig <= '0';
     if fwait = '1' then
-      if xbusy = '0' then               -- waiting for SPI transfer to finish
-        fwait <= '0';  pready <= '1';
+      if (xbusy = '0') and (xtrig = '0') then
+        fwait <= '0';  pready <= '1';   -- wait for SPI transfer to finish
         prdata <= x"00" & xdata_o;
       end if;
     elsif (psel='1') and (penable='0') then

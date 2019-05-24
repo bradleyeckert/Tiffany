@@ -66,7 +66,7 @@ END COMPONENT;
 
   signal RESETNeg:  std_logic;
   signal NCS, SCLK: std_logic;
-  signal fdata: std_logic_vector(3 downto 0) := "HHHH";
+  signal fdata: std_logic_vector(3 downto 0);
 
   -- Clock period definitions
   constant clk_period: time := 10 ns;
@@ -83,6 +83,7 @@ BEGIN
   );
 
   RESETNeg <= not reset;
+  fdata <= "HHHH";      -- pullups
 
   mem: s25fl064l
   GENERIC MAP (
@@ -143,7 +144,7 @@ begin              -- transmit a serial character
   for i in 0 to 7 loop
   rxd <= char(i);  wait for baud_period;        -- bits
   end loop;
-  rxd <= '1';      wait for baud_period;        -- stop
+  rxd <= '1';      wait for baud_period*5;        -- stop
 end procedure;
 
 procedure Keyboard(S: string) is
@@ -157,8 +158,8 @@ end procedure;
 
 begin
   wait for clk_period*2.2;  reset <= '0';
-  wait for 5 ms; -- wait for the ok> prompt
-  Keyboard ("see see");
+  wait for 5 ms; -- wait for the ok> prompt, 5ms is enough if ROMsize=10. Increase if more.
+  Keyboard (": foo swap ; see foo"); -- give this 32 ms to execute
   wait until bye = '1';
   report "BYE encountered"  severity failure;
   wait;

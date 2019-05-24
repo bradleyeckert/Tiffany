@@ -8,7 +8,7 @@ MCU V0:
 - spram32.vhd, data RAM
 - m32.vhd, CPU
 - uart.vhd, simple UART
-- rom32.vhd, internal ROM
+- rom32.vhd, internal ROM (run .\examples\ANS\make.bat to generate)
 - mcu_v0.vhd, MCU
 - mcu_v0_tb.vhd, testbench
 
@@ -25,6 +25,7 @@ MCU V1:
 - gen_utils.vhd, FMF library
 - s25fl064l.vhd, FMF model
 - mcu_v1_tb.vhd, testbench
+- testrom.txt, internal ROM (run .\examples\ANS\make.bat to generate)
 
 ## M32 ports
 

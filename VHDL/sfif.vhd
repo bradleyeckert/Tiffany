@@ -86,7 +86,6 @@ END component;
   signal cache_addr: unsigned(29 downto 0);         -- current cache address
   signal cache: cache_t;                            -- prefetch cache
   signal missed, cokay: std_logic;                  -- cache miss, ready
-  signal cache_cnt: integer range 0 to 2**CacheSize;-- amount of cache to fill
   signal upperaddr, loweraddr: unsigned(15 downto 0);
     type c_state_t is (c_idle, c_addr24, c_addr32, c_mode, c_first, c_fill, c_end);
   signal c_state: c_state_t;
@@ -106,7 +105,8 @@ begin -------------------------------------------------------------------------
 
 ca <= to_integer(unsigned(cache_addr(CacheSize-1 downto 0)));
 
-restart <= missed or not cache_pend (to_integer(unsigned(not caddr(CacheSize-1 downto 0))));
+restart <= (not internal) and -- external read, cache miss, fetch not pending
+   (missed or not cache_pend (to_integer(unsigned(caddr(CacheSize-1 downto 0)))));
 
 -- The ROM interface attempts to fetch from a small cache of 16 words.
 -- The cache attempts to fill from memory. Any change in caddr[25:4] restarts it.
@@ -118,7 +118,7 @@ prefetch: process (clk, reset) begin
     cache_pend <= (others=>'0');  xcount <= 0;    dummy <= 0;
     cache_addr <= (others=>'0');  xrate <= "00";  xdir <= '0';
     f_state <= f_idle;                          -- start out filling RAM with flash contents
-    Tdata <= x"00000000";  cache_cnt <= 0;
+    Tdata <= x"00000000";
     ram_in <= x"00000000";  busy <= '1';
     xcs <= "00";  int_addr <= (others=>'0');
     ram_waddr <= (others=>'0');
@@ -164,8 +164,7 @@ prefetch: process (clk, reset) begin
             cache_ok <= (others=>'0');
             cache_addr <= unsigned(caddr);
             cache_pend <= (others=>'0');        -- waiting to be filled = '1'
-            cache_pend (to_integer(unsigned(not caddr(CacheSize-1 downto 0))) downto 0) <= (others => '1');
-            cache_cnt <= 2**CacheSize - to_integer(unsigned(caddr(CacheSize-1 downto 0)));
+            cache_pend (2**CacheSize-1 downto to_integer(unsigned(caddr(CacheSize-1 downto 0)))) <= (others => '1');
             xrate <= "00";
             xcs <= "00";  xcount <= 7;  dummy <= 0;  xdir <= '1';
             if caddr(29 downto 22) = x"00" then
@@ -212,12 +211,12 @@ prefetch: process (clk, reset) begin
           when others => xcount <= 5;   dummy <= qdummy;
           end case;
           xstart <= '1';
-        	if hasmode = '1' then
-        	  c_state <= c_mode;
-        	  dummy <= 0;
-        	else
-        	  c_state <= c_first;
-        	end if;
+          if hasmode = '1' then
+            c_state <= c_mode;
+            dummy <= 0;
+          else
+            c_state <= c_first;
+          end if;
         when c_mode =>
           Tdata <= x"FF000000";  dummy <= qdummy;
           case spirate is
@@ -234,30 +233,23 @@ prefetch: process (clk, reset) begin
           end case;
           xstart <= '1';  c_state <= c_fill;
         when c_fill =>                          -- prefetch flash into cache
-          if cache_ok(ca) = '0' then            -- save if not already not prefetched
-             cache(ca) <= TdatSRle;
-          end if;
-          cache_ok(ca) <= not restart;
-          if cache_cnt = 0 then
-            c_state <= c_idle;
+          cache(ca) <= TdatSRle;
+          cache_ok(ca) <= not restart;          -- tag as okay unless cache is restarting
+          cache_pend(ca) <= '0';                -- clear pending either way
+          if  not cache_addr(CacheSize-1 downto 0) = 0  then
+            c_state <= c_end;  xcs <= "01";     -- last word in cache buffer
           else
-            case spirate is
-            when "00"   => xcount <= 31;
-            when "01"   => xcount <= 15;
-            when others => xcount <= 7;
-            end case;
-            xstart <= '1';
-            if restart = '1' then
-              xcs <= "01";  xcount <= 1;        -- stop prefetch by deasserting CS
-              c_state <= c_end;
-            else
-              if cache_cnt = 1 then             -- this is the last word
-                xcs <= "01";
-              else
-                cache_addr <= cache_addr + 1;
-              end if;
-              cache_cnt <= cache_cnt - 1;
-            end if;
+            cache_addr <= cache_addr + 1;
+          end if;
+          case spirate is
+          when "00"   => xcount <= 31;
+          when "01"   => xcount <= 15;
+          when others => xcount <= 7;
+          end case;
+          xstart <= '1';
+          if restart = '1' then
+            xcs <= "01";  xcount <= 0;          -- stop prefetch by deasserting CS
+            c_state <= c_end;
           end if;
         when c_end =>                           -- cache has been wiped, idle will refill
           c_state <= c_idle;
@@ -354,7 +346,8 @@ transfer: process (clk, reset) begin
       elsif xtrig = '1' then                    -- MCU requests a transfer
         RTcount <= 7;  dummycnt <= 0;
         divider <= divisor;  isxfer <= '1';
-        rate <= "00";  TdatSR(31 downto 25) <= xdata_i(6 downto 0);
+        rate <= "00";  drive_o <= "0001";
+        TdatSR(31 downto 25) <= xdata_i(6 downto 0);
         data_o(0) <= xdata_i(7);                -- single rate, 8-bit
         xbusy <= '1';  t_state <= t_transfer;
         NCS <= xdata_i(9);  endcs <= xdata_i(8);

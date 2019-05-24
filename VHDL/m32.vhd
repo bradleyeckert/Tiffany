@@ -368,7 +368,7 @@ begin
 --------------------------------------------------------------------------------
 -- FSM
     case state is
-    when changed =>  -- change in control flow
+    when changed =>                         -- change in control flow
       case PC_src is
       when PC_imm =>  PC <= immdata(25 downto 0);
                    caddr <= std_logic_vector(immdata(25 downto 0));

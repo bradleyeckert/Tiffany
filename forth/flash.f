@@ -6,8 +6,11 @@
 \ It trashes HLD, so you don't want to compile or write to flash in the
 \ middle of numeric output. But that would be weird.
 
-: SPIxfer     \ command -- result
+: SPIidle     \ --
    begin fn#sfbusy  0 user  0= until    \ wait until flash interface is idle
+;
+
+: SPIxfer     \ command -- result
    fn#spixfer io11                      \ 10-bit in, 8-bit out
 ;
 
@@ -30,12 +33,14 @@ hex
    begin  SPISR 1 and 0=  until         \ spin loop does not pause
 ;
 : SPIID  \ -- mfr type capacity
+   SPIidle
    9F SPIxfer                           \ JEDEC attempt at a standard
    dup xor  SPIxfer                     \ ended up vendor defined.
    dup xor  SPIxfer                     \ Refer to datasheets.
    dup xor  SPIxfer
 ;
 : SPIerase4K  \ addr --                 \ erase 4K sector
+   SPIidle
    106 SPIxfer drop                     \ WREN
    20 100 SPIaddress
    104 SPIxfer drop                     \ WRDI
@@ -81,6 +86,7 @@ hex
 
 \ Break up page writes, if necessary, to avoid crossing 256-byte page boundaries
 : SPImove  \ asrc adest len --          \ byte array to flash
+   SPIidle
    SPItest
    begin
       dup ifz: 3drop exit |             \ nothing left to move
@@ -97,6 +103,7 @@ hex
 
 \ @ should already do this, but SPI@ operates the SPI to test the interface.
 : SPI@  \ addr -- x                     \ 32-bit fetch
+   SPIidle
    0B 0 SPIaddress  dup SPIxfer drop    \ command and dummy byte
    hld  SPIbyte SPIbyte SPIbyte SPIbyte drop
    1FF SPIxfer drop                     \ end the read sequence

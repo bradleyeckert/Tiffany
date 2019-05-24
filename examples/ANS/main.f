@@ -44,6 +44,10 @@ include ../../forth/numio.f             \ numeric I/O
 
 include ../../forth/flash.f             \ SPI flash programming
 
+\ : testSPI  0 SPI@  bye ;
+\ ' testSPI is coldboot
+\ defer coldboot
+
 .( Internal ROM minimum bytes ~ ) cp ? cr
 .( ANS Forth: )
 
