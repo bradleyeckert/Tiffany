@@ -19,7 +19,7 @@ entity sfif is
 generic (
   RAMsize:   integer := 10;                     -- log2 (RAM cells)
   CacheSize: integer := 4;
-  BaseBlock: unsigned(7 downto 0) := x"00"
+  BaseBlock: unsigned(7 downto 0) := x"00"      -- 64KB blocks reserved for bitstream
 );
 port (clk:   in std_logic;
   reset:     in std_logic;                      -- reset is async

@@ -19,6 +19,7 @@
    SPIxfer drop                         \ send command
    r@ ! r>                              \ use HLD cell for extracting bytes
    count >r  count >r  c@               \ high | R: hld final low med
+   fn#baseblock  0 user  +              \ add 64KB-block offset
    SPIxfer drop                         \ assuming a little-endian model
    r> SPIxfer drop
    r> r> + SPIxfer drop

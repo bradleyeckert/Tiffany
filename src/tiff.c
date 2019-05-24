@@ -925,6 +925,7 @@ static void LoadKeywords(void) {        // populate the list of gator brain func
     AddEquate ("fn#qemit",     0x60000); // ( -- u )
     AddEquate ("fn#uartrate",  0x70000); // ( u -- )
     AddEquate ("fn#sfbusy",    0x80000); // ( -- u )
+    AddEquate ("fn#baseblock", 0xA0000); // ( -- u )
 
     // CPU opcode names
     AddEquate ("op_dup",   opDUP);

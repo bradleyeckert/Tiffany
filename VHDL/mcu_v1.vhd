@@ -6,7 +6,8 @@ ENTITY MCU IS
 generic (
   ROMsize : integer := 10;                      	-- log2 (ROM cells)
   RAMsize : integer := 10;                      	-- log2 (RAM cells)
-  clk_Hz  : integer := 100000000                    -- default clk in Hz
+  clk_Hz  : integer := 100000000;                   -- default clk in Hz
+  BaseBlock: unsigned(7 downto 0) := x"00"          -- 64KB blocks reserved for bitstream
 );
 port (
   clk	  : in	std_logic;							-- System clock
@@ -156,7 +157,7 @@ PORT MAP (
 );
 
 flash: sfif
-GENERIC MAP (RAMsize => ROMsize, CacheSize => 4)
+GENERIC MAP (RAMsize => ROMsize, CacheSize => 4, BaseBlock => BaseBlock)
 PORT MAP (
   clk => clk,  reset => reset,  config => config,  busy => sfbusy,
   caddr => caddrx,  cdata => cdata,  cready => cready,
@@ -230,6 +231,8 @@ begin
         end if;
 	  when "0100" =>					-- R=fbusy
 	    prdata <= "000000000000000" & sfbusy;
+      when "0101" =>
+        prdata <= x"00" & std_logic_vector(BaseBlock);
       when others =>
         prdata <= x"0000";
       end case;

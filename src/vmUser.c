@@ -20,6 +20,7 @@ static uint32_t vmIO (uint32_t dout) {
         case 4: return(vmKeyFormat(data));  // 4: keyboard cursor keys format {win32, xterm}
         case 6: return 1;                   // 6: EMIT buffer ready?
         case 8: return 0;                   // 8: flash busy?
+        case 10: return 0;                  // 10: flash base block
         default: break;
     }
     return 0;

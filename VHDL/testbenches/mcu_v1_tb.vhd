@@ -11,7 +11,8 @@ use STD.textio.all;
 ENTITY mcu_tb IS
 generic (
   ROMsize:  integer := 10;                      	-- log2 (ROM cells)
-  RAMsize:  integer := 10                       	-- log2 (RAM cells)
+  RAMsize:  integer := 10;                      	-- log2 (RAM cells)
+  BaseBlock: unsigned(7 downto 0) := x"00"
 );
 END mcu_tb;
 
@@ -21,7 +22,8 @@ component mcu
 generic (
   ROMsize : integer := 13;                      	-- log2 (ROM cells)
   RAMsize : integer := 10;                      	-- log2 (RAM cells)
-  clk_Hz  : integer := 100000000                    -- default clk in Hz
+  clk_Hz  : integer := 100000000;                   -- default clk in Hz
+  BaseBlock: unsigned(7 downto 0) := x"00"
 );
 port (
   clk	  : in	std_logic;							-- System clock
@@ -75,7 +77,8 @@ END COMPONENT;
 BEGIN
 
   sys: mcu
-  GENERIC MAP ( ROMsize => ROMsize, RAMsize => RAMsize, clk_Hz => 100000000 )
+  GENERIC MAP ( ROMsize => ROMsize, RAMsize => RAMsize,
+    clk_Hz => 100000000, BaseBlock => BaseBlock )
   PORT MAP (
     clk => clk,  reset => reset,  bye => bye,
     NCS => NCS,  SCLK => SCLK,  fdata => fdata,
