@@ -1,6 +1,8 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
+use IEEE.std_logic_textio.all;
+use STD.textio.all;
 
 ENTITY sfprog_tb IS
 END sfprog_tb;
@@ -9,7 +11,7 @@ ARCHITECTURE behavior OF sfprog_tb IS
 
 COMPONENT sfprog
 generic (
-  PID: unsigned(31 downto 0) := x"2B7E1510"     -- Product ID
+  key: unsigned(31 downto 0) := x"87654321"     -- Product ID
 );
 port (
   clk	  : in	std_logic;			            -- System clock
@@ -68,19 +70,26 @@ END COMPONENT;
 BEGIN
 
   rx_proc: process (clk) is                     -- receive UART data from MCU port
+  file outfile: text;
+  variable f_status: FILE_OPEN_STATUS;
+  variable buf_out: LINE; -- EMIT fills, LF dumps
+  variable char: std_logic_vector(7 downto 0);
   begin
     if rising_edge(clk) then
       rstb <= '0';
       if rxfull = '1' then                      -- receive full
-        rstb <= '1';
+        rstb <= '1';                            -- do something with rdata
+        write (buf_out, char(7 downto 0));
+  	    if char(7 downto 5) /= "000" then       -- BL to FFh
+          write (buf_out, character'val(to_integer(unsigned(char(7 downto 0)))));
+  	    end if;
+        writeline (output, buf_out);
       end if;
     end if;
   end process;
 
-
   -- Instantiate the Unit Under Test (UUT)
   uut: sfprog
-    GENERIC MAP (PID => x"2B7E1510")
     PORT MAP (
       clk => clk,  reset => reset,  hold => hold,  busy => busy,
       xdata_i => xdata_i,  xdata_o => xdata_o,  xtrig => xtrig,  xbusy => xbusy,

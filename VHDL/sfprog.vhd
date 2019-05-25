@@ -10,7 +10,7 @@ use IEEE.NUMERIC_STD.ALL;
 
 ENTITY sfprog IS
 generic (
-  PID: unsigned(31 downto 0) := x"12345678"     -- Product ID
+  key: unsigned(31 downto 0) := x"87654321"     -- Product ID
 );
 port (
   clk	  : in	std_logic;			            -- System clock
@@ -49,22 +49,70 @@ ARCHITECTURE RTL OF sfprog IS
   signal fdrive_o: std_logic_vector(3 downto 0);
   signal fdata_i:  std_logic_vector(3 downto 0);
   signal config:   std_logic_vector(7 downto 0);
-  signal sfbusy:   std_logic;
+
+  signal rxbusy:   std_logic;                   -- waiting for rxfull_u to drop
+  signal rxstate: integer range 0 to 15;
 
 ---------------------------------------------------------------------------------
 BEGIN
 
-rdata <= rdata_u;                                   -- feed through
+rdata <= rdata_u;                               -- feed through
 
-main: process (clk, reset) is
+receiver: process (clk, reset) is
 begin
   if reset = '1' then
-    c_state <= c_idle;
+    hold <= '0';
     wstb_u <= '0';
     wdata_u <= x"00";
-    rstb_u <= '0';
+    rstb_u <= '0';  rxbusy <= '0';  rxstate <= 0;
   elsif rising_edge(clk) then
+    rstb_u <= '0';
+    if rxbusy = '1' then
+      rxbusy <= rxfull_u;
+    elsif rxfull_u = '1' then
+      rstb_u <= '1';  rxbusy <= '1';            -- incoming char from UART
+      case rxstate is                           -- what to do with it:
+      when 0 =>
+        if rdata_u = x"10" then
+          rxstate <= 1;
+        else
+          rdata <= rdata_u;                     -- pass through non-escape
+          rxfull <= '1';
+        end if;
+      when 1 =>
+        rxstate <= 0;
+        if rdata_u(7 downto 2) = "000000" then  -- 10 00-03 --> 10-13
+          rdata <= "000100" & rdata_u(1 downto 0);
+          rxfull <= '1';
+        elsif rdata_u = x"0F" then
+          rxstate <= 3;
+        end if;
+      when 2 =>                                 -- logged in
+        case rdata_u is
+        when x"1B" =>                           -- log out
+          rxstate <= 0;
+          hold <= '0';
+        when others => null;
+        end case;
+      when others =>                            -- expecting key
+        if rdata_u = x"12" then
+          rxstate <= 2;
+          hold <= '1';
+        end if;
+      end case;
+    end if;
+    if rstb = '1' then
+      rxfull <= '0';
+    end if;
   end if;
-end process main;
+end process receiver;
+
+--  ready_u : in std_logic;                    	-- Ready for next byte to send
+--  wstb_u  : out std_logic;                    	-- Send strobe
+--  wdata_u : out std_logic_vector(7 downto 0); 	-- Data to send
+
+--  rxfull_u: in  std_logic;                    	-- RX buffer is full, okay for host to accept
+--  rstb_u  : out std_logic;                    	-- Accept RX byte
+--  rdata_u : in  std_logic_vector(7 downto 0);	-- Received data
 
 END RTL;
