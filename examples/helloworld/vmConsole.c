@@ -12,7 +12,7 @@
     vmKeyFormat = 0 for Windows, 1 for Linux. The escape sequences are different.
 */
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
 #include <string.h>
 #include <unistd.h>
 #include <sys/select.h>
@@ -22,7 +22,7 @@
 #include <conio.h>
 #endif // __linux__
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
 // Linux uses cooked mode to input a command line (see Tiff.c's QUIT loop).
 // Any keyboard input uses raw mode.
 // Apparently, Windows getch does this switchover for us.
@@ -100,7 +100,7 @@ uint32_t vmKeyFormat(uint32_t dummy) {
 
 uint32_t vmEmit(uint32_t c) {
     putchar(c);
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
     fflush(stdout);
     usleep(1000);
 #endif

@@ -16,7 +16,7 @@ This brings also Forth-like scripting and interactivity to C applications.
 
 ## Host Forth
 
-The Host Forth is implemented in generic C. I use Code::Blocks to compile for Windows and execute it in ConEmu for decent VT220 emulation. I also compile and test it under Ubuntu Linux. Tiff is the name of the console application.
+The Host Forth is implemented in generic C. I use Code::Blocks to compile for Windows and execute it in ConEmu for decent VT220 emulation. I also compile and test it under Ubuntu Linux. It is also supposed to work with Mac OS. Tiff is the name of the console application.
 
 It implements an interpreter and a number of words using C. They use data structures in the Forth VM whenever possible. This tends to be more wordy than simply using C data structures, but it allows C functions to be replaced by Forth versions as they become available. For example, when the C version of the interpreter fills the TIB with text using C's `getline`, the Forth system running in the VM sees that same text in its TIB.
 
