@@ -6,7 +6,7 @@ relying on C libraries for middleware and other wheels that you don't want to re
 It's set up to compile to flash memory. Code space is flash (big) so that data space can be small.
 
 Try `bin/tiff.exe` to play, if you like to live dangerously.
-If you're a Linux user, compile from source using the Makefile.
+If you're a Linux or Mac OS user, compile from source using the Makefile.
 On Windows, I just pull all files in `src` into a Code::Blocks console project.
 
 Windows users would do well to run this console app under Conemu.

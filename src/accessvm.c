@@ -15,7 +15,7 @@
 #include <string.h>
 #include <ctype.h>
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
 #include <sys/ioctl.h>
 #include <unistd.h>
 
