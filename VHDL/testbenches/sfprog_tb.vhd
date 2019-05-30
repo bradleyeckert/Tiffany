@@ -11,7 +11,7 @@ ARCHITECTURE behavior OF sfprog_tb IS
 
 COMPONENT sfprog
 generic (
-  key: unsigned(31 downto 0) := x"87654321"     -- Product ID
+  PID: std_logic_vector(31 downto 0) := x"87654321"     -- Product ID
 );
 port (
   clk	  : in	std_logic;			            -- System clock
@@ -51,7 +51,7 @@ END COMPONENT;
   signal xbusy:   std_logic := '0';
 
   -- UART register interface: connects to the UART
-  signal ready_u : std_logic := '0';
+  signal ready_u : std_logic := '1';
   signal wstb_u  : std_logic;
   signal wdata_u : std_logic_vector(7 downto 0);
   signal rxfull_u: std_logic := '0';
@@ -69,22 +69,23 @@ END COMPONENT;
 
 BEGIN
 
-  rx_proc: process (clk) is                     -- receive UART data from MCU port
+  rx_proc: process is                     		-- receive UART data from MCU port
   file outfile: text;
   variable f_status: FILE_OPEN_STATUS;
-  variable buf_out: LINE; -- EMIT fills, LF dumps
+  variable buf_out: LINE;
   variable char: std_logic_vector(7 downto 0);
   begin
-    if rising_edge(clk) then
-      rstb <= '0';
-      if rxfull = '1' then                      -- receive full
-        rstb <= '1';                            -- do something with rdata
-        write (buf_out, char(7 downto 0));
-  	    if char(7 downto 5) /= "000" then       -- BL to FFh
-          write (buf_out, character'val(to_integer(unsigned(char(7 downto 0)))));
-  	    end if;
-        writeline (output, buf_out);
-      end if;
+    wait until rising_edge(clk);
+    if rxfull = '1' then                        -- receive full
+      rstb <= '1';  char := rdata;
+	  -- do something with rdata
+      write (buf_out, char(7 downto 0));
+  	  if char(7 downto 5) /= "000" then         -- BL to FFh
+        write (buf_out, character'val(to_integer(unsigned(char(7 downto 0)))));
+  	  end if;
+      writeline (output, buf_out);
+	  wait for clk_period*1.05;  rstb <= '0';
+	  wait for clk_period*2;
     end if;
   end process;
 
@@ -112,19 +113,66 @@ BEGIN
      wait;
   end process;
 
-  -- Stimulus process
+  xfer_proc: process is
+  begin
+     wait until rising_edge(clk);
+     if xtrig = '1' then
+        xbusy <= '1';
+        wait for clk_period*6;
+        xdata_i <= not xdata_o(7 downto 0);     -- echo back xfer data
+        wait for clk_period*4;
+        xbusy <= '0';
+     end if;
+  end process;
+
+  -- Send commands to the controller
   stim_proc: process is
   procedure sendchar (char: in std_logic_vector(7 downto 0)) is
   begin
+    wait until rising_edge(clk);
+	wait for 1 ns;
     rxfull_u <= '1';  rdata_u <= char;          -- simulate UART RX character going to sfprog
     wait until rstb_u = '1';
+    wait for clk_period*2;  rxfull_u <= '0';
     wait for clk_period*2;
   end procedure;
   begin
-     wait for clk_period*8.2;  reset <= '0';
-     sendchar(x"0D");
-     sendchar(x"0A");
-     wait;
+    wait for clk_period*8.2;  reset <= '0';
+    sendchar(x"0D");
+    sendchar(x"10");
+    sendchar(x"0F");
+    sendchar(x"12");
+
+    sendchar(x"2F");        -- ping
+    wait for clk_period*20;
+    sendchar(x"2F");        -- another ping, after busy has timed out
+
+    sendchar(x"41");        -- send 12
+    sendchar(x"62");
+
+    sendchar(x"43");        -- send 34
+    sendchar(x"64");
+
+    sendchar(x"5F");        -- send 3FE
+    sendchar(x"7E");
+
+    sendchar(x"3F");        -- request PID
+
+    sendchar(x"1B");        -- exit
+    sendchar(x"0A");        -- 1st char after exit
+    wait;
+  end process;
+
+  -- Simulate the MCU sending data out the UART
+  tx_proc: process is
+  begin
+    wait for clk_period*20;
+    wait until rising_edge(clk);
+    if ready = '1' then
+      wdata <= std_logic_vector(unsigned(wdata) + 1);
+      wstb <= '1';  wait for clk_period + 2 ns;
+      wstb <= '0';
+    end if;
   end process;
 
 END;

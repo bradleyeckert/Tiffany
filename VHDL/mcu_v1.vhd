@@ -7,7 +7,8 @@ generic (
   ROMsize : integer := 10;                      	-- log2 (ROM cells)
   RAMsize : integer := 10;                      	-- log2 (RAM cells)
   clk_Hz  : integer := 100000000;                   -- default clk in Hz
-  BaseBlock: unsigned(7 downto 0) := x"00"          -- 64KB blocks reserved for bitstream
+  BaseBlock: unsigned(7 downto 0) := x"00";         -- 64KB blocks reserved for bitstream
+  PID: std_logic_vector(31 downto 0) := x"87654321" -- Product ID (for sfcon)
 );
 port (
   clk	  : in	std_logic;							-- System clock
@@ -129,6 +130,48 @@ port (clk:   in std_logic;
 );
 END COMPONENT;
 
+  signal CPUreset, CPUreset_i: std_logic;
+  signal xtrigp, xtrigs:   std_logic;
+  signal xdata_op: std_logic_vector(9 downto 0);
+  -- UART wiring
+  signal ready_u : std_logic;                   -- Ready for next byte to send
+  signal wstb_u  : std_logic;                   -- Send strobe
+  signal wdata_u : std_logic_vector(7 downto 0);-- Data to send
+  signal rxfull_u: std_logic;                   -- RX buffer is full, okay for host to accept
+  signal rstb_u  : std_logic;                   -- Accept RX byte
+  signal rdata_u : std_logic_vector(7 downto 0);-- Received data
+
+COMPONENT sfprog
+generic (
+  PID: std_logic_vector(31 downto 0) := x"87654321" -- Product ID
+);
+port (
+  clk	  : in	std_logic;			            -- System clock
+  reset	  : in	std_logic;			            -- Asynchronous reset
+  hold    : out	std_logic;                      -- resets the CPU, makes SFIF trigger from xtrig
+  busy	  : in	std_logic;			            -- flash is busy
+  -- SPI flash
+  xdata_o : out std_logic_vector(9 downto 0);
+  xdata_i : in  std_logic_vector(7 downto 0);
+  xtrig   : out std_logic;
+  xbusy   : in  std_logic;
+  -- UART register interface: connects to the UART
+  ready_u : in std_logic;                    	-- Ready for next byte to send
+  wstb_u  : out std_logic;                    	-- Send strobe
+  wdata_u : out std_logic_vector(7 downto 0); 	-- Data to send
+  rxfull_u: in  std_logic;                    	-- RX buffer is full, okay for host to accept
+  rstb_u  : out std_logic;                    	-- Accept RX byte
+  rdata_u : in  std_logic_vector(7 downto 0);	-- Received data
+  -- UART register interface: connects to the MCU
+  ready   : out std_logic;                    	-- Ready for next byte to send
+  wstb    : in  std_logic;                    	-- Send strobe
+  wdata   : in  std_logic_vector(7 downto 0); 	-- Data to send
+  rxfull  : out std_logic;                    	-- RX buffer is full, okay to accept
+  rstb    : in  std_logic;                    	-- Accept RX byte
+  rdata   : out std_logic_vector(7 downto 0) 	-- Received data
+);
+END COMPONENT;
+
 
 ---------------------------------------------------------------------------------
 BEGIN
@@ -150,7 +193,7 @@ end process;
 cpu: m32
 GENERIC MAP ( RAMsize => RAMsize )
 PORT MAP (
-  clk => clk,  reset => reset_a,  bye => bye,
+  clk => clk,  reset => CPUreset,  bye => bye,
   caddr => caddr,  cready => cready,  cdata => cdata,
   paddr => paddr,  pwrite => pwrite,  psel => psel,  penable => penable,
   pwdata => pwdata,  prdata => prdata,  pready => pready
@@ -166,21 +209,33 @@ PORT MAP (
 );
 
 caddrx <= "0000" & caddr;
+xtrig <= xtrigp or xtrigs;
 
 fdata_i <= fdata; -- bidirectional SPI data bus
 g_data: for i in 0 to 3 generate
   fdata(i) <= fdata_o(i) when fdrive_o(i) = '1' else 'Z';
 end generate g_data;
 
-urt: uart
+ezuart: uart
 PORT MAP (
   clk => clk,  reset => reset_a,
-  ready => emitready,  wstb => emit_stb,  wdata => pwdata(7 downto 0),
-  rxfull => keyready,  rstb => key_stb,   rdata => keydata,
+  ready => ready_u,    wstb => wstb_u,  wdata => wdata_u,
+  rxfull => rxfull_u,  rstb => rstb_u,  rdata => rdata_u,
   bitperiod => bitperiod,  rxd => rxd,  txd => txd
 );
 
-xdata_i <= pwdata(9 downto 0);
+xdata_i <= pwdata(9 downto 0) when CPUreset = '0' else xdata_op;
+
+prog_con: sfprog
+GENERIC MAP ( PID => PID )
+PORT MAP (
+  clk => clk,  reset => reset_a,  hold => CPUreset_i,  busy => sfbusy,
+  xdata_o => xdata_op,  xdata_i => xdata_o,  xbusy => xbusy,  xtrig => xtrigp,
+  ready_u => ready_u,    wstb_u => wstb_u,  wdata_u => wdata_u,
+  rxfull_u => rxfull_u,  rstb_u => rstb_u,  rdata_u => rdata_u,
+  ready => emitready,  wstb => emit_stb,  wdata => pwdata(7 downto 0),
+  rxfull => keyready,  rstb => key_stb,   rdata => keydata
+);
 
 -- decode the DPB
 -- clk     ___----____----____----____----____----____----____----
@@ -194,14 +249,16 @@ xdata_i <= pwdata(9 downto 0);
 DPB_process: process (clk, reset_a) is
 begin
   if reset_a = '1' then
-    emit_stb <= '0';  key_stb <= '0';  xtrig <= '0';
+    emit_stb <= '0';  key_stb <= '0';  xtrigs <= '0';
     bitperiod <= std_logic_vector(to_unsigned(clk_Hz/115200, 16));
 	prdata <= x"0000";  pready <= '0';  fwait <= '0';
     config <= x"00";
+    CPUreset <= '1';
   elsif rising_edge(clk) then
-    emit_stb <= '0';  key_stb <= '0';  xtrig <= '0';
+    emit_stb <= '0';  key_stb <= '0';  xtrigs <= '0';
+    CPUreset <= CPUreset_i;             -- synchronize reset from sfcon
     if fwait = '1' then
-      if (xbusy = '0') and (xtrig = '0') then
+      if (xbusy = '0') and (xtrigs = '0') then
         fwait <= '0';  pready <= '1';   -- wait for SPI transfer to finish
         prdata <= x"00" & xdata_o;
       end if;
@@ -216,7 +273,7 @@ begin
           prdata <= x"00" & keydata;
           key_stb <= '1';
         else
-          xtrig <= '1';  fwait <= '1';  -- waiting for SPI transfer
+          xtrigs <= '1';  fwait <= '1'; -- waiting for SPI transfer
           pready <= '0';
         end if;
       when "0010" =>                    -- R=keyformat, W=spiconfig

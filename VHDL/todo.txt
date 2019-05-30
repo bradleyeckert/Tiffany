@@ -1,7 +1,7 @@
 v1 testbench compiles a definition to flash and "see"s it.
 
 things to do next:
-1. Add UART hardware access to flash's xport.
+1. Exercise sfcon in the mcu_v1 simulation.
 2. Port to an FPGA board.
 3. Write an app to re-flash over serial.
 
