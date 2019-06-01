@@ -16,8 +16,8 @@ port (
   bye	  : out	std_logic;							-- BYE encountered
   -- SPI flash
   NCS     : out	std_logic;                          -- chip select
-  SCLK    : out	std_logic;                          -- clock
-  fdata   : inout std_logic_vector(3 downto 0);     -- 3:0 = HLD NWP SO SI, pulled high
+  SCLK    : out	std_logic;                          -- clockgh
+  fdata   : inout std_logic_vector(3 downto 0);     -- 3:0 = HLD NWP SO SI, pulled hi
   -- UART
   rxd	  : in	std_logic;
   txd	  : out std_logic

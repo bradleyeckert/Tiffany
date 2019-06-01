@@ -168,6 +168,7 @@ begin
   wait for clk_period*2.2;  reset <= '0';
   wait for 5 ms; -- wait for the ok> prompt, 5ms is enough if ROMsize=10. Increase if more.
   Keyboard (": foo swap ; see foo"); -- give this 32 ms to execute
+
   wait until bye = '1';
   report "BYE encountered"  severity failure;
   wait;

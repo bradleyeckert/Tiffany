@@ -20,6 +20,7 @@ MCU V1:
 - uart.vhd, simple UART
 - spramEZ.vhd, generic RAM
 - spif.vhd, SPI flash interface
+- sfprog.vhd, SPI flash programmer
 - mcu_v1.vhd, MCU
 - conversions.vhd, FMF library
 - gen_utils.vhd, FMF library
