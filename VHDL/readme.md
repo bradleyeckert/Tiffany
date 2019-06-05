@@ -148,9 +148,20 @@ There was no EBR warning this time.
 
 ## Dhrystone MIPS
 
-Why would you care? Benchmarks are completely meaningless.
+Why would you care? Benchmarks are basicaly meaningless.
 Just as in the classic Forth world time-critical code is moved into assembly,
 time-critical functions should be in hardware. Yup, you have to learn a little VHDL or Verilog.
 Use `userfn.vhd` as an example for your own functions.
 
+The cost of computing has been falling exponentially since the 1860s.
+See "Two Centuries of Productivity Growth in Computing" (W. D. NORDHAUS).
+Following the curve of mathematical discoveries (algorithmic improvements) through the centuries,
+the trend could possibly be traced back to the Babylonians.
+On a log-log plot the slope is relatively flat, with a bump in the WWII years.
+A curve that has remained flat for millenia isn't likely to drop off soon.
+Since Moore's Law is hitting its limit in the 2020s, the transistors per unit cost will flatten
+but the usefulness of the transistor circuits will increase.
+You can see this in GPUs already.
+The focus of computing going forward will be on algorithms in hardware rather than in general purpose microprocessors.
+Why not? The synthesis and layout tools keep getting better.
 

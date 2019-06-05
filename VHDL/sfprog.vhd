@@ -143,7 +143,7 @@ begin
     when c_tx1 =>                               -- give ready_u time to respond
       if txstate = 14 then
         txstate <= 0;
-        wdata_i <= "0100" & xdata_i(3 downto 0);
+        wdata_i <= "0101" & xdata_i(3 downto 0);
       else
         wdata_i <= PID(8*txstate+7 downto 8*txstate);
       end if;

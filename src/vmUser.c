@@ -4,6 +4,7 @@
 #include <sys/time.h>
 #include "vmConsole.h"
 #include "flash.h"
+#include "rs232.h"
 
 // To facilitate FPGA/ASIC implementation, console I/O uses a peripheral bus.
 // There is no need for a 32-bit data bus, 16-bit is fine. Upper half is the address.
@@ -75,10 +76,60 @@ static uint32_t Divide (uint32_t parm) {
     return quotient;
 }
 
+// replaces as@ and as!
+static uint32_t setBurstLength (uint32_t parm) {
+    return 0;
+}
+static uint32_t burstfetch (uint32_t parm) {
+    return 0;
+}
+static uint32_t burststore (uint32_t parm) {
+    return 0;
+}
+
+// COM port stuff adds about 5K to the executable. Not bad for Windows.
+
+static int activeport;
+
+// COM port parameters: N = BaudRate, T = Port, returns ior=0 if opened
+static uint32_t opencomm (uint32_t port) {
+    int r = RS232_OpenComport(port, vmUserParm, "8N2", 0);
+    if (!r) activeport = port;
+    return r;
+}
+static uint32_t closecomm (uint32_t parm) {
+    RS232_CloseComport(activeport);
+    return 0;
+}
+// Send one byte
+static uint32_t commemit (uint32_t x) {
+    return RS232_SendByte(activeport, x);
+}
+
+static unsigned char buf[4];
+static int full = 0;
+
+static uint32_t commQkey (uint32_t parm) {
+    if (full) {
+        return 1;
+    }
+    int r = RS232_PollComport(activeport, buf, 1);
+    full = r;
+    return r;
+}
+
+static uint32_t commkey (uint32_t parm) {
+    while (commQkey(0) == 0) { Sleep(1); }
+    full = 0;
+    return buf[0];
+}
+
 uint32_t UserFunction (uint32_t T, uint32_t N, int fn ) {
     vmUserParm = N;
     static uint32_t (* const pf[])(uint32_t) = {
-        vmIO, Bye, Counter, SetDiv, Divide, Multiply
+        vmIO, Bye, Counter, SetDiv, Divide, Multiply,
+        NULL, setBurstLength, burstfetch, burststore,
+        opencomm, closecomm, commemit, commQkey, commkey
 // add your own here...
     };
     if (fn < sizeof(pf) / sizeof(*pf)) {

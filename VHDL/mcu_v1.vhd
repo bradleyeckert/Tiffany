@@ -2,6 +2,10 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
+-- This version of the MCU boots and runs from SPI flash.
+-- It's intended to have a wrapper containing signal names matching those of
+-- the PCB's constraint file. The wrapper also connects the Fishbone bus to peripherals.
+
 ENTITY MCU IS
 generic (
   ROMsize : integer := 10;                      	-- log2 (ROM cells)
@@ -20,14 +24,25 @@ port (
   fdata   : inout std_logic_vector(3 downto 0);     -- 3:0 = HLD NWP SO SI, pulled hi
   -- UART
   rxd	  : in	std_logic;
-  txd	  : out std_logic
+  txd	  : out std_logic;
+  -- Fishbone Bus Master for burst transfers
+  CYC_O   : out std_logic;                      	-- Trigger burst of IMM-1 words
+  WE_O    : out std_logic;                      	-- '1'=write, '0'=read.
+  BLEN_O  : out std_logic_vector(7 downto 0);		-- Burst length less 1.
+  BADR_O  : out std_logic_vector(31 downto 0);  	-- Block address, copy of T.
+  VALID_O : out std_logic;	                    	-- AXI-type handshake for output.
+  READY_I : in  std_logic;
+  DAT_O	  : out std_logic_vector(31 downto 0);  	-- Outgoing data, 32-bit.
+  VALID_I : in  std_logic;                      	-- AXI-type handshake for input.
+  READY_O : out std_logic;
+  DAT_I   : in  std_logic_vector(31 downto 0)		-- Incoming data, 32-bit.
 );
 END MCU;
 
 
 ARCHITECTURE RTL OF MCU IS
 
-component m32
+component m32fb
 generic (
   RAMsize:  integer := 10                           -- log2 (RAM cells)
 );
@@ -38,7 +53,7 @@ port (
   caddr	  : out std_logic_vector(25 downto 0);		-- Flash memory address
   cready  : in	std_logic;							-- Flash memory data ready
   cdata	  : in	std_logic_vector(31 downto 0);		-- Flash memory read data
-  -- DPB: Dumb Peripheral Bus, compare to APB (Advanced Peripheral Bus)
+  -- Peripheral Bus
   paddr   : out	std_logic_vector(8 downto 0);       -- address
   pwrite  : out std_logic;							-- write strobe
   psel    : out std_logic;							-- start the cycle
@@ -46,6 +61,17 @@ port (
   pwdata  : out std_logic_vector(15 downto 0);      -- write data
   prdata  : in  std_logic_vector(15 downto 0);      -- read data
   pready  : in  std_logic;							-- ready to continue
+  -- Fishbone Bus Master for burst transfers.
+  CYC_O   : out std_logic;                      	-- Trigger burst of IMM-1 words
+  WE_O    : out std_logic;                      	-- '1'=write, '0'=read.
+  BLEN_O  : out std_logic_vector(7 downto 0);		-- Burst length less 1.
+  BADR_O  : out std_logic_vector(31 downto 0);  	-- Block address, copy of T.
+  VALID_O : out std_logic;	                    	-- AXI-type handshake for output.
+  READY_I : in  std_logic;
+  DAT_O	  : out std_logic_vector(31 downto 0);  	-- Outgoing data, 32-bit.
+  VALID_I : in  std_logic;                      	-- AXI-type handshake for input.
+  READY_O : out std_logic;
+  DAT_I   : in  std_logic_vector(31 downto 0);		-- Incoming data, 32-bit.
   -- Powerdown
   bye     : out std_logic                           -- BYE encountered
 );
@@ -59,7 +85,6 @@ end component;
   signal paddr:     std_logic_vector(8 downto 0);
   signal pwrite:    std_logic;
   signal psel:      std_logic;
---  signal penable:   std_logic;
   signal pwdata:    std_logic_vector(15 downto 0);
   signal prdata:    std_logic_vector(15 downto 0);
   signal pready:    std_logic;
@@ -190,13 +215,16 @@ begin
 end process;
 
 -- Instantiate the components of the MCU: CPU, ROM, and UART
-cpu: m32
+cpu: m32fb
 GENERIC MAP ( RAMsize => RAMsize )
 PORT MAP (
   clk => clk,  reset => CPUreset,  bye => bye,
   caddr => caddr,  cready => cready,  cdata => cdata,
   paddr => paddr,  pwrite => pwrite,  psel => psel,  penable => penable,
-  pwdata => pwdata,  prdata => prdata,  pready => pready
+  pwdata => pwdata,  prdata => prdata,  pready => pready,
+  CYC_O => CYC_O,  WE_O => WE_O,  BLEN_O => BLEN_O,  BADR_O => BADR_O,
+  VALID_O => VALID_O,  READY_I => READY_I,  DAT_O	=> DAT_O,
+  VALID_I => VALID_I,  READY_O => READY_O,  DAT_I => DAT_I
 );
 
 flash: sfif
@@ -287,9 +315,9 @@ begin
           bitperiod <= pwdata;
         end if;
 	  when "0100" =>					-- R=fbusy
-	    prdata <= "000000000000000" & sfbusy;
-      when "0101" =>
-        prdata <= x"00" & std_logic_vector(BaseBlock);
+	    prdata <= "000000000000000" & sfbusy; 			-- see flash.f
+      when "0101" =>					-- R=BaseBlock
+        prdata <= x"00" & std_logic_vector(BaseBlock);  -- see flash.f
       when others =>
         prdata <= x"0000";
       end case;

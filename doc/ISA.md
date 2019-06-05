@@ -150,8 +150,8 @@ In the following table:
 | **2**   |           | rp         | r@        | and       | 2/        | **jmp**   | w@+       | w!+       |
 | **3**   |           | sp         |           | xor       | u2/       | **call**  | w@        | >r        |
 | **4**   | *reptc*   | 4+         |           | c+        | 0=        | **litx**  | @+        | !+        |
-| **5**   | *-rept*   | up         |           |           | 0\<       | **@as**   | @         | rp!       |
-| **6**   | *-if:*    | port       |           |           | invert    | **!as**   | c@        | sp!       |
+| **5**   | *-rept*   | up         |           |           | 0\<       |           | @         | rp!       |
+| **6**   | *-if:*    | port       |           |           | invert    |           | c@        | sp!       |
 | **7**   | *ifc:*    | over       | *ifz:*    | drop      | swap      | **lit**   |           | up!       |
 
 Branches compile a conditional skip past `jmp`.
@@ -223,8 +223,6 @@ Memory
 
 Interface
 - `user`  ( n1 n2 -- n1 n3 ) User function selected by Imm.
-- `@as`   ( asrc adest -- asrc adest ) Imm = burst length.
-- `!as`   ( asrc adest -- asrc adest ) Imm = burst length.
 - `port`  ( n -- m ) Used for debugging access.
 
 ### Sample usage
@@ -247,7 +245,7 @@ That leaves four slots for other opcodes.
 
 The RAM used by the CPU core is relatively small.
 To access more memory, you would connect the AXI4 bus to other memory types such as single-port SRAM or a DRAM controller.
-Burst transfers use a !AS or @AS instruction to issue the address (with burst length=Imm) and stream words to/from external memory.
+Burst transfers use a USER instruction to issue the address (with burst length=Imm) and stream words to/from external memory.
 
 RAM has a negative address ANDed with (RAMsize-1) where RAMsize is an exact power of 2.
 In `mf` it sits at the top of the memory space.
@@ -259,7 +257,7 @@ This is a little bulky, especially if the equivalent macro can fit in a group.
 The call and return overhead isn't cheap. Using the macro sequence should replace the call when possible.
 Code that’s inlineable is copied directly except for its `;`, leaving that slot open for the next instruction.
 
-Hardware multiply and divide, if provided, are accessed via the USER instruction.
+Hardware multiply and divide, if provided, are executed via the USER instruction.
 `um*` takes about 500 cycles when done by shift-and-add.
 With real hardware, it's more like 10 cycles. 16x16 multiplier hardware uses several cycles to create the 64-bit product.
 
