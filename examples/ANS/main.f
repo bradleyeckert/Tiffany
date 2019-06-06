@@ -114,7 +114,7 @@ make ../../src/flash.c flash.c          \ flash.c is used as a template
 
 \ Make VHDL ROM file
 5 save-hex ../../VHDL/testrom.txt       \ FMF model
- make ../../templates/rom.vhd  ../../VHDL/rom32.vhd
+\ make ../../templates/rom.vhd  ../../VHDL/rom32.vhd
 
 \ ------------------------------------------------------------------------------
 

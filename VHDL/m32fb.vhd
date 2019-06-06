@@ -697,7 +697,7 @@ PORT MAP (
   RAM_i	=> RAM_q,  RAM_o => uf_wdata,  RAMaddr => uf_addr,
   RAMwe => uf_we,  RAMre => uf_read,
   CYC_O => CYC_O,  WE_O => WE_O,  BLEN_O => BLEN_O,  BADR_O => BADR_O,
-  VALID_O => VALID_O,  READY_I => READY_I,  DAT_O	=> DAT_O,
+  VALID_O => VALID_O,  READY_I => READY_I,  DAT_O => DAT_O,
   VALID_I => VALID_I,  READY_O => READY_O,  DAT_I => DAT_I,
   result => result,  start => uf_stb,  busy => uf_busy
 );

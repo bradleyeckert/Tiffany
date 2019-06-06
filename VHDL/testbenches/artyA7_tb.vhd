@@ -51,11 +51,11 @@ end component;
   signal qspi_cs     : std_logic;
   signal qspi_clk    : std_logic;
   signal qspi_dq     : std_logic_vector(3 downto 0);
-  signal uart_txd_in : std_logic;
+  signal uart_txd_in : std_logic := '1';
   signal uart_rxd_out: std_logic;
-  signal led         : std_logic_vector(3 downto 0);   -- Discrete LEDs
-  signal sw          : std_logic_vector(3 downto 0);   -- Switches
-  signal btn         : std_logic_vector(3 downto 0);   -- Buttons
+  signal led  : std_logic_vector(3 downto 0);           -- Discrete LEDs
+  signal sw   : std_logic_vector(3 downto 0) := "1010"; -- Switches
+  signal btn  : std_logic_vector(3 downto 0) := "0001"; -- Buttons
   signal led0_r, led0_g, led0_b : std_logic;
   signal led1_r, led1_g, led1_b : std_logic;
   signal led2_r, led2_g, led2_b : std_logic;
@@ -155,6 +155,19 @@ begin
     end case;
   end loop;
 end process emit_process;
+
+process begin   wait until led0_r'event;
+  report "LED0_r changed" severity note;
+end process;
+process begin   wait until led1_r'event;
+  report "LED1_r changed" severity note;
+end process;
+process begin   wait until led2_r'event;
+  report "LED2_r changed" severity note;
+end process;
+process begin   wait until led3_r'event;
+  report "LED3_r changed" severity note;
+end process;
 
 
 main_process: process

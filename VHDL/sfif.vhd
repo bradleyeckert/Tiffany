@@ -311,6 +311,7 @@ spirate <= config(7 downto 6);
 hasmode <= config(5);
 divisor <= to_integer(unsigned(config(4 downto 3)));
 qdummy  <= to_integer(unsigned(config(2 downto 1)))*2 + 4; -- 4, 6, 8, 10
+-- open <= config(0);
 sclk <= sclk_i;
 
 transfer: process (clk, reset) begin
