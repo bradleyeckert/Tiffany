@@ -35,10 +35,10 @@ hex
 ;
 : SPIID  \ -- mfr type capacity
    SPIidle
-   9F SPIxfer                           \ JEDEC attempt at a standard
-   dup xor  SPIxfer                     \ ended up vendor defined.
-   dup xor  SPIxfer                     \ Refer to datasheets.
-   dup xor  SPIxfer
+   09F SPIxfer drop                     \ JEDEC attempt at a standard
+   0FF SPIxfer                          \ ended up vendor defined.
+   0FF SPIxfer                          \ Refer to datasheets.
+   1FF SPIxfer
 ;
 : SPIerase4K  \ addr --                 \ erase 4K sector
    SPIidle

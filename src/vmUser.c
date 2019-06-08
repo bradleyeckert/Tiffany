@@ -87,49 +87,12 @@ static uint32_t burststore (uint32_t parm) {
     return 0;
 }
 
-// COM port stuff adds about 5K to the executable. Not bad for Windows.
-
-static int activeport;
-
-// COM port parameters: N = BaudRate, T = Port, returns ior=0 if opened
-static uint32_t opencomm (uint32_t port) {
-    int r = RS232_OpenComport(port, vmUserParm, "8N2", 0);
-    if (!r) activeport = port;
-    return r;
-}
-static uint32_t closecomm (uint32_t parm) {
-    RS232_CloseComport(activeport);
-    return 0;
-}
-// Send one byte
-static uint32_t commemit (uint32_t x) {
-    return RS232_SendByte(activeport, x);
-}
-
-static unsigned char buf[4];
-static int full = 0;
-
-static uint32_t commQkey (uint32_t parm) {
-    if (full) {
-        return 1;
-    }
-    int r = RS232_PollComport(activeport, buf, 1);
-    full = r;
-    return r;
-}
-
-static uint32_t commkey (uint32_t parm) {
-    while (commQkey(0) == 0) { Sleep(1); }
-    full = 0;
-    return buf[0];
-}
 
 uint32_t UserFunction (uint32_t T, uint32_t N, int fn ) {
     vmUserParm = N;
     static uint32_t (* const pf[])(uint32_t) = {
         vmIO, Bye, Counter, SetDiv, Divide, Multiply,
-        NULL, setBurstLength, burstfetch, burststore,
-        opencomm, closecomm, commemit, commQkey, commkey
+        NULL, setBurstLength, burstfetch, burststore
 // add your own here...
     };
     if (fn < sizeof(pf) / sizeof(*pf)) {
