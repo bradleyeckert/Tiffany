@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include "vm.h"
 #include "accessvm.h"
 #include "rs232.h"
-#include <fcntl.h>
+#define MAXFILES 64
 
 /*
 Host functions operate on the stack and have access to host resources.
@@ -68,52 +69,173 @@ static char name[1024];
 // 11.6.1.1718 INCLUDED
 // 11.6.1.2218 SOURCE-ID
 
-static int R_O             ( uint32_t *s ) { // 11.6.1.2054 ( -- fam )
-    s[-1] = ('r'<<0) | ('b'<<8);
-    return -1;
-}
-static int R_W             ( uint32_t *s ) { // 11.6.1.2056 ( -- fam )
-    s[-1] = ('r'<<0) | ('b'<<8) | ('+'<<16);
-    return -1;
-}
-static int W_O             ( uint32_t *s ) { // 11.6.1.2425 ( -- fam )
-    s[-1] = ('w'<<0) | ('b'<<8);
-    return -1;
-}
-static int CLOSE_FILE      ( uint32_t *s ) { // 11.6.1.0900 ( fileid -- ior )
-    int r = fclose( (FILE *) s[0] );    // assume pointer fits in uint32_t
-    if (r) r = -62;
-    s[0] = r;  return 0;
-}
-static char fam[4];
-static void getfam (uint32_t x) {            // copy the fam string
-    fam[0] = x & 0xFF;
-    fam[1] = (x>>8) & 0xFF;
-    fam[2] = (x>>16) & 0xFF;
-    fam[3] = (x>>24) & 0xFF;
-}
-static int CREATE_FILE     ( uint32_t *s ) { // 11.6.1.1010 ( c-addr u fam -- fileid ior )
-    getfam(s[0]);
-    FetchString(name, s[2], s[1]);
-    printf("[%s]=%s\n", name, fam);
-    FILE *fp = fopen(name, fam);
-    s[0] = 0;  if (fp == NULL) s[0] = -63;
-    s[1] = fileno(fp);  return 1;
+// Rather than cast uint32_t to and from file pointers and wait for C to break
+// the code, use an array of actual file pointers.
+
+FILE * filehandle[MAXFILES];
+
+void vmHostInit(void) {
+    for (int i = 0; i<MAXFILES; i++) {
+        filehandle[i] = NULL;
+    }
 }
 
+static int getFilePointer(FILE * fp) {
+    for (int i = 0; i<MAXFILES; i++) {
+        if (filehandle[i] == NULL) {
+            filehandle[i] = fp;
+            return i;                   // first free slot
+        }
+    }
+    return -1;                          // none found
+}
+static FILE * FilePointer(uint32_t fp) {
+    if (fp<MAXFILES) {
+        return filehandle[fp];
+    }
+    return NULL;                        // translate to a nicer invalid pointer
+}
+
+static int CLOSE_FILE      ( uint32_t *s ) { // 11.6.1.0900 ( fileid -- ior )
+    FILE * f = FilePointer(s[0]);
+    int r = fclose(f);
+    filehandle[s[0]] = NULL;
+    s[0] = r ? -62 : 0;
+    return 0;
+}
+// Supported?   R/O  R/W  W/O
+// CREATE-FILE  no   yes  yes
+// OPEN-FILE    yes  yes  no
+static int CREATE_FILE     ( uint32_t *s ) { // 11.6.1.1010 ( c-addr u fam -- fileid ior )
+    FetchString(name, s[2], s[1]);
+    char * fam = "rb";
+    switch (s[0]) {
+        case 2: fam = "wb";   break;
+        case 3: fam = "rb+";  break;
+        default:  break;
+    }
+    FILE *fp = fopen(name, fam);
+    s[1] = (fp == NULL) ? -62 : 0;
+    s[2] = getFilePointer(fp);
+    return 1;
+}
+static int READ_FILE       ( uint32_t *s ) { // 11.6.1.2080 ( c-addr u1 fileid -- u2 ior )
+    uint32_t address = s[2];
+    uint32_t length = s[1];
+    FILE * f = FilePointer(s[0]);
+    s[2] = 0;  s[1] = 0;
+    for (uint32_t i=0; i<length; i++) {
+        int c = fgetc(f);
+        if (c == EOF) {
+            s[2] = i;
+            return 1;
+        }
+        StoreByte(c, address++);
+        s[2]++;
+    }
+    return 1;
+}
 
 /*
-static int CREATE-FILE     ( uint32_t *s ) { // 11.6.1.1010 ( c-addr u fam -- fileid ior )
-static int DELETE-FILE     ( uint32_t *s ) { // 11.6.1.1190 ( c-addr u -- ior )
-static int FILE-POSITION   ( uint32_t *s ) { // 11.6.1.1520 ( fileid -- ud ior )
-static int FILE-SIZE       ( uint32_t *s ) { // 11.6.1.1522 ( fileid -- ud ior )
+All lines in the file must end in newline, including the last.
+This allows too-long lines to be truncated to fit the specified buffer.
+The trailing CRLF is not stored in the buffer, which is a behavior you can't count on in all ANS Forths.
+For ANS compatibility, you should define your buffer two bytes bigger than u1.
+If you want to detect truncated lines, compare u1 to u2.
+*/
+static int READ_LINE       ( uint32_t *s ) { // 11.6.1.2090 ( c-addr u1 fileid -- u2 flag ior )
+    uint32_t address = s[2];
+    uint32_t length = s[1];
+    FILE * f = FilePointer(s[0]);
+    s[2] = 0;  s[1] = 0;  s[0] = 0;
+    int pos = 0;
+    while (1) {
+        int c = fgetc(f);
+        switch (c) {
+            case EOF:
+                return 0;
+            case '\n':
+                s[1] = -1;
+                return 0;
+            default:
+                if ((c >= ' ') && (pos < length)) {
+                    StoreByte(c, address++);
+                    s[2]++;
+                }
+                break;
+        }
+        if (ferror(f)) {
+            s[0] = -71;
+            return 0;
+        }
+    }
+    return 0;
+}
+
+static int FILE_POSITION   ( uint32_t *s ) { // 11.6.1.1520 ( fileid -- ud ior )
+    FILE * f = FilePointer(s[0]);
+    s[0] = 0;  s[-1] = 0;  s[-2] = -65;
+    fpos_t pos;
+    int ior = fgetpos(f, &pos);
+    if (ior == 0) {
+        uint64_t x = (uint64_t) pos;
+        s[0] = x & 0xFFFFFFFF;
+        s[-1] = x >> 32;
+        s[-2] = 0;
+    }
+    return -2;
+}
+static int REPOSITION_FILE ( uint32_t *s ) { // 11.6.1.2142 ( ud fileid -- ior )
+    FILE * f = FilePointer(s[0]);
+    uint64_t x = (((uint64_t) s[1])<<32) | (uint64_t) s[2];
+    fpos_t pos = (fpos_t) x;
+    int ior = fsetpos(f, &pos);
+    s[2] = (ior) ? -73 : 0;
+    return 2;
+}
+
+static int WRITE_FILE      ( uint32_t *s ) { // 11.6.1.2480 ( c-addr u fileid -- ior )
+    uint32_t address = s[2];
+    uint32_t length = s[1];
+    FILE * f = FilePointer(s[0]);
+    s[2] = 0;
+    for (int i=0; i<length; i++) {
+        int c = FetchByte(address++);
+        int n = fputc(c, f);
+        if (n == EOF) {
+            s[2] = -75;
+            return 2;
+        }
+    }
+    return 2;
+}
+
+static int WRITE_LINE      ( uint32_t *s ) { // 11.6.1.2480 ( c-addr u fileid -- ior )
+    FILE * f = FilePointer(s[0]);
+    int r = WRITE_FILE(s);
+#ifdef _WIN32
+    fputc('\r', f);
+#endif
+    fputc('\n', f);
+    return r;
+}
+
+static int FILE_SIZE       ( uint32_t *s ) { // 11.6.1.1522 ( fileid -- ud ior )
+    FILE * f = FilePointer(s[0]);
+    fseek(f, 0L, SEEK_END);
+    uint64_t x = ftell(f);
+    fseek(f, 0L, SEEK_SET);
+    s[0] = x & 0xFFFFFFFF;
+    s[-1] = (x>>32) & 0xFFFFFFFF;
+    s[-2] = 0; // ior
+    return -2;
+}
+
+/*
 static int OPEN-FILE       ( uint32_t *s ) { // 11.6.1.1970 ( c-addr u fam -- fileid ior )
-static int READ-FILE       ( uint32_t *s ) { // 11.6.1.2080 ( c-addr u1 fileid -- u2 ior )
-static int READ-LINE       ( uint32_t *s ) { // 11.6.1.2090 ( c-addr u1 fileid -- u2 flag ior )
-static int REPOSITION-FILE ( uint32_t *s ) { // 11.6.1.2142 ( ud fileid -- ior )
+static int DELETE-FILE     ( uint32_t *s ) { // 11.6.1.1190 ( c-addr u -- ior )
+
 static int RESIZE-FILE     ( uint32_t *s ) { // 11.6.1.2147 ( ud fileid -- ior )
-static int WRITE-FILE      ( uint32_t *s ) { // 11.6.1.2480 ( c-addr u fileid -- ior )
-static int WRITE-LINE      ( uint32_t *s ) { // 11.6.1.2485 ( c-addr u fileid -- ior )
 *
 -61	RESIZE
 -62	CLOSE-FILE
@@ -148,7 +270,9 @@ static int testout (uint32_t *s) {  // ( offset length -- )
 int HostFunction (uint32_t fn, uint32_t * s) {
     static int (* const pf[])(uint32_t*) = {
     opencomm, closecomm, commemit, commQkey, commkey, testout,
-    R_O, R_W, W_O, CLOSE_FILE, CREATE_FILE
+    CLOSE_FILE, CREATE_FILE, CREATE_FILE,     // open-file uses create-file
+    READ_FILE, READ_LINE, FILE_POSITION, REPOSITION_FILE, WRITE_FILE, WRITE_LINE,
+    FILE_SIZE
 // add your own here...
     };
     if (fn < sizeof(pf) / sizeof(*pf)) {

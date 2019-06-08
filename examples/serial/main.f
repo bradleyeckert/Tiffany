@@ -41,13 +41,40 @@ include ../../forth/comma.f             \ smart comma
 : ckey?  ( -- flag )  3 host ;
 : ckey   ( c -- )     4 host ;
 : testout   ( addr len -- )  5 host ;
-: R/O    ( -- fam )   6 host ;
-: W/O    ( -- fam )   7 host ;
-: R/W    ( -- fam )   8 host ;
-: CLOSE-FILE  ( fileid -- ior )  9 host ;
-: CREATE-FILE ( c-addr u fam -- fileid ior )  10 host ;
+
+1 constant R/O  \ 11.6.1.2054 ( -- fam )
+2 constant W/O  \ 11.6.1.2425 ( -- fam )
+3 constant R/W  \ 11.6.1.2056 ( -- fam )
+
+: CLOSE-FILE  ( fileid -- ior )  6 host ;
+: CREATE-FILE ( c-addr u fam -- fileid ior )  7 host ;
+: OPEN-FILE   ( c-addr u fam -- fileid ior )  8 host ;
+: READ-FILE   ( c-addr u1 fileid -- u2 ior )  9 host ;
+: READ-LINE   ( c-addr u1 fileid -- u2 flag ior )  10 host ;
+: FILE-POSITION   ( fileid -- ud ior )  11 host ;
+: REPOSITION-FILE ( ud fileid -- ior )  12 host ;
+: WRITE-FILE      ( c-addr u fileid -- ior )  13 host ;
+: WRITE-LINE      ( c-addr u fileid -- ior )  14 host ;
+: FILE-SIZE       ( fileid -- ud ior )  15 host ;
 
 : filename  s" test.txt" ;
+variable inf
+variable outf
+: seefile  ( a u -- )
+   r/o open-file throw  inf !
+   s" created.txt" w/o create-file throw  outf !
+   inf @ FILE-SIZE throw
+   ." reading " d. ." bytes:" cr
+   BEGIN
+      pad |pad| inf @ READ-LINE THROW     	( length not-eof-flag )
+   WHILE                        ( length )
+      s" copy: " outf @ write-file throw
+      pad over   outf @ write-line throw
+      pad swap type cr
+   REPEAT DROP
+   outf @ close-file throw
+   inf @ close-file throw
+;
 
 variable port  7 port !
 variable connected

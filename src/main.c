@@ -7,6 +7,7 @@
 #include "accessvm.h"
 #include "fileio.h"
 #include <string.h>
+#include "vmhost.h"
 #define HP0max  (MaxROMsize - 0x1000)
 
 /*global*/ int HeadPointerOrigin = (ROMsizeDefault + RAMsizeDefault)*4;
@@ -50,6 +51,7 @@ int main(int argc, char *argv[]) {
     CreateTrace();                      // reset the trace buffer
 #endif
     vmMEMinit(NULL);
+    vmHostInit();
     atexit(TidyUp);
 
 nextarg:
