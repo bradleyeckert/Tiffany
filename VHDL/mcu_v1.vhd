@@ -20,8 +20,10 @@ port (
   bye	  : out	std_logic;							-- BYE encountered
   -- SPI flash
   NCS     : out	std_logic;                          -- chip select
-  SCLK    : out	std_logic;                          -- clockgh
-  fdata   : inout std_logic_vector(3 downto 0);     -- 3:0 = HLD NWP SO SI, pulled hi
+  SCLK    : out	std_logic;                          -- clock
+  fdata_o : out std_logic_vector(3 downto 0);
+  fdrive_o: out std_logic_vector(3 downto 0);
+  fdata_i : in std_logic_vector(3 downto 0);
   -- UART
   rxd	  : in	std_logic;
   txd	  : out std_logic;
@@ -115,9 +117,9 @@ component UART
   );
 end component;
 
-  signal fdata_o:  std_logic_vector(3 downto 0);
-  signal fdrive_o: std_logic_vector(3 downto 0);
-  signal fdata_i:  std_logic_vector(3 downto 0);
+--  signal fdata_o:  std_logic_vector(3 downto 0);
+--  signal fdrive_o: std_logic_vector(3 downto 0);
+--  signal fdata_i:  std_logic_vector(3 downto 0);
   signal config:   std_logic_vector(7 downto 0);
   signal xdata_i:  std_logic_vector(9 downto 0);
   signal xdata_o:  std_logic_vector(7 downto 0);
@@ -238,11 +240,6 @@ PORT MAP (
 
 caddrx <= "0000" & caddr;
 xtrig <= xtrigp or xtrigs;
-
-fdata_i <= fdata; -- bidirectional SPI data bus
-g_data: for i in 0 to 3 generate
-  fdata(i) <= fdata_o(i) when fdrive_o(i) = '1' else 'Z';
-end generate g_data;
 
 ezuart: uart
 PORT MAP (

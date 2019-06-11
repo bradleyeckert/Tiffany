@@ -141,12 +141,13 @@ begin
         end if;
 	  end if;
     when c_tx1 =>                               -- give ready_u time to respond
-      if txstate = 14 then
-        txstate <= 0;
-        wdata_i <= "0101" & xdata_i(3 downto 0);
-      else
-        wdata_i <= PID(8*txstate+7 downto 8*txstate);
-      end if;
+      case txstate is
+        when 0 =>      wdata_i <= PID(31 downto 24);
+        when 1 =>      wdata_i <= PID(23 downto 16);
+        when 2 =>      wdata_i <= PID(15 downto 8);
+        when 3 =>      wdata_i <= PID(7 downto 0);
+        when others => wdata_i <= "0101" & xdata_i(3 downto 0);  txstate <= 0;
+      end case;
 	  c_state <= c_tx;
     when c_xfer =>
       if (xtrig_i = '0') and (xbusy = '0') then -- wait for transfer to finish

@@ -12,7 +12,7 @@ ENTITY artyA7_tb IS
 generic (
   ROMsize:  integer := 10;                      	-- log2 (ROM cells)
   RAMsize:  integer := 10;                      	-- log2 (RAM cells)
-  BaseBlock: unsigned(7 downto 0) := x"00"
+  BaseBlock: unsigned(7 downto 0) := x"40"
 );
 END artyA7_tb;
 

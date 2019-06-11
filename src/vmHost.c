@@ -9,6 +9,7 @@
 /*
 Host functions operate on the stack and have access to host resources.
 Parameter passing is through the stack, whose pointer is passed to them.
+The return value is the number of cells to offset the stack immediately after return.
 */
 
 // =============================================================================
@@ -96,7 +97,7 @@ static FILE * FilePointer(uint32_t fp) {
     return NULL;                        // translate to a nicer invalid pointer
 }
 
-static int CLOSE_FILE      ( uint32_t *s ) { // 11.6.1.0900 ( fileid -- ior )
+static int CLOSE_FILE ( uint32_t *s ) { // 11.6.1.0900 ( fileid -- ior )
     FILE * f = FilePointer(s[0]);
     int r = fclose(f);
     filehandle[s[0]] = NULL;
@@ -106,7 +107,7 @@ static int CLOSE_FILE      ( uint32_t *s ) { // 11.6.1.0900 ( fileid -- ior )
 // Supported?   R/O  R/W  W/O
 // CREATE-FILE  no   yes  yes
 // OPEN-FILE    yes  yes  no
-static int CREATE_FILE     ( uint32_t *s ) { // 11.6.1.1010 ( c-addr u fam -- fileid ior )
+static int CREATE_FILE ( uint32_t *s ) { // 11.6.1.1010 ( c-addr u fam -- fileid ior )
     FetchString(name, s[2], s[1]);
     char * fam = "rb";
     switch (s[0]) {
@@ -119,7 +120,7 @@ static int CREATE_FILE     ( uint32_t *s ) { // 11.6.1.1010 ( c-addr u fam -- fi
     s[2] = getFilePointer(fp);
     return 1;
 }
-static int READ_FILE       ( uint32_t *s ) { // 11.6.1.2080 ( c-addr u1 fileid -- u2 ior )
+static int READ_FILE ( uint32_t *s ) { // 11.6.1.2080 ( c-addr u1 fileid -- u2 ior )
     uint32_t address = s[2];
     uint32_t length = s[1];
     FILE * f = FilePointer(s[0]);
@@ -143,7 +144,7 @@ The trailing CRLF is not stored in the buffer, which is a behavior you can't cou
 For ANS compatibility, you should define your buffer two bytes bigger than u1.
 If you want to detect truncated lines, compare u1 to u2.
 */
-static int READ_LINE       ( uint32_t *s ) { // 11.6.1.2090 ( c-addr u1 fileid -- u2 flag ior )
+static int READ_LINE ( uint32_t *s ) { // 11.6.1.2090 ( c-addr u1 fileid -- u2 flag ior )
     uint32_t address = s[2];
     uint32_t length = s[1];
     FILE * f = FilePointer(s[0]);
@@ -172,7 +173,7 @@ static int READ_LINE       ( uint32_t *s ) { // 11.6.1.2090 ( c-addr u1 fileid -
     return 0;
 }
 
-static int FILE_POSITION   ( uint32_t *s ) { // 11.6.1.1520 ( fileid -- ud ior )
+static int FILE_POSITION ( uint32_t *s ) { // 11.6.1.1520 ( fileid -- ud ior )
     FILE * f = FilePointer(s[0]);
     s[0] = 0;  s[-1] = 0;  s[-2] = -65;
     fpos_t pos;
@@ -194,7 +195,7 @@ static int REPOSITION_FILE ( uint32_t *s ) { // 11.6.1.2142 ( ud fileid -- ior )
     return 2;
 }
 
-static int WRITE_FILE      ( uint32_t *s ) { // 11.6.1.2480 ( c-addr u fileid -- ior )
+static int WRITE_FILE ( uint32_t *s ) { // 11.6.1.2480 ( c-addr u fileid -- ior )
     uint32_t address = s[2];
     uint32_t length = s[1];
     FILE * f = FilePointer(s[0]);
@@ -210,7 +211,7 @@ static int WRITE_FILE      ( uint32_t *s ) { // 11.6.1.2480 ( c-addr u fileid --
     return 2;
 }
 
-static int WRITE_LINE      ( uint32_t *s ) { // 11.6.1.2480 ( c-addr u fileid -- ior )
+static int WRITE_LINE ( uint32_t *s ) { // 11.6.1.2480 ( c-addr u fileid -- ior )
     FILE * f = FilePointer(s[0]);
     int r = WRITE_FILE(s);
 #ifdef _WIN32
@@ -220,14 +221,14 @@ static int WRITE_LINE      ( uint32_t *s ) { // 11.6.1.2480 ( c-addr u fileid --
     return r;
 }
 
-static int FILE_SIZE       ( uint32_t *s ) { // 11.6.1.1522 ( fileid -- ud ior )
+static int FILE_SIZE ( uint32_t *s ) { // 11.6.1.1522 ( fileid -- ud ior )
     FILE * f = FilePointer(s[0]);
     fseek(f, 0L, SEEK_END);
     uint64_t x = ftell(f);
     fseek(f, 0L, SEEK_SET);
-    s[0] = x & 0xFFFFFFFF;
-    s[-1] = (x>>32) & 0xFFFFFFFF;
-    s[-2] = 0; // ior
+    s[0] = x & 0xFFFFFFFF;          // low ud
+    s[-1] = (x>>32) & 0xFFFFFFFF;   // high ud
+    s[-2] = 0;                      // ior
     return -2;
 }
 
@@ -254,11 +255,11 @@ static int RESIZE-FILE     ( uint32_t *s ) { // 11.6.1.2147 ( ud fileid -- ior )
 -75	WRITE-FILE
 -76	WRITE-LINE
 */
-// void FetchString(char *s, int32_t address, uint8_t length);        // get string
+// void FetchString(char *s, int32_t address, uint8_t length);  // get string
 // void StoreString(char *s, int32_t address);                  // store string
 
 
-static int testout (uint32_t *s) {  // ( offset length -- )
+static int testout (uint32_t *s) {  // ( address length -- )
     FetchString(name, s[1], s[0]);
     printf("testout[%s]\n", name);
     return 2;
@@ -269,7 +270,8 @@ static int testout (uint32_t *s) {  // ( offset length -- )
 
 int HostFunction (uint32_t fn, uint32_t * s) {
     static int (* const pf[])(uint32_t*) = {
-    opencomm, closecomm, commemit, commQkey, commkey, testout,
+    opencomm, closecomm, commemit, commQkey, commkey,
+    testout,
     CLOSE_FILE, CREATE_FILE, CREATE_FILE,     // open-file uses create-file
     READ_FILE, READ_LINE, FILE_POSITION, REPOSITION_FILE, WRITE_FILE, WRITE_LINE,
     FILE_SIZE

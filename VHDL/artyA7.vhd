@@ -52,7 +52,9 @@ port (
   -- SPI flash
   NCS     : out	std_logic;                          -- chip select
   SCLK    : out	std_logic;                          -- clock
-  fdata   : inout std_logic_vector(3 downto 0);     -- 3:0 = HLD NWP SO SI, pulled high
+  fdata_o : out std_logic_vector(3 downto 0);
+  fdrive_o: out std_logic_vector(3 downto 0);
+  fdata_i : in std_logic_vector(3 downto 0);
   -- UART
   rxd	  : in	std_logic;
   txd	  : out std_logic;
@@ -74,7 +76,9 @@ end component;
   signal reset   : std_logic := '1';
   signal bye     : std_logic;
   signal clk     : std_logic;
--- signal qspi_clk : std_logic;
+  signal fdata_o : std_logic_vector(3 downto 0);
+  signal fdrive_o: std_logic_vector(3 downto 0);
+  signal fdata_i : std_logic_vector(3 downto 0);
 
   signal CYC_O   : std_logic;
   signal WE_O    : std_logic;
@@ -104,6 +108,11 @@ BEGIN
 
   clk <= CLK100MHZ;
 
+  fdata_i <= qspi_dq; -- bidirectional SPI data bus
+  g_data: for i in 0 to 3 generate
+    qspi_dq(i) <= fdata_o(i) when fdrive_o(i) = '1' else 'Z';
+  end generate g_data;
+
 -- spi_connect: STARTUPE2
 --   generic map( PROG_USR => "FALSE",
 --                SIM_CCLK_FREQ => 0.0)
@@ -126,7 +135,7 @@ BEGIN
     clk_Hz => 100000000, BaseBlock => BaseBlock )
   PORT MAP (
     clk => clk,  reset => reset,  bye => bye,
-    NCS => qspi_cs,  SCLK => qspi_clk,  fdata => qspi_dq,
+    NCS => qspi_cs,  SCLK => qspi_clk,  fdata_i => fdata_i,  fdata_o => fdata_o,  fdrive_o => fdrive_o,
     rxd => uart_txd_in,  txd => uart_rxd_out,
     CYC_O => CYC_O,  WE_O => WE_O,  BLEN_O => BLEN_O,  BADR_O => BADR_O,
     VALID_O => VALID_O,  READY_I => READY_I,  DAT_O	=> DAT_O,
