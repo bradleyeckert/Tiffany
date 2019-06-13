@@ -12,7 +12,8 @@ use IEEE.NUMERIC_STD.ALL;
 
 ENTITY sfprog IS
 generic (
-  PID: std_logic_vector(31 downto 0) := x"87654321"  -- Product ID
+  PID: std_logic_vector(31 downto 0) := x"87654321";  -- Product ID
+  BaseBlock: unsigned(7 downto 0) := x"00"      -- 64KB blocks reserved for bitstream
 );
 port (
   clk	  : in	std_logic;			            -- System clock
@@ -100,12 +101,16 @@ begin
           when x"1B" =>                         -- log out
             rxstate <= 0;
             hold_i <= '0';
-          when x"2F" =>                         -- ping
+          when x"2F" =>                         -- '/' ping
             wdata_i <= "0011110" & busy;
             c_state <= c_tx;
-          when x"3F" =>                         -- request PID
+          when x"3F" =>                         -- '?' request PID
             txstate <= 3;
             wdata_i <= PID(31 downto 24);
+            c_state <= c_tx;
+          when x"2B" =>                         -- '+' request baseblock
+            txstate <= 4;
+            wdata_i <= "0100" & std_logic_vector(BaseBlock(7 downto 4));
             c_state <= c_tx;
           when others =>
             if rdata_u(6) = '1' then            -- upper nybl = {4,5,6,7}
@@ -116,7 +121,7 @@ begin
               else
                 c_state <= c_rx;
               end if;
-            else
+            else                                -- echo
               c_state <= c_tx;
 		      wdata_i <= rdata_u;			    -- UART TX
             end if;
@@ -142,10 +147,11 @@ begin
 	  end if;
     when c_tx1 =>                               -- give ready_u time to respond
       case txstate is
-        when 0 =>      wdata_i <= PID(31 downto 24);
-        when 1 =>      wdata_i <= PID(23 downto 16);
-        when 2 =>      wdata_i <= PID(15 downto 8);
-        when 3 =>      wdata_i <= PID(7 downto 0);
+        when 0 =>      wdata_i <= PID(7 downto 0);
+        when 1 =>      wdata_i <= PID(15 downto 8);
+        when 2 =>      wdata_i <= PID(23 downto 16);
+        when 3 =>      wdata_i <= "0100" & std_logic_vector(BaseBlock(3 downto 0));
+                       txstate <= 0;
         when others => wdata_i <= "0101" & xdata_i(3 downto 0);  txstate <= 0;
       end case;
 	  c_state <= c_tx;

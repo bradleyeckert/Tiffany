@@ -4,7 +4,6 @@
 #include <sys/time.h>
 #include "vmConsole.h"
 #include "flash.h"
-#include "rs232.h"
 
 // To facilitate FPGA/ASIC implementation, console I/O uses a peripheral bus.
 // There is no need for a 32-bit data bus, 16-bit is fine. Upper half is the address.

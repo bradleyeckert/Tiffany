@@ -1,4 +1,4 @@
--- mcu_v1 RTL
+-- ArtyA7 PCB wrapper for mcu_v1
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -38,7 +38,7 @@ END ArtyA7;
 
 ARCHITECTURE RTL OF ArtyA7 IS
 
-component mcu
+component mcu_v1
 generic (
   ROMsize : integer := 10;                      	-- log2 (ROM cells)
   RAMsize : integer := 10;                      	-- log2 (RAM cells)
@@ -130,7 +130,7 @@ BEGIN
 --               USRDONEO => '1',       -- Drive DONE pin High even though tri-state
 --              USRDONETS => '1' );     -- Maintain tri-state of DONE pin
 
-  sys: mcu
+  sys: mcu_v1
   GENERIC MAP ( ROMsize => ROMsize, RAMsize => RAMsize,
     clk_Hz => 100000000, BaseBlock => BaseBlock )
   PORT MAP (

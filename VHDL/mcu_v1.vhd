@@ -6,13 +6,13 @@ use IEEE.NUMERIC_STD.ALL;
 -- It's intended to have a wrapper containing signal names matching those of
 -- the PCB's constraint file. The wrapper also connects the Fishbone bus to peripherals.
 
-ENTITY MCU IS
+ENTITY MCU_V1 IS
 generic (
   ROMsize : integer := 10;                      	-- log2 (ROM cells)
   RAMsize : integer := 10;                      	-- log2 (RAM cells)
   clk_Hz  : integer := 100000000;                   -- default clk in Hz
   BaseBlock: unsigned(7 downto 0) := x"00";         -- 64KB blocks reserved for bitstream
-  PID: std_logic_vector(31 downto 0) := x"87654321" -- Product ID (for sfcon)
+  PID: std_logic_vector(31 downto 0) := x"87654322" -- Product ID (for sfprog)
 );
 port (
   clk	  : in	std_logic;							-- System clock
@@ -39,10 +39,10 @@ port (
   READY_O : out std_logic;
   DAT_I   : in  std_logic_vector(31 downto 0)		-- Incoming data, 32-bit.
 );
-END MCU;
+END MCU_V1;
 
 
-ARCHITECTURE RTL OF MCU IS
+ARCHITECTURE RTL OF MCU_V1 IS
 
 component m32fb
 generic (
@@ -117,9 +117,6 @@ component UART
   );
 end component;
 
---  signal fdata_o:  std_logic_vector(3 downto 0);
---  signal fdrive_o: std_logic_vector(3 downto 0);
---  signal fdata_i:  std_logic_vector(3 downto 0);
   signal config:   std_logic_vector(7 downto 0);
   signal xdata_i:  std_logic_vector(9 downto 0);
   signal xdata_o:  std_logic_vector(7 downto 0);
@@ -170,7 +167,8 @@ END COMPONENT;
 
 COMPONENT sfprog
 generic (
-  PID: std_logic_vector(31 downto 0) := x"87654321" -- Product ID
+  PID: std_logic_vector(31 downto 0) := x"87654321"; -- Product ID
+  BaseBlock: unsigned(7 downto 0) := x"00"      -- 64KB blocks reserved for bitstream
 );
 port (
   clk	  : in	std_logic;			            -- System clock
@@ -252,7 +250,7 @@ PORT MAP (
 xdata_i <= pwdata(9 downto 0) when CPUreset = '0' else xdata_op;
 
 prog_con: sfprog
-GENERIC MAP ( PID => PID )
+GENERIC MAP ( PID => PID, BaseBlock => BaseBlock )
 PORT MAP (
   clk => clk,  reset => reset_a,  hold => CPUreset_i,  busy => sfbusy,
   xdata_o => xdata_op,  xdata_i => xdata_o,  xbusy => xbusy,  xtrig => xtrigp,
@@ -262,7 +260,7 @@ PORT MAP (
   rxfull => keyready,  rstb => key_stb,   rdata => keydata
 );
 
--- decode the DPB
+-- decode "APB"
 -- clk     ___----____----____----____----____----____----____----
 -- psel    ____----------------___________________________________
 -- penable ____________--------___________________________________
