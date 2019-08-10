@@ -4,7 +4,7 @@
 #ifndef __VMCONSOLE_H__
 #define __VMCONSOLE_H__
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
 void CookedMode();
 void RawMode();
 #endif // __linux__
