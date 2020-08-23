@@ -75,10 +75,23 @@ static uint32_t Divide (uint32_t parm) {
     return quotient;
 }
 
+// replaces as@ and as!
+static uint32_t setBurstLength (uint32_t parm) {
+    return 0;
+}
+static uint32_t burstfetch (uint32_t parm) {
+    return 0;
+}
+static uint32_t burststore (uint32_t parm) {
+    return 0;
+}
+
+
 uint32_t UserFunction (uint32_t T, uint32_t N, int fn ) {
     vmUserParm = N;
     static uint32_t (* const pf[])(uint32_t) = {
-        vmIO, Bye, Counter, SetDiv, Divide, Multiply
+        vmIO, Bye, Counter, SetDiv, Divide, Multiply,
+        NULL, setBurstLength, burstfetch, burststore
 // add your own here...
     };
     if (fn < sizeof(pf) / sizeof(*pf)) {

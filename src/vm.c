@@ -3,6 +3,7 @@
 #include "config.h"
 #include "vm.h"
 #include "vmUser.h"
+#include "vmHost.h"
 #include "flash.h"
 #include <string.h>
 
@@ -70,7 +71,6 @@ static int exception = 0;               // local error code
     static uint32_t * ROM;
     static uint32_t * RAM;
 #endif // EmbeddedROM
-    static uint32_t AXI[AXIRAMsize];
 
 #ifdef TRACEABLE
     #define T  VMreg[0]
@@ -310,37 +310,6 @@ void StoreByte (uint8_t x, int32_t addr) {
     StoreX(addr>>2, x, shift, 0xFF);
 }
 
-
-// Send a stream of RAM words to the AXI bus.
-// The only thing on the AXI bus here is RAM that can only be accessed by !AS and @AS.
-// An external function could be added in the future for other stuff.
-static void SendAXI(uint32_t src, uint32_t dest, uint8_t length) {
-    for (int i=0; i<=length; i++) {
-        uint32_t data = FetchCell(src);
-        if (dest >= AXIRAMsize) {
-            exception = -9;
-        } else {
-            AXI[dest++] = data;
-        }
-        src += 4;
-    } return;
-}
-
-// Receive a stream of RAM words from the AXI bus.
-// An external function could be added in the future for other stuff.
-static void ReceiveAXI(uint32_t src, uint32_t dest, uint8_t length) {
-    for (int i=0; i<=length; i++) {
-        uint32_t data = 0;
-        if (src >= AXIRAMsize) {
-            exception = -9;
-        } else {
-            data = AXI[src++];
-        }
-        StoreCell(data, dest);
-        dest += 4;
-    } return;
-}
-
 #ifdef TRACEABLE
     // Untrace undoes a state change by restoring old data
     void UnTrace(int32_t ID, uint32_t old) {  // EXPORTED
@@ -447,6 +416,16 @@ uint32_t VMstep(uint32_t IR, int Paused) {  // EXPORTED
                 Trace(New, RidT, T, M);  New=0;
 #endif // TRACEABLE
                 T = M;  goto ex;
+#ifndef HostFunction
+// Host operations are available on platforms that support them.
+// They are not traceable, so don't try.
+            case opHost:
+                SDUP();  SDUP();        // put TOS in RAM
+                M = HostFunction(IMM, &RAM[SP & (RAMsize-1)]);
+                SP += M;                // adjust stack depth
+                SDROP();  SDROP();
+                goto ex;
+#endif // HostFunction
 			case opZeroLess:
                 M=0;  if ((signed)T<0) M--;
 #ifdef TRACEABLE
@@ -654,8 +633,6 @@ GetPointer:     M = T + (M - RAMsize)*4; // common for rp, sp, up
                 Trace(0, RidT, T, M);
 #endif // TRACEABLE
 			    T = M;                                  break;
-			case opFetchAS:
-                ReceiveAXI(N, T, IMM);  goto ex;	            // @as
 			case opSetSP:
                 M = (T>>2) & (RAMsize-1);
 #ifdef TRACEABLE
@@ -684,8 +661,6 @@ GetPointer:     M = T + (M - RAMsize)*4; // common for rp, sp, up
                 T = IMM;  goto ex;                              // lit
 			case opUP: M = UP;  	                            // up
                 goto GetPointer;
-			case opStoreAS:
-                SendAXI(N, T, IMM);  goto ex;                   // !as
 			case opSetUP:
                 M = (T>>2) & (RAMsize-1);
 #ifdef TRACEABLE

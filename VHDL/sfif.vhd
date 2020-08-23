@@ -83,6 +83,7 @@ END component;
   type cache_t is array (0 to 2**CacheSize-1) of std_logic_vector(31 downto 0);
   signal cache_ok:   std_logic_vector(2**CacheSize-1 downto 0); -- cache word is filled
   signal cache_pend: std_logic_vector(2**CacheSize-1 downto 0); -- cache word is pending
+  signal cache_pend_in: std_logic_vector(2**CacheSize-1 downto 0);
   signal cache_addr: unsigned(29 downto 0);         -- current cache address
   signal cache: cache_t;                            -- prefetch cache
   signal missed, cokay: std_logic;                  -- cache miss, ready
@@ -108,6 +109,22 @@ ca <= to_integer(unsigned(cache_addr(CacheSize-1 downto 0)));
 restart <= (not internal) and -- external read, cache miss, fetch not pending
    (missed or not cache_pend (to_integer(unsigned(caddr(CacheSize-1 downto 0)))));
 
+process (caddr) is begin
+  cache_pend_in <= (others => '0');
+  cache_pend_in (2**CacheSize-1 downto to_integer(unsigned(caddr(CacheSize-1 downto 0)))) <= (others => '1');
+end process;
+
+-- If the above doesn't synthesize, assume Cachesize = 4 and use a ROM instead:
+-- with caddr(3 downto 0) select cache_pend_in(15 downto 0) <=
+--   "1111111111111111" when "0000",  "1111111111111110" when "0001",
+--   "1111111111111100" when "0010",  "1111111111111000" when "0011",
+--   "1111111111110000" when "0100",  "1111111111100000" when "0101",
+--   "1111111111000000" when "0110",  "1111111110000000" when "0111",
+--   "1111111100000000" when "1000",  "1111111000000000" when "1001",
+--   "1111110000000000" when "1010",  "1111100000000000" when "1011",
+--   "1111000000000000" when "1100",  "1110000000000000" when "1101",
+--   "1100000000000000" when "1110",  "1000000000000000" when others;
+
 -- The ROM interface attempts to fetch from a small cache of 16 words.
 -- The cache attempts to fill from memory. Any change in caddr[25:4] restarts it.
 -- The bottom of memory is a synchronous-read RAM that shadows the bottom of flash.
@@ -118,6 +135,7 @@ prefetch: process (clk, reset) begin
     cache_pend <= (others=>'0');  xcount <= 0;    dummy <= 0;
     cache_addr <= (others=>'0');  xrate <= "00";  xdir <= '0';
     f_state <= f_idle;                          -- start out filling RAM with flash contents
+    c_state <= c_idle;
     Tdata <= x"00000000";
     ram_in <= x"00000000";  busy <= '1';
     xcs <= "00";  int_addr <= (others=>'0');
@@ -163,8 +181,7 @@ prefetch: process (clk, reset) begin
           if restart = '1' then
             cache_ok <= (others=>'0');
             cache_addr <= unsigned(caddr);
-            cache_pend <= (others=>'0');        -- waiting to be filled = '1'
-            cache_pend (2**CacheSize-1 downto to_integer(unsigned(caddr(CacheSize-1 downto 0)))) <= (others => '1');
+            cache_pend <= cache_pend_in;        -- waiting to be filled = '1'
             xrate <= "00";
             xcs <= "00";  xcount <= 7;  dummy <= 0;  xdir <= '1';
             if caddr(29 downto 22) = x"00" then
@@ -311,6 +328,7 @@ spirate <= config(7 downto 6);
 hasmode <= config(5);
 divisor <= to_integer(unsigned(config(4 downto 3)));
 qdummy  <= to_integer(unsigned(config(2 downto 1)))*2 + 4; -- 4, 6, 8, 10
+-- open <= config(0);
 sclk <= sclk_i;
 
 transfer: process (clk, reset) begin

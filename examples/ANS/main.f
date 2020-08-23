@@ -21,7 +21,7 @@ include ../../forth/numio.f             \ numeric I/O
 
 	: throw  \ n --  				    \ for testing, remove later
 	?dup if  port drop  			    \ save n in dbg register, like error interrupt
-		16 >r						    \ fake an error interrupt
+		8 >r						    \ fake an error interrupt
 	then
 	; call-only
 
@@ -35,7 +35,7 @@ include ../../forth/numio.f             \ numeric I/O
 	cr
 	-1 @  								\ produce an error to quit
 	; is errorISR
-	[else]
+[else]
 	:noname
 	dup port throw
 	; is errorISR
@@ -114,7 +114,7 @@ make ../../src/flash.c flash.c          \ flash.c is used as a template
 
 \ Make VHDL ROM file
 5 save-hex ../../VHDL/testrom.txt       \ FMF model
- make ../../templates/rom.vhd  ../../VHDL/rom32.vhd
+\ make ../../templates/rom.vhd  ../../VHDL/rom32.vhd
 
 \ ------------------------------------------------------------------------------
 

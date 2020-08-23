@@ -2,12 +2,17 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
-ENTITY MCU IS
+-- This version of the MCU boots and runs from SPI flash.
+-- It's intended to have a wrapper containing signal names matching those of
+-- the PCB's constraint file. The wrapper also connects the Fishbone bus to peripherals.
+
+ENTITY MCU_V1 IS
 generic (
   ROMsize : integer := 10;                      	-- log2 (ROM cells)
   RAMsize : integer := 10;                      	-- log2 (RAM cells)
   clk_Hz  : integer := 100000000;                   -- default clk in Hz
-  BaseBlock: unsigned(7 downto 0) := x"00"          -- 64KB blocks reserved for bitstream
+  BaseBlock: unsigned(7 downto 0) := x"00";         -- 64KB blocks reserved for bitstream
+  PID: std_logic_vector(31 downto 0) := x"87654322" -- Product ID (for sfprog)
 );
 port (
   clk	  : in	std_logic;							-- System clock
@@ -16,17 +21,30 @@ port (
   -- SPI flash
   NCS     : out	std_logic;                          -- chip select
   SCLK    : out	std_logic;                          -- clock
-  fdata   : inout std_logic_vector(3 downto 0);     -- 3:0 = HLD NWP SO SI, pulled high
+  fdata_o : out std_logic_vector(3 downto 0);
+  fdrive_o: out std_logic_vector(3 downto 0);
+  fdata_i : in std_logic_vector(3 downto 0);
   -- UART
   rxd	  : in	std_logic;
-  txd	  : out std_logic
+  txd	  : out std_logic;
+  -- Fishbone Bus Master for burst transfers
+  CYC_O   : out std_logic;                      	-- Trigger burst of IMM-1 words
+  WE_O    : out std_logic;                      	-- '1'=write, '0'=read.
+  BLEN_O  : out std_logic_vector(7 downto 0);		-- Burst length less 1.
+  BADR_O  : out std_logic_vector(31 downto 0);  	-- Block address, copy of T.
+  VALID_O : out std_logic;	                    	-- AXI-type handshake for output.
+  READY_I : in  std_logic;
+  DAT_O	  : out std_logic_vector(31 downto 0);  	-- Outgoing data, 32-bit.
+  VALID_I : in  std_logic;                      	-- AXI-type handshake for input.
+  READY_O : out std_logic;
+  DAT_I   : in  std_logic_vector(31 downto 0)		-- Incoming data, 32-bit.
 );
-END MCU;
+END MCU_V1;
 
 
-ARCHITECTURE RTL OF MCU IS
+ARCHITECTURE RTL OF MCU_V1 IS
 
-component m32
+component m32fb
 generic (
   RAMsize:  integer := 10                           -- log2 (RAM cells)
 );
@@ -37,7 +55,7 @@ port (
   caddr	  : out std_logic_vector(25 downto 0);		-- Flash memory address
   cready  : in	std_logic;							-- Flash memory data ready
   cdata	  : in	std_logic_vector(31 downto 0);		-- Flash memory read data
-  -- DPB: Dumb Peripheral Bus, compare to APB (Advanced Peripheral Bus)
+  -- Peripheral Bus
   paddr   : out	std_logic_vector(8 downto 0);       -- address
   pwrite  : out std_logic;							-- write strobe
   psel    : out std_logic;							-- start the cycle
@@ -45,6 +63,17 @@ port (
   pwdata  : out std_logic_vector(15 downto 0);      -- write data
   prdata  : in  std_logic_vector(15 downto 0);      -- read data
   pready  : in  std_logic;							-- ready to continue
+  -- Fishbone Bus Master for burst transfers.
+  CYC_O   : out std_logic;                      	-- Trigger burst of IMM-1 words
+  WE_O    : out std_logic;                      	-- '1'=write, '0'=read.
+  BLEN_O  : out std_logic_vector(7 downto 0);		-- Burst length less 1.
+  BADR_O  : out std_logic_vector(31 downto 0);  	-- Block address, copy of T.
+  VALID_O : out std_logic;	                    	-- AXI-type handshake for output.
+  READY_I : in  std_logic;
+  DAT_O	  : out std_logic_vector(31 downto 0);  	-- Outgoing data, 32-bit.
+  VALID_I : in  std_logic;                      	-- AXI-type handshake for input.
+  READY_O : out std_logic;
+  DAT_I   : in  std_logic_vector(31 downto 0);		-- Incoming data, 32-bit.
   -- Powerdown
   bye     : out std_logic                           -- BYE encountered
 );
@@ -58,7 +87,6 @@ end component;
   signal paddr:     std_logic_vector(8 downto 0);
   signal pwrite:    std_logic;
   signal psel:      std_logic;
---  signal penable:   std_logic;
   signal pwdata:    std_logic_vector(15 downto 0);
   signal prdata:    std_logic_vector(15 downto 0);
   signal pready:    std_logic;
@@ -89,9 +117,6 @@ component UART
   );
 end component;
 
-  signal fdata_o:  std_logic_vector(3 downto 0);
-  signal fdrive_o: std_logic_vector(3 downto 0);
-  signal fdata_i:  std_logic_vector(3 downto 0);
   signal config:   std_logic_vector(7 downto 0);
   signal xdata_i:  std_logic_vector(9 downto 0);
   signal xdata_o:  std_logic_vector(7 downto 0);
@@ -129,6 +154,49 @@ port (clk:   in std_logic;
 );
 END COMPONENT;
 
+  signal CPUreset, CPUreset_i: std_logic;
+  signal xtrigp, xtrigs:   std_logic;
+  signal xdata_op: std_logic_vector(9 downto 0);
+  -- UART wiring
+  signal ready_u : std_logic;                   -- Ready for next byte to send
+  signal wstb_u  : std_logic;                   -- Send strobe
+  signal wdata_u : std_logic_vector(7 downto 0);-- Data to send
+  signal rxfull_u: std_logic;                   -- RX buffer is full, okay for host to accept
+  signal rstb_u  : std_logic;                   -- Accept RX byte
+  signal rdata_u : std_logic_vector(7 downto 0);-- Received data
+
+COMPONENT sfprog
+generic (
+  PID: std_logic_vector(31 downto 0) := x"87654321"; -- Product ID
+  BaseBlock: unsigned(7 downto 0) := x"00"      -- 64KB blocks reserved for bitstream
+);
+port (
+  clk	  : in	std_logic;			            -- System clock
+  reset	  : in	std_logic;			            -- Asynchronous reset
+  hold    : out	std_logic;                      -- resets the CPU, makes SFIF trigger from xtrig
+  busy	  : in	std_logic;			            -- flash is busy
+  -- SPI flash
+  xdata_o : out std_logic_vector(9 downto 0);
+  xdata_i : in  std_logic_vector(7 downto 0);
+  xtrig   : out std_logic;
+  xbusy   : in  std_logic;
+  -- UART register interface: connects to the UART
+  ready_u : in std_logic;                    	-- Ready for next byte to send
+  wstb_u  : out std_logic;                    	-- Send strobe
+  wdata_u : out std_logic_vector(7 downto 0); 	-- Data to send
+  rxfull_u: in  std_logic;                    	-- RX buffer is full, okay for host to accept
+  rstb_u  : out std_logic;                    	-- Accept RX byte
+  rdata_u : in  std_logic_vector(7 downto 0);	-- Received data
+  -- UART register interface: connects to the MCU
+  ready   : out std_logic;                    	-- Ready for next byte to send
+  wstb    : in  std_logic;                    	-- Send strobe
+  wdata   : in  std_logic_vector(7 downto 0); 	-- Data to send
+  rxfull  : out std_logic;                    	-- RX buffer is full, okay to accept
+  rstb    : in  std_logic;                    	-- Accept RX byte
+  rdata   : out std_logic_vector(7 downto 0) 	-- Received data
+);
+END COMPONENT;
+
 
 ---------------------------------------------------------------------------------
 BEGIN
@@ -147,13 +215,16 @@ begin
 end process;
 
 -- Instantiate the components of the MCU: CPU, ROM, and UART
-cpu: m32
+cpu: m32fb
 GENERIC MAP ( RAMsize => RAMsize )
 PORT MAP (
-  clk => clk,  reset => reset_a,  bye => bye,
+  clk => clk,  reset => CPUreset,  bye => bye,
   caddr => caddr,  cready => cready,  cdata => cdata,
   paddr => paddr,  pwrite => pwrite,  psel => psel,  penable => penable,
-  pwdata => pwdata,  prdata => prdata,  pready => pready
+  pwdata => pwdata,  prdata => prdata,  pready => pready,
+  CYC_O => CYC_O,  WE_O => WE_O,  BLEN_O => BLEN_O,  BADR_O => BADR_O,
+  VALID_O => VALID_O,  READY_I => READY_I,  DAT_O	=> DAT_O,
+  VALID_I => VALID_I,  READY_O => READY_O,  DAT_I => DAT_I
 );
 
 flash: sfif
@@ -166,23 +237,30 @@ PORT MAP (
 );
 
 caddrx <= "0000" & caddr;
+xtrig <= xtrigp or xtrigs;
 
-fdata_i <= fdata; -- bidirectional SPI data bus
-g_data: for i in 0 to 3 generate
-  fdata(i) <= fdata_o(i) when fdrive_o(i) = '1' else 'Z';
-end generate g_data;
-
-urt: uart
+ezuart: uart
 PORT MAP (
   clk => clk,  reset => reset_a,
-  ready => emitready,  wstb => emit_stb,  wdata => pwdata(7 downto 0),
-  rxfull => keyready,  rstb => key_stb,   rdata => keydata,
+  ready => ready_u,    wstb => wstb_u,  wdata => wdata_u,
+  rxfull => rxfull_u,  rstb => rstb_u,  rdata => rdata_u,
   bitperiod => bitperiod,  rxd => rxd,  txd => txd
 );
 
-xdata_i <= pwdata(9 downto 0);
+xdata_i <= pwdata(9 downto 0) when CPUreset = '0' else xdata_op;
 
--- decode the DPB
+prog_con: sfprog
+GENERIC MAP ( PID => PID, BaseBlock => BaseBlock )
+PORT MAP (
+  clk => clk,  reset => reset_a,  hold => CPUreset_i,  busy => sfbusy,
+  xdata_o => xdata_op,  xdata_i => xdata_o,  xbusy => xbusy,  xtrig => xtrigp,
+  ready_u => ready_u,    wstb_u => wstb_u,  wdata_u => wdata_u,
+  rxfull_u => rxfull_u,  rstb_u => rstb_u,  rdata_u => rdata_u,
+  ready => emitready,  wstb => emit_stb,  wdata => pwdata(7 downto 0),
+  rxfull => keyready,  rstb => key_stb,   rdata => keydata
+);
+
+-- decode "APB"
 -- clk     ___----____----____----____----____----____----____----
 -- psel    ____----------------___________________________________
 -- penable ____________--------___________________________________
@@ -194,14 +272,16 @@ xdata_i <= pwdata(9 downto 0);
 DPB_process: process (clk, reset_a) is
 begin
   if reset_a = '1' then
-    emit_stb <= '0';  key_stb <= '0';  xtrig <= '0';
+    emit_stb <= '0';  key_stb <= '0';  xtrigs <= '0';
     bitperiod <= std_logic_vector(to_unsigned(clk_Hz/115200, 16));
 	prdata <= x"0000";  pready <= '0';  fwait <= '0';
     config <= x"00";
+    CPUreset <= '1';
   elsif rising_edge(clk) then
-    emit_stb <= '0';  key_stb <= '0';  xtrig <= '0';
+    emit_stb <= '0';  key_stb <= '0';  xtrigs <= '0';
+    CPUreset <= CPUreset_i;             -- synchronize reset from sfcon
     if fwait = '1' then
-      if (xbusy = '0') and (xtrig = '0') then
+      if (xbusy = '0') and (xtrigs = '0') then
         fwait <= '0';  pready <= '1';   -- wait for SPI transfer to finish
         prdata <= x"00" & xdata_o;
       end if;
@@ -216,7 +296,7 @@ begin
           prdata <= x"00" & keydata;
           key_stb <= '1';
         else
-          xtrig <= '1';  fwait <= '1';  -- waiting for SPI transfer
+          xtrigs <= '1';  fwait <= '1'; -- waiting for SPI transfer
           pready <= '0';
         end if;
       when "0010" =>                    -- R=keyformat, W=spiconfig
@@ -230,9 +310,9 @@ begin
           bitperiod <= pwdata;
         end if;
 	  when "0100" =>					-- R=fbusy
-	    prdata <= "000000000000000" & sfbusy;
-      when "0101" =>
-        prdata <= x"00" & std_logic_vector(BaseBlock);
+	    prdata <= "000000000000000" & sfbusy; 			-- see flash.f
+      when "0101" =>					-- R=BaseBlock
+        prdata <= x"00" & std_logic_vector(BaseBlock);  -- see flash.f
       when others =>
         prdata <= x"0000";
       end case;

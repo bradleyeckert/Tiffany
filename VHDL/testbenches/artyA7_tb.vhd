@@ -1,4 +1,4 @@
--- mcu_v1 testbench
+-- Arty A7-35 testbench
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -8,66 +8,58 @@ USE IEEE.VITAL_timing.ALL;
 use IEEE.std_logic_textio.all;
 use STD.textio.all;
 
-ENTITY mcu_tb IS
+ENTITY artyA7_tb IS
 generic (
   ROMsize:  integer := 10;                      	-- log2 (ROM cells)
   RAMsize:  integer := 10;                      	-- log2 (RAM cells)
-  BaseBlock: unsigned(7 downto 0) := x"00"
+  BaseBlock: unsigned(7 downto 0) := x"40"
 );
-END mcu_tb;
+END artyA7_tb;
 
-ARCHITECTURE testbench OF mcu_tb IS
+ARCHITECTURE testbench OF artyA7_tb IS
 
-component mcu
+component ArtyA7
 generic (
   ROMsize : integer := 10;                      	-- log2 (ROM cells)
   RAMsize : integer := 10;                      	-- log2 (RAM cells)
-  clk_Hz  : integer := 100000000;                   -- default clk in Hz
-  BaseBlock: unsigned(7 downto 0) := x"00"
+  clk_Hz  : integer := 100000000;
+  BaseBlock: unsigned(7 downto 0) := x"40"
 );
 port (
-  clk	  : in	std_logic;							-- System clock
-  reset	  : in	std_logic;							-- Active high, synchronous reset
-  bye	  : out	std_logic;							-- BYE encountered
+  CLK100MHZ   : in  std_logic;
   -- SPI flash
-  NCS     : out	std_logic;                          -- chip select
-  SCLK    : out	std_logic;                          -- clock
-  fdata   : inout std_logic_vector(3 downto 0);     -- 3:0 = HLD NWP SO SI, pulled high
+  qspi_cs     : out	std_logic;
+  qspi_clk    : out	std_logic;
+  qspi_dq     : inout std_logic_vector(3 downto 0);
   -- UART
-  rxd	  : in	std_logic;
-  txd	  : out std_logic;
-  -- Fishbone Bus Master for burst transfers
-  CYC_O   : out std_logic;                      	-- Trigger burst of IMM-1 words
-  WE_O    : out std_logic;                      	-- '1'=write, '0'=read.
-  BLEN_O  : out std_logic_vector(7 downto 0);		-- Burst length less 1.
-  BADR_O  : out std_logic_vector(31 downto 0);  	-- Block address, copy of T.
-  VALID_O : out std_logic;	                    	-- AXI-type handshake for output.
-  READY_I : in  std_logic;
-  DAT_O	  : out std_logic_vector(31 downto 0);  	-- Outgoing data, 32-bit.
-  VALID_I : in  std_logic;                      	-- AXI-type handshake for input.
-  READY_O : out std_logic;
-  DAT_I   : in  std_logic_vector(31 downto 0)		-- Incoming data, 32-bit.
+  uart_txd_in : in	std_logic;
+  uart_rxd_out: out std_logic;
+  -- Simple I/Os
+  led         : out std_logic_vector(3 downto 0);   -- Discrete LEDs
+  sw          : in  std_logic_vector(3 downto 0);   -- Switches
+  btn         : in  std_logic_vector(3 downto 0);   -- Buttons
+  -- 3-color LEDs
+  led0_r, led0_g, led0_b : out std_logic;
+  led1_r, led1_g, led1_b : out std_logic;
+  led2_r, led2_g, led2_b : out std_logic;
+  led3_r, led3_g, led3_b : out std_logic
 );
 end component;
 
-  signal clk:       std_logic := '1';
   signal reset:     std_logic := '1';
-  signal bye:       std_logic;
-
-  signal rxd:       std_logic := '1';
-  signal txd:       std_logic;
-
-  signal CYC_O   : std_logic;
-  signal WE_O    : std_logic;
-  signal BLEN_O  : std_logic_vector(7 downto 0);
-  signal BADR_O  : std_logic_vector(31 downto 0);
-  signal VALID_O : std_logic;
-  signal READY_I : std_logic := '0';
-  signal DAT_O	 : std_logic_vector(31 downto 0);
-  signal VALID_I : std_logic := '0';
-  signal READY_O : std_logic;
-  signal DAT_I   : std_logic_vector(31 downto 0) := x"11223344";
-
+  signal CLK100MHZ: std_logic := '1';
+  signal qspi_cs     : std_logic;
+  signal qspi_clk    : std_logic;
+  signal qspi_dq     : std_logic_vector(3 downto 0);
+  signal uart_txd_in : std_logic := '1';
+  signal uart_rxd_out: std_logic;
+  signal led  : std_logic_vector(3 downto 0);           -- Discrete LEDs
+  signal sw   : std_logic_vector(3 downto 0) := "1010"; -- Switches
+  signal btn  : std_logic_vector(3 downto 0) := "0001"; -- Buttons
+  signal led0_r, led0_g, led0_b : std_logic;
+  signal led1_r, led1_g, led1_b : std_logic;
+  signal led2_r, led2_g, led2_b : std_logic;
+  signal led3_r, led3_g, led3_b : std_logic;
 
 COMPONENT s25fl064l                             -- flash device
 GENERIC (                                       -- single data rate only
@@ -90,8 +82,6 @@ PORT (
 END COMPONENT;
 
   signal RESETNeg:  std_logic;
-  signal NCS, SCLK: std_logic;
-  signal fdata: std_logic_vector(3 downto 0);
 
   -- Clock period definitions
   constant clk_period: time := 10 ns;
@@ -99,20 +89,22 @@ END COMPONENT;
 
 BEGIN
 
-  sys: mcu
+  sys: ArtyA7
   GENERIC MAP ( ROMsize => ROMsize, RAMsize => RAMsize,
     clk_Hz => 100000000, BaseBlock => BaseBlock )
   PORT MAP (
-    clk => clk,  reset => reset,  bye => bye,
-    NCS => NCS,  SCLK => SCLK,  fdata => fdata,
-    rxd => rxd,  txd => txd,
-    CYC_O => CYC_O,  WE_O => WE_O,  BLEN_O => BLEN_O,  BADR_O => BADR_O,
-    VALID_O => VALID_O,  READY_I => READY_I,  DAT_O	=> DAT_O,
-    VALID_I => VALID_I,  READY_O => READY_O,  DAT_I => DAT_I
+    CLK100MHZ => CLK100MHZ,
+    qspi_cs => qspi_cs,  qspi_clk => qspi_clk,  qspi_dq => qspi_dq,
+    uart_txd_in => uart_txd_in,  uart_rxd_out => uart_rxd_out,
+    led => led,  sw => sw,  btn => btn,
+    led0_r => led0_r,  led0_g => led0_g,  led0_b => led0_b,
+    led1_r => led1_r,  led1_g => led1_g,  led1_b => led1_b,
+    led2_r => led2_r,  led2_g => led2_g,  led2_b => led2_b,
+    led3_r => led3_r,  led3_g => led3_g,  led3_b => led3_b
   );
 
-  RESETNeg <= not reset;
-  fdata <= "HHHH";      -- pullups
+  RESETNeg <= '1';
+  qspi_dq <= "HHHH";      -- pullups
 
   mem: s25fl064l
   GENERIC MAP (
@@ -122,48 +114,23 @@ BEGIN
     secr_file_name => "secr.txt",
     mem_file_name => "testrom.txt")
   PORT MAP (
-    SCK => SCLK,
-    SO => fdata(1),
-    CSNeg => NCS,
-    IO3RESETNeg => fdata(3),
-    WPNeg => fdata(2),
-    SI => fdata(0),
+    SCK =>   qspi_clk,
+    SO =>    qspi_dq(1),
+    CSNeg => qspi_cs,
+    IO3RESETNeg => qspi_dq(3),
+    WPNeg => qspi_dq(2),
+    SI =>    qspi_dq(0),
     RESETNeg => RESETNeg
   );
-
-  -- Fishbone handshaking
-  wr_proc: process(clk)
-  begin
-    if (rising_edge(clk)) then
-	  READY_I <= VALID_O and not READY_I;
-    end if;
-  end process wr_proc;
-
-  rd_proc: process(clk)
-  variable x: std_logic_vector(31 downto 0);
-  begin
-    if (rising_edge(clk)) then
-	  if (CYC_O = '1') and (WE_O = '0') then
-	    VALID_I <= '1';
-		if READY_O = '1' then
-		  DAT_I <= std_logic_vector(unsigned(DAT_I) + 3);
-		end if;
-      else
-	    VALID_I <= '0';
-		DAT_I <= x"12340000";
-      end if;
-    end if;
-  end process rd_proc;
-
 
 -- Clock generator
 clk_process: process
 begin
-  clk <= '1';  wait for clk_period/2;
-  clk <= '0';  wait for clk_period/2;
+  CLK100MHZ <= '1';  wait for clk_period/2;
+  CLK100MHZ <= '0';  wait for clk_period/2;
 end process clk_process;
 
--- TXD stream monitor outputs to console
+-- uart_rxd_out stream monitor outputs to console
 
 emit_process: process is
 file outfile: text;
@@ -173,11 +140,11 @@ variable char: std_logic_vector(7 downto 0);
 begin
   file_open(f_status, outfile, "STD_OUTPUT", write_mode);
   loop
-    wait until txd /= '1';  wait for 1.5*baud_period; -- start bit
+    wait until uart_rxd_out /= '1';  wait for 1.5*baud_period; -- start bit
     for i in 0 to 7 loop
-      char(i) := txd;  wait for baud_period;
+      char(i) := uart_rxd_out;  wait for baud_period;
     end loop;
-    assert txd = '1' report "Missing STOP bit" severity error;
+    assert uart_rxd_out = '1' report "Missing STOP bit" severity error;
     wait for baud_period;
     case char(7 downto 0) is
     when x"0A" => writeline (output, buf_out); 	-- LF
@@ -189,16 +156,29 @@ begin
   end loop;
 end process emit_process;
 
+process begin   wait until led0_r'event;
+  report "LED0_r changed" severity note;
+end process;
+process begin   wait until led1_r'event;
+  report "LED1_r changed" severity note;
+end process;
+process begin   wait until led2_r'event;
+  report "LED2_r changed" severity note;
+end process;
+process begin   wait until led3_r'event;
+  report "LED3_r changed" severity note;
+end process;
+
 
 main_process: process
 
 procedure KeyChar (char: in std_logic_vector(7 downto 0)) is
 begin              -- transmit a serial character
-  rxd <= '0';      wait for baud_period;        -- start
+  uart_txd_in <= '0';      wait for baud_period;        -- start
   for i in 0 to 7 loop
-  rxd <= char(i);  wait for baud_period;        -- bits
+  uart_txd_in <= char(i);  wait for baud_period;        -- bits
   end loop;
-  rxd <= '1';      wait for baud_period*2;      -- stop*2
+  uart_txd_in <= '1';      wait for baud_period*2;      -- stop*2
   -- Two stop bits are needed to prevent receiver processing delays from piling up.
   -- ACCEPT waits for QEMIT when echoing, so serial out must be faster than the input.
   -- The serial bit rate at 100 MHz could be up to about 3M BPS without a multitasker,
@@ -219,9 +199,6 @@ begin
   wait for clk_period*2.2;  reset <= '0';
   wait for 5 ms; -- wait for the ok> prompt, 5ms is enough if ROMsize=10. Increase if more.
   Keyboard (": foo swap ; see foo"); -- give this 32 ms to execute
-
-  wait until bye = '1';
-  report "BYE encountered"  severity failure;
   wait;
 end process main_process;
 

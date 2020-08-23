@@ -112,7 +112,7 @@ RESETNeg <= not reset;
 
    -- Instantiate the Unit Under Test (UUT)
    uut: sfif
-        GENERIC MAP (RAMsize => 3, CacheSize => 3)
+        GENERIC MAP (RAMsize => 3, CacheSize => 3, BaseBlock => x"00")
         PORT MAP (
           clk => clk,  reset => reset,  config => config,
           caddr => caddr,  cdata => cdata,  cready => cready,

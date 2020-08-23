@@ -84,14 +84,13 @@ extern uint32_t OpCounter[64];              // dynamic instruction count
 #define opMiREPT     (050)  // -rept  slot=0 if T < 0
 #define opUP         (051)  // up
 #define opZeroLess   (054)  // 0<
-#define opFetchAS    (055)  // @as
 #define opFetch      (056)  // @
 #define opSetRP      (057)  // rp!
 
 #define opSKIPGE     (060)  // -if:  slot=end if T >= 0
 #define opPORT       (061)  // port  ( n -- m ) swap T with port
 #define opCOM        (064)  // invert
-#define opStoreAS    (065)  // !as
+#define opHost       (065)  // !as
 #define opCfetch     (066)  // c@
 #define opSetSP      (067)  // sp!
 

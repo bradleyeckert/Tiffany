@@ -10,8 +10,6 @@
 #define ROMsizeDefault  0x2000                /* should be an exact power of 2 */
 #define FlashBlksDefault  256                               /* # of 4K sectors */
 
-#define AXIRAMsize      0x100      /* RAM on the AXI bus, a little for testing */
-
 // These use malloc, so can be arbitrarily large.
 #define MaxROMsize      0x40000                   /* 4M bytes maximum ROM size */
 #define MaxRAMsize      0x40000                   /* 4M bytes maximum RAM size */

@@ -24,8 +24,8 @@ static char names[64][6] = {
     "?",     "rp",   "r@",    "and",  "2/",   "jmp",  "w@+", "w!+",
     "?",     "sp",   "?",     "xor",  "u2/",  "call", "w@",  ">r",
     "reptc", "4+",   "?",     "c+",   "0=",   "litx", "@+",  "!+",
-    "-rept", "up",   "?",     "?",    "0<",   "@as",  "@",   "rp!",
-    "-if:",  "port", "?",     "?",    "com",  "!as",  "c@",  "sp!",
+    "-rept", "up",   "?",     "?",    "0<",   "?",    "@",   "rp!",
+    "-if:",  "port", "?",     "?",    "com",  "user", "c@",  "sp!",
     "ifc:",  "over", "ifz:",  "drop", "swap", "lit",  "?",   "up!"
 };
 
@@ -38,8 +38,7 @@ static int isImmediate(unsigned int opcode) {
     switch (opcode) {
         case opLitX:
         case opLIT:
-        case opFetchAS:
-        case opStoreAS:
+        case opHost:
         case opUSER:
         case opCALL:
         case opJUMP: return 1;
@@ -667,7 +666,7 @@ void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     AddImplicit(opOVER      , "over");
     AddImplicit(opPOP       , "r>");
     AddImplicit(opXOR       , "xor");
-    AddExplicit(opStoreAS   , "!as");
+    AddExplicit(opHost      , "host");
     AddImplicit(opTwoStar   , "2*");
     AddImplicit(opTwoStarC  , "2*c");
     AddImplicit(opCstorePlus, "c!+");
@@ -693,9 +692,9 @@ void InitCompiler(void) {  /*EXPORT*/   // Initialize the compiler
     AddImplicit(opUP        , "up");
     AddImplicit(opSetUP     , "up!");
     AddExplicit(opLitX      , "litx");
+    AddExplicit(opHost      , "host");
     AddExplicit(opUSER      , "user");
     AddExplicit(opJUMP      , "jmp");
-    AddExplicit(opFetchAS   , "@as");
     AddExplicit(opLIT       , "lit");
     AddImplicit(opDROP      , "drop");
     AddExplicit(opCALL      , "call");
