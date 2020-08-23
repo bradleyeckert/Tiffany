@@ -7,7 +7,7 @@
 #include "accessvm.h"
 #include "fileio.h"
 #include <string.h>
-#include "vmhost.h"
+#include "vmHost.h"
 #define HP0max  (MaxROMsize - 0x1000)
 
 /*global*/ int HeadPointerOrigin = (ROMsizeDefault + RAMsizeDefault)*4;

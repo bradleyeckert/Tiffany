@@ -4,6 +4,18 @@
 #include "vm.h"
 #include "accessvm.h"
 #include "rs232.h"
+
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__APPLE__)
+
+#include <unistd.h>   // for usleep
+#define MS(ms) usleep(1000*(ms))
+
+#else
+
+#define MS(ms) Sleep(ms)
+
+#endif
+
 #define MAXFILES 64
 
 /*
@@ -51,8 +63,11 @@ static int commQkey (uint32_t *s) {  // ( -- n )
     return -1;
 }
 
+
+
+
 static int commkey (uint32_t *s) {  // ( -- c )
-    while (commQkeyC() == 0) { Sleep(1); }
+    while (commQkeyC() == 0) { MS(1); }
     full = 0;
     s[-1] = buf[0];
     return -1;
